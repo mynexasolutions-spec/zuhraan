@@ -1,0 +1,475 @@
+{% extends 'base.html' %}
+
+{% block title %}Plome — Hero Banner{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+{% endblock %}
+
+{% block content %}
+<!-- HERO -->
+<section class="hero">
+
+    <!-- LEFT -->
+    <div class="left-col">
+        <div class="left-badge">
+            <svg width="17" height="17" fill="#fff" viewBox="0 0 24 24">
+                <path
+                    d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+            </svg>
+        </div>
+        <p class="left-note">Explore the enchanting fragrances as if they were works of art.</p>
+        <div class="left-card">
+            <!-- Warm amber perfume bottle on neutral background -->
+            <img src="{{ url_for('static', filename='images/banner/zuhran_1.webp') }}"
+                alt="Scandal Concentrated Perfume">
+            <div class="left-card-body">
+                <h4>Scandal</h4>
+                <p>Concentrated Perfume</p>
+                <button class="btn-circle">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CENTER -->
+    <div class="center-col">
+        <div class="arch-ring"></div>
+        <h1 class="hero-title">
+            <span class="t1">A Fragrance that</span>
+            <span class="t2">Captivates</span>
+        </h1>
+        <div class="oval-wrap">
+            <div class="center-glow"></div>
+            <!-- Dark floral perfume hero image -->
+            <img class="hero-main-img" src="{{ url_for('static', filename='images/banner/zuhran_2.webp') }}"
+                alt="Hero Fragrance">
+        </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="right-col">
+        <div class="right-top-card">
+            <div class="rtc-head">
+                <div>
+                    <h4>Scandal</h4>
+                    <p>Potent Perfume</p>
+                </div>
+                <button class="btn-circle">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                </button>
+            </div>
+            <!-- Colourful amber + pink/red bottles -->
+            <img src="{{ url_for('static', filename='images/banner/zuhran_3.jpg') }}" alt="Scandal Potent Perfume">
+        </div>
+
+        <div class="promo-card">
+            <div class="promo-icon">🌸</div>
+            <p>"Show someone they're amazing with our enticing Scandal fragrance."</p>
+            <button class="shop-btn">
+                Shop Now
+                <span class="sc">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                </span>
+            </button>
+        </div>
+    </div>
+
+</section>
+
+<!-- CATEGORIES SECTION -->
+<div class="section-bg-white">
+<section class="categories-section">
+    <h2 class="section-title">Discover By Category</h2>
+    
+    <div class="categories-grid">
+        <a href="#" class="category-card">
+            <img src="/static/images/banner/zuhran_1.webp" alt="Eau De Parfum">
+            <div class="cat-overlay"></div>
+            <div class="cat-content">
+                <h3 class="cat-title">Eau De Parfum</h3>
+                <div class="cat-bottom">
+                    <div class="cat-shop">
+                        <button class="btn-pill-white">Shop Now</button>
+                    </div>
+                </div>
+            </div>
+        </a>
+
+        <a href="#" class="category-card">
+            <img src="/static/images/banner/zuhran_2.webp" alt="Extrait De Parfum">
+            <div class="cat-overlay"></div>
+            <div class="cat-content">
+                <h3 class="cat-title">Extrait De Parfum</h3>
+                <div class="cat-bottom">
+                    <div class="cat-shop">
+                        <button class="btn-pill-white">Shop Now</button>
+                    </div>
+                </div>
+            </div>
+        </a>
+
+        <a href="#" class="category-card">
+            <img src="/static/images/banner/zuhran_3.jpg" alt="Premium Collection">
+            <div class="cat-overlay"></div>
+            <div class="cat-content">
+                <h3 class="cat-title">Premium Collection</h3>
+                <div class="cat-bottom">
+                    <div class="cat-shop">
+                        <button class="btn-pill-white">Shop Now</button>
+                    </div>
+                </div>
+            </div>
+        </a>
+
+        <a href="#" class="category-card">
+            <img src="/static/images/banner/zuhran_1.webp" alt="Room Freshener">
+            <div class="cat-overlay"></div>
+            <div class="cat-content">
+                <h3 class="cat-title">Room Freshener</h3>
+                <div class="cat-bottom">
+                    <div class="cat-shop">
+                        <button class="btn-pill-white">Shop Now</button>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+</section>
+</div>
+
+<!-- ABOUT SECTION -->
+<div class="section-bg-gold">
+<section class="about-section">
+    <div class="about-left">
+        <img src="https://images.unsplash.com/photo-1594035910387-fea47794261f?w=800&h=800&fit=crop&q=80" alt="Perfume reflection" class="about-img">
+        <div class="carousel-dots">
+            <span class="dot active"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+        </div>
+    </div>
+    <div class="about-right">
+        <h2 class="about-heading">Fragrance is a reflection of personality, style, and mood.</h2>
+        <hr class="about-divider">
+        <div class="about-features">
+            <div class="feature-box">
+                <div class="feature-icon">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="#e96b1b"><path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z"/></svg>
+                </div>
+                <p>Our diverse range of perfumes brings together the finest notes crafted by master perfumers.</p>
+            </div>
+            <div class="feature-box">
+                <div class="feature-icon">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#e96b1b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </div>
+                <p>Step into a realm of elegance and sophistication, and find the scent that truly embodies you.</p>
+            </div>
+        </div>
+    </div>
+</section>
+</div>
+
+<!-- FAVORITES SECTION -->
+<section class="favorites-section">
+    <h2 class="favorites-heading">Pick Your Favorite One</h2>
+    
+    <div class="slider-container">
+        <!-- Swiper Navigation Arrows -->
+        <button class="slider-arrow left-arrow fav-prev">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <button class="slider-arrow right-arrow fav-next">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+        
+        <div class="swiper favorites-slider" id="fav-swiper">
+            <div class="swiper-wrapper">
+                <div class="swiper-slide">
+                    <a href="{{ url_for('main.product_detail', slug='aurora-mystique') }}" class="product-card-link">
+                        <div class="product-card">
+                            <img src="/static/images/banner/zuhran_1.webp" alt="Aurora mystique">
+                            <div class="product-card-body">
+                                <h4>Aurora mystique</h4>
+                                <p class="price">$120.00</p>
+                                <span class="btn-buy-now">Buy Now</span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                <!-- Adding more products as requested -->
+                <div class="swiper-slide">
+                    <a href="{{ url_for('main.product_detail', slug='crimson-whispers') }}" class="product-card-link">
+                        <div class="product-card">
+                            <img src="/static/images/banner/zuhran_2.webp" alt="Crimson Whispers">
+                            <div class="product-card-body">
+                                <h4>Crimson Whispers</h4>
+                                <p class="price">$189.00</p>
+                                <span class="btn-buy-now">Buy Now</span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                
+                <div class="swiper-slide">
+                    <a href="{{ url_for('main.product_detail', slug='amethyst-glow') }}" class="product-card-link">
+                        <div class="product-card">
+                            <img src="/static/images/banner/zuhran_3.jpg" alt="Amethyst Glow">
+                            <div class="product-card-body">
+                                <h4>Amethyst Glow</h4>
+                                <p class="price">$255.00</p>
+                                <span class="btn-buy-now">Buy Now</span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                
+                <div class="swiper-slide">
+                    <a href="{{ url_for('main.product_detail', slug='wild-orchid') }}" class="product-card-link">
+                        <div class="product-card">
+                            <img src="/static/images/banner/zuhran_1.webp" alt="Wild Orchid">
+                            <div class="product-card-body">
+                                <h4>Wild Orchid</h4>
+                                <p class="price">$150.00</p>
+                                <span class="btn-buy-now">Buy Now</span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                
+                <div class="swiper-slide">
+                    <a href="{{ url_for('main.product_detail', slug='midnight-ember') }}" class="product-card-link">
+                        <div class="product-card">
+                            <img src="/static/images/banner/zuhran_2.webp" alt="Midnight Ember">
+                            <div class="product-card-body">
+                                <h4>Midnight Ember</h4>
+                                <p class="price">$195.00</p>
+                                <span class="btn-buy-now">Buy Now</span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="swiper-slide">
+                    <a href="{{ url_for('main.product_detail', slug='golden-elixir') }}" class="product-card-link">
+                        <div class="product-card">
+                            <img src="/static/images/banner/zuhran_1.webp" alt="Golden Elixir">
+                            <div class="product-card-body">
+                                <h4>Golden Elixir</h4>
+                                <p class="price">$210.00</p>
+                                <span class="btn-buy-now">Buy Now</span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="swiper-slide">
+                    <a href="{{ url_for('main.product_detail', slug='velvet-rose') }}" class="product-card-link">
+                        <div class="product-card">
+                            <img src="/static/images/banner/zuhran_3.jpg" alt="Velvet Rose">
+                            <div class="product-card-body">
+                                <h4>Velvet Rose</h4>
+                                <p class="price">$175.00</p>
+                                <span class="btn-buy-now">Buy Now</span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- BEST SELLER SECTION -->
+<div class="section-bg-white">
+<section class="bestseller-section">
+    <h2 class="section-title text-center">The Crown Jewels</h2>
+    <p class="section-subtitle">Our top 4 masterpieces, beloved by connoisseurs worldwide.</p>
+    
+    <div class="bestseller-grid">
+        {% if not best_sellers %}
+            <div class="no-products" style="grid-column: span 4; text-align: center; padding: 40px; color: var(--muted);">Updating our top-tier collection soon...</div>
+        {% endif %}
+        
+        {% for product in best_sellers %}
+        {% set first_variant = product.variants[0] if product.variants else None %}
+        {% set isOnSale = first_variant and first_variant.original_price and (first_variant.original_price > first_variant.price) %}
+        <a href="{{ url_for('main.product_detail', slug=product.slug) }}" class="product-card-link">
+            <div class="product-card">
+                <span class="bs-rank-badge">
+                    {% if loop.index == 1 %}#1 Best Seller
+                    {% elif loop.index == 2 %}#2 Top Rated
+                    {% elif loop.index == 3 %}#3 Trending
+                    {% else %}#4 Most Gifted{% endif %}
+                </span>
+                {% if isOnSale %}
+                <span class="bs-rank-badge sale-tag" style="top: 60px; background: linear-gradient(135deg, #ffd700, #ffa500); font-weight: 800; color: #000;">SALE</span>
+                {% endif %}
+                <div class="product-img-box">
+                    {% set img_list = product.images.split(',') if product.images else [] %}
+                    <img src="{% if img_list %}/static/{{ img_list[0] }}{% else %}/static/images/banner/zuhran_2.webp{% endif %}" alt="{{ product.name }}">
+                </div>
+                <div class="product-card-body">
+                    <h4>{{ product.name }}</h4>
+                    <p class="price">
+                        {% if first_variant %}
+                            {% if isOnSale %}<span class="old-price" style="text-decoration: line-through; opacity: 0.6; margin-right: 8px;">${{ "{:,.2f}".format(first_variant.original_price) }}</span>{% endif %}
+                            <span class="current-price">${{ "{:,.2f}".format(first_variant.price) }}</span>
+                        {% else %}
+                            Price TBD
+                        {% endif %}
+                    </p>
+                    <span class="btn-buy-now">Buy Now</span>
+                </div>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+</div>
+
+<!-- REVIEWS SECTION -->
+<div class="section-bg-reviews">
+<section class="reviews-section">
+    <h2 class="section-title text-center">What They Say</h2>
+    <p class="section-subtitle">Real experiences from our esteemed clients.</p>
+    
+    <div class="reviews-slider-container">
+        <!-- Swiper Navigation Arrows -->
+        <button class="slider-arrow left-arrow rev-prev">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <button class="slider-arrow right-arrow rev-next">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+
+        <div class="swiper reviews-slider" id="rev-swiper">
+            <div class="swiper-wrapper">
+                <div class="swiper-slide">
+                    <div class="review-card">
+                        <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop" class="review-image" alt="Sarah J.">
+                        <div class="review-stars">★★★★★</div>
+                        <p class="review-text">"Absolutely captivating. Oud Noir Reserve is unmatched in projection and longevity. I get compliments everywhere I go."</p>
+                        <span class="review-author">— Sarah J.</span>
+                    </div>
+                </div>
+
+                <div class="swiper-slide">
+                    <div class="review-card">
+                        <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop" class="review-image" alt="Michael T.">
+                        <div class="review-stars">★★★★★</div>
+                        <p class="review-text">"The Velvet Rose has become my signature scent. It strikes the perfect balance between floral elegance and deep warmth."</p>
+                        <span class="review-author">— Michael T.</span>
+                    </div>
+                </div>
+
+                <div class="swiper-slide">
+                    <div class="review-card">
+                        <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&h=200&fit=crop" class="review-image" alt="Emily R.">
+                        <div class="review-stars">★★★★★</div>
+                        <p class="review-text">"I gifted the Golden Elixir to my wife and she was blown away. The packaging and the scent feel incredibly luxurious."</p>
+                        <span class="review-author">— Emily R.</span>
+                    </div>
+                </div>
+
+                <div class="swiper-slide">
+                    <div class="review-card">
+                        <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop" class="review-image" alt="Jessica L.">
+                        <div class="review-stars">★★★★★</div>
+                        <p class="review-text">"Midnight Ember is simply magical. It has a mysterious depth that unfolds beautifully through the day."</p>
+                        <span class="review-author">— Jessica L.</span>
+                    </div>
+                </div>
+
+                <div class="swiper-slide">
+                    <div class="review-card">
+                        <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop" class="review-image" alt="Daniel K.">
+                        <div class="review-stars">★★★★★</div>
+                        <p class="review-text">"The attention to detail in their perfumes is incredible. From the bottle design to the complexity of the notes, it's 10/10."</p>
+                        <span class="review-author">— Daniel K.</span>
+                    </div>
+                </div>
+
+                <div class="swiper-slide">
+                    <div class="review-card">
+                        <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop" class="review-image" alt="Sophie H.">
+                        <div class="review-stars">★★★★★</div>
+                        <p class="review-text">"I've tried many luxury houses, but Zuhraan has a unique soul that sticks. Amethyst Glow is my new absolute favorite."</p>
+                        <span class="review-author">— Sophie H.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+</div>
+
+<!-- Include Swiper JS & Initialize -->
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const favSwiper = new Swiper('.favorites-slider', {
+            loop: true,
+            grabCursor: true,
+            centeredSlides: false,
+            spaceBetween: 20,
+            slidesPerView: 2,
+            navigation: {
+                nextEl: '.fav-next',
+                prevEl: '.fav-prev',
+            },
+            breakpoints: {
+                640: {
+                    slidesPerView: 3,
+                    spaceBetween: 20,
+                },
+                1024: {
+                    slidesPerView: 4,
+                    spaceBetween: 30,
+                },
+                1400: {
+                    slidesPerView: 5,
+                    spaceBetween: 40,
+                }
+            }
+        });
+
+        const revSwiper = new Swiper('.reviews-slider', {
+            loop: true,
+            grabCursor: true,
+            spaceBetween: 30,
+            slidesPerView: 1,
+            navigation: {
+                nextEl: '.rev-next',
+                prevEl: '.rev-prev',
+            },
+            breakpoints: {
+                768: {
+                    slidesPerView: 2,
+                },
+                1100: {
+                    slidesPerView: 3,
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block title %}Account - Zuhraan{% endblock %}
+{% block content %}
+<section style="max-width: 1200px; margin: 60px auto 120px; padding: 0 40px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 60px; border-bottom: 1px solid #eee; padding-bottom: 30px;">
+        <div>
+            <h1 style="font-family: 'Cormorant Garamond', serif; font-size: 3rem; margin-bottom: 10px;">The Collector's Profile</h1>
+            <p style="color: var(--muted);">{{ current_user.email }}</p>
+        </div>
+        <a href="{{ url_for('main.logout') }}" style="color: #e03c3c; font-size: 0.85rem; text-decoration: none; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; border: 1px solid #e03c3c; padding: 10px 20px; border-radius: 30px; transition: all 0.2s;">Sign Out</a>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 1fr; gap: 40px;">
+        <div style="background: #fff; padding: 40px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.03);">
+            <h3 style="font-family: 'Cormorant Garamond', serif; font-size: 1.8rem; margin-bottom: 30px;">Previous Acquisitions</h3>
+            
+            {% if not orders %}
+            <p style="color: var(--muted); padding: 40px 0; text-align: center; border: 1px dashed #eee; border-radius: 12px;">Your olfactory journey is just beginning. No acquisitions yet.</p>
+            {% else %}
+            <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                <thead>
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <th style="padding: 15px 0; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);">Order ID</th>
+                        <th style="padding: 15px 0; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);">Date</th>
+                        <th style="padding: 15px 0; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);">Total</th>
+                        <th style="padding: 15px 0; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr style="border-bottom: 1px solid #f9f9f9;">
+                        <td style="padding: 20px 0; font-weight: 600;">#{{ order.id }}</td>
+                        <td style="padding: 20px 0; color: #666;">{{ order.created_at.strftime('%b %d, %Y') }}</td>
+                        <td style="padding: 20px 0; font-weight: 600;">${{ "{:,.2f}".format(order.total_amount) }}</td>
+                        <td style="padding: 20px 0;">
+                            <span style="background: #f1f1f1; padding: 6px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase;">{{ order.status }}</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}

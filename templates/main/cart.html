@@ -1,0 +1,455 @@
+{% extends 'base.html' %}
+{% block title %}Your Bag — Zuhraan{% endblock %}
+{% block content %}
+
+<style>
+    /* ── CART PAGE WRAPPER — matches navbar side margins exactly ── */
+    .cart-wrap {
+        margin: 32px 60px 80px;
+    }
+
+    /* HEADER */
+    .cart-pg-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 28px;
+        padding-bottom: 18px;
+        border-bottom: 2px solid #d4cfc6;
+    }
+    .cart-pg-header h1 {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 2.8rem;
+        font-weight: 700;
+        color: #111;
+        line-height: 1;
+    }
+    .item-badge {
+        background: #111;
+        color: #fff;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        padding: 6px 16px;
+        border-radius: 30px;
+    }
+
+    /* ── LAYOUT ── */
+    .cart-grid {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 32px;
+        align-items: start;
+    }
+
+    /* ── LEFT: TABLE ── */
+    .cart-tbl {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .cart-tbl thead tr {
+        background: #111;
+    }
+    .cart-tbl thead th {
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.13em;
+        color: rgba(255,255,255,0.75);
+        padding: 14px 18px;
+        text-align: left;
+        white-space: nowrap;
+    }
+    .cart-tbl thead th:first-child { border-radius: 10px 0 0 10px; }
+    .cart-tbl thead th:last-child  { border-radius: 0 10px 10px 0; text-align: right; }
+    .cart-tbl thead th:not(:first-child):not(:last-child) { text-align: center; }
+
+    .cart-tbl tbody tr:hover { background: rgba(0,0,0,0.02); }
+    .cart-tbl tbody td {
+        padding: 22px 18px;
+        border-bottom: 1px solid #e8e3da;
+        vertical-align: middle;
+    }
+
+    /* PRODUCT CELL */
+    .ci-wrap { display: flex; align-items: center; gap: 18px; }
+    .ci-img {
+        width: 90px;
+        height: 90px;
+        object-fit: cover;
+        border-radius: 10px;
+        flex-shrink: 0;
+        border: 1px solid #e8e3da;
+    }
+    .ci-name {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #111;
+        margin-bottom: 5px;
+        line-height: 1.25;
+    }
+    .ci-sub {
+        font-size: 0.93rem;
+        color: #111;
+        font-weight: 500;
+        margin-bottom: 12px;
+    }
+    .ci-remove {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #c0392b;
+        text-decoration: none;
+        transition: opacity 0.2s;
+    }
+    .ci-remove:hover { opacity: 0.7; }
+
+    /* PRICE / TOTAL */
+    .ci-price {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #111;
+        text-align: center;
+        white-space: nowrap;
+    }
+    .ci-line-total {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #111;
+        text-align: right;
+        white-space: nowrap;
+    }
+
+    /* QTY STEPPER */
+    .qty-stepper {
+        display: inline-flex;
+        align-items: center;
+        border: 1.5px solid #d4cfc6;
+        border-radius: 8px;
+        overflow: hidden;
+        margin: 0 auto;
+    }
+    .qty-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        background: #f6f2ed;
+        border: none;
+        cursor: pointer;
+        font-size: 1.2rem;
+        font-weight: 500;
+        color: #111;
+        transition: background 0.18s, color 0.18s;
+        line-height: 1;
+        flex-shrink: 0;
+    }
+    .qty-btn:hover { background: #111; color: #fff; }
+    .qty-num {
+        min-width: 40px;
+        text-align: center;
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #111;
+        border-left: 1.5px solid #d4cfc6;
+        border-right: 1.5px solid #d4cfc6;
+        padding: 0 4px;
+        background: #fff;
+        line-height: 36px;
+    }
+
+    /* CONTINUE */
+    .cart-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        margin-top: 20px;
+        font-size: 0.98rem;
+        font-weight: 600;
+        color: #111;
+        text-decoration: none;
+        transition: opacity 0.2s;
+        padding-left: 2px;
+    }
+    .cart-back:hover { opacity: 0.6; }
+
+    /* ── RIGHT: SUMMARY CARD ── */
+    .sum-sidebar {
+        background: #fff;
+        border-radius: 16px;
+        padding: 28px;
+        box-shadow: 0 8px 40px rgba(0,0,0,0.08);
+        position: sticky;
+        top: 115px;
+    }
+    .sum-title {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #111;
+        text-align: center;
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #e8e3da;
+    }
+    .sum-line {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.88rem;
+        margin-bottom: 12px;
+    }
+    .sum-line .lbl { color: #777; font-weight: 500; }
+    .sum-line .val  { font-weight: 700; color: #111; font-size: 0.95rem; }
+    .sum-line .ship-tag {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--amber);
+        background: rgba(196,100,12,0.1);
+        padding: 3px 10px;
+        border-radius: 20px;
+    }
+
+    .sum-total-box {
+        margin: 18px 0 22px;
+        padding: 16px 18px;
+        background: #f7f4ef;
+        border-radius: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .sum-total-box .t-lbl {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #111;
+    }
+    .sum-total-box .t-val {
+        font-size: 1.55rem;
+        font-weight: 800;
+        color: #111;
+    }
+
+    /* CHECKOUT BTN */
+    .btn-chk {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        width: 100%;
+        padding: 16px 20px;
+        background: #111;
+        color: #fff;
+        border-radius: 50px;
+        font-family: 'Jost', sans-serif;
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        text-decoration: none;
+        text-align: center;
+        transition: background 0.28s, transform 0.28s, box-shadow 0.28s;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.14);
+    }
+    .btn-chk:hover {
+        background: var(--amber);
+        transform: translateY(-3px);
+        box-shadow: 0 14px 36px rgba(196,100,12,0.24);
+        color: #fff;
+    }
+
+    /* TRUST */
+    .trust-section {
+        margin-top: 20px;
+        padding-top: 18px;
+        border-top: 1px solid #e8e3da;
+        text-align: center;
+    }
+    .trust-label {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: #333;
+        letter-spacing: 0.04em;
+        margin-bottom: 14px;
+    }
+    .trust-label svg { color: #27ae60; flex-shrink: 0; }
+    .trust-logos {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        background: #f4f1ec;
+        border-radius: 10px;
+        padding: 12px 18px;
+    }
+    .trust-logos img { height: 18px; display: block; }
+
+    /* EMPTY */
+    .cart-empty {
+        text-align: center;
+        padding: 100px 20px;
+        background: #fff;
+        border-radius: 20px;
+    }
+    .cart-empty p {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 1.6rem;
+        color: #888;
+        margin: 16px 0 28px;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 900px) {
+        .cart-wrap { margin: 20px 16px 60px; }
+        .cart-grid { grid-template-columns: 1fr; }
+        .sum-sidebar { position: static; }
+        .cart-pg-header h1 { font-size: 2rem; }
+    }
+    @media (max-width: 640px) {
+        .cart-wrap { margin: 16px 12px 60px; }
+        .cart-pg-header h1 { font-size: 1.7rem; }
+
+        /* Hide price col on mobile — show only qty + total */
+        .cart-tbl thead th:nth-child(2),
+        .cart-tbl tbody td:nth-child(2) { display: none; }
+
+        .ci-img { width: 68px; height: 68px; }
+        .ci-name { font-size: 1rem; }
+        .cart-tbl tbody td { padding: 16px 10px; }
+        .cart-tbl thead th { padding: 12px 10px; font-size: 0.7rem; }
+
+        .qty-btn { width: 30px; height: 30px; font-size: 1rem; }
+        .qty-num { min-width: 32px; font-size: 0.85rem; line-height: 30px; }
+
+        .sum-sidebar { padding: 20px; }
+        .sum-title { font-size: 1.2rem; }
+    }
+</style>
+
+<div class="cart-wrap">
+
+    <!-- HEADER -->
+    <div class="cart-pg-header">
+        <h1>Your Bag</h1>
+        <span class="item-badge">{{ cart_items|length }} item{% if cart_items|length != 1 %}s{% endif %}</span>
+    </div>
+
+    {% if not cart_items %}
+    <div class="cart-empty">
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#bbb" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+        <p>Your bag is echoing emptiness.</p>
+        <a href="{{ url_for('main.shop') }}" class="btn-chk" style="max-width: 240px; margin: 0 auto;">Explore Collection</a>
+    </div>
+
+    {% else %}
+    <div class="cart-grid">
+
+        <!-- ─── LEFT: ITEMS ─── -->
+        <div>
+            <table class="cart-tbl">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Price</th>
+                        <th>Quantity</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for item in cart_items %}
+                    {% set img = item.variant.product.images.split(',')[0] if item.variant.product.images else 'images/products/default.webp' %}
+                    <tr>
+                        <td>
+                            <div class="ci-wrap">
+                                <img src="/static/{{ img }}" class="ci-img" alt="{{ item.variant.product.name }}">
+                                <div>
+                                    <div class="ci-name">{{ item.variant.product.name }}</div>
+                                    <div class="ci-sub">{{ item.variant.size }} &middot; {{ item.variant.product.category.name }}</div>
+                                    <a href="{{ url_for('main.remove_from_cart', variant_id=item.variant.id) }}" class="ci-remove">
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                                        Remove
+                                    </a>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="ci-price">${{ "{:,.2f}".format(item.variant.price) }}</td>
+                        <td style="text-align:center;">
+                            <div class="qty-stepper">
+                                <form method="POST" action="{{ url_for('main.update_cart', variant_id=item.variant.id) }}" style="display:contents;">
+                                    <input type="hidden" name="action" value="decrease">
+                                    <button type="submit" class="qty-btn" title="Decrease">−</button>
+                                </form>
+                                <span class="qty-num">{{ item.quantity }}</span>
+                                <form method="POST" action="{{ url_for('main.update_cart', variant_id=item.variant.id) }}" style="display:contents;">
+                                    <input type="hidden" name="action" value="increase">
+                                    <button type="submit" class="qty-btn" title="Increase">+</button>
+                                </form>
+                            </div>
+                        </td>
+                        <td class="ci-line-total">${{ "{:,.2f}".format(item.variant.price * item.quantity) }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+
+            <a href="{{ url_for('main.shop') }}" class="cart-back">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                Continue Shopping
+            </a>
+        </div>
+
+        <!-- ─── RIGHT: SUMMARY ─── -->
+        <aside class="sum-sidebar">
+            <div class="sum-title">Order Summary</div>
+
+            <div class="sum-line">
+                <span class="lbl">Subtotal</span>
+                <span class="val">${{ "{:,.2f}".format(total) }}</span>
+            </div>
+            <div class="sum-line">
+                <span class="lbl">Shipping</span>
+                <span class="ship-tag">At Checkout</span>
+            </div>
+
+            <div class="sum-total-box">
+                <span class="t-lbl">Grand Total</span>
+                <span class="t-val">${{ "{:,.2f}".format(total) }}</span>
+            </div>
+
+            <a href="{{ url_for('main.checkout') }}" class="btn-chk">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                Proceed to Secure Checkout
+            </a>
+
+            <div class="trust-section">
+                <div class="trust-label">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    Encrypted &amp; Secure Payment
+                </div>
+                <div class="trust-logos">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" alt="Visa">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg" alt="PayPal">
+                </div>
+            </div>
+        </aside>
+
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

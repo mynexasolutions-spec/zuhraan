@@ -1,0 +1,44 @@
+{% extends 'admin/base.html' %}
+
+{% block content %}
+<div class="header">
+    <h1>Manage Categories</h1>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 40px;">
+    <div class="dash-box" style="background: #fff; padding: 24px; border-radius: 12px; box-shadow: var(--card-shadow); height: fit-content;">
+        <h3 style="margin-bottom: 20px; font-size: 1.1rem;">Add New Category</h3>
+        <form action="{{ url_for('admin.manage_categories') }}" method="POST">
+            <div class="group" style="margin-bottom: 20px;">
+                <label style="display: block; font-size: 0.875rem; margin-bottom: 8px;">Category Name</label>
+                <input type="text" name="name" required style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px;">
+            </div>
+            <button type="submit" class="btn-save">Add Category</button>
+        </form>
+    </div>
+
+    <div class="dash-box" style="background: #fff; padding: 24px; border-radius: 12px; box-shadow: var(--card-shadow);">
+        <h3 style="margin-bottom: 20px; font-size: 1.1rem;">Existing Categories</h3>
+        <table class="table-lite" style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="text-align: left; border-bottom: 1px solid #e2e8f0;">
+                    <th style="padding: 12px;">Name</th>
+                    <th style="padding: 12px;">Products Count</th>
+                    <th style="padding: 12px;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cat in categories %}
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <td style="padding: 16px;">{{ cat.name }}</td>
+                    <td style="padding: 16px;">{{ cat.products|length }}</td>
+                    <td style="padding: 16px;">
+                        <a href="#" style="color: #ef4444; font-size: 0.875rem;">Delete</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

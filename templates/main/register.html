@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Register - Zuhraan{% endblock %}
+{% block content %}
+<section style="max-width: 650px; margin: 60px auto 140px; padding: 0 40px; text-align: center;">
+    <h1 style="font-family: 'Cormorant Garamond', serif; font-size: 3.8rem; margin-bottom: 10px;">Join the House</h1>
+    <p style="color: var(--muted); margin-bottom: 40px;">Begin your definitive olfactory narrative.</p>
+    
+    <form method="POST" style="background: #fff; padding: 60px; border-radius: 40px; box-shadow: 0 25px 80px rgba(0,0,0,0.06); text-align: left;">
+        <div style="margin-bottom: 25px;">
+            <label style="display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 600; margin-bottom: 12px; color: var(--dark);">Full Name</label>
+            <input type="text" name="name" placeholder="e.g. Alexander Rose" required style="width: 100%; padding: 18px; border: 1px solid #ddd; border-radius: 12px; font-family: 'Jost', sans-serif; font-size: 1rem; color: var(--dark); outline: none;">
+        </div>
+        <div style="margin-bottom: 25px;">
+            <label style="display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 600; margin-bottom: 12px; color: var(--dark);">Email Address</label>
+            <input type="email" name="email" placeholder="e.g. curator@zuhraan.com" required style="width: 100%; padding: 18px; border: 1px solid #ddd; border-radius: 12px; font-family: 'Jost', sans-serif; font-size: 1rem; color: var(--dark); outline: none;">
+        </div>
+        <div style="margin-bottom: 25px;">
+            <label style="display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 600; margin-bottom: 12px; color: var(--dark);">Choose Password</label>
+            <input type="password" name="password" placeholder="••••••••" required style="width: 100%; padding: 18px; border: 1px solid #ddd; border-radius: 12px; font-family: 'Jost', sans-serif; font-size: 1rem; color: var(--dark); outline: none;">
+        </div>
+        <div style="margin-bottom: 35px;">
+            <label style="display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 600; margin-bottom: 12px; color: var(--dark);">Confirm Password</label>
+            <input type="password" name="confirm_password" placeholder="••••••••" required style="width: 100%; padding: 18px; border: 1px solid #ddd; border-radius: 12px; font-family: 'Jost', sans-serif; font-size: 1rem; color: var(--dark); outline: none;">
+        </div>
+        <button type="submit" style="width: 100%; padding: 20px; background: var(--dark); color: #fff; border: none; border-radius: 40px; font-weight: 700; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.1em; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">Establish Narrative Account</button>
+        <style>
+            button:hover { background: var(--amber) !important; transform: translateY(-3px); box-shadow: 0 15px 40px rgba(196, 100, 12, 0.2) !important; }
+        </style>
+    </form>
+    
+    <p style="margin-top: 40px; font-size: 0.95rem; color: var(--muted);">Already an esteemed client? <a href="{{ url_for('main.login') }}" style="color: var(--dark); font-weight: 600; text-decoration: none; border-bottom: 1px solid var(--amber);">Sign In Here</a></p>
+</section>
+{% endblock %}

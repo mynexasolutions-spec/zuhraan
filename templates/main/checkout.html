@@ -1,0 +1,451 @@
+{% extends 'base.html' %}
+{% block title %}Checkout — Zuhraan{% endblock %}
+{% block content %}
+
+<style>
+    .checkout-wrap {
+        margin: 32px 60px 80px;
+    }
+    .checkout-heading {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 2.4rem;
+        font-weight: 700;
+        color: #111;
+        margin-bottom: 28px;
+        padding-bottom: 16px;
+        border-bottom: 2px solid #d4cfc6;
+    }
+    .checkout-grid {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 32px;
+        align-items: start;
+    }
+
+    /* ── FORM CARD ── */
+    .form-card {
+        background: #fff;
+        border-radius: 16px;
+        padding: 36px;
+        box-shadow: 0 6px 36px rgba(0,0,0,0.06);
+    }
+    .form-section-title {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #111;
+        margin-bottom: 22px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #e8e3da;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .form-section-title span.step-num {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: #111;
+        color: #fff;
+        font-size: 0.85rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    /* FIELD GROUPS */
+    .form-row {
+        display: grid;
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+    .form-row.cols-2  { grid-template-columns: 1fr 1fr; }
+    .form-row.cols-3  { grid-template-columns: 1fr 1fr 1fr; }
+    .form-row.cols-1  { grid-template-columns: 1fr; }
+
+    .form-field label {
+        display: block;
+        font-size: 0.77rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: #333;
+        margin-bottom: 8px;
+    }
+    .form-field label .req {
+        color: #c0392b;
+        margin-left: 2px;
+    }
+    .form-field input,
+    .form-field select {
+        width: 100%;
+        padding: 13px 16px;
+        border: 1.5px solid #ddd8cf;
+        border-radius: 10px;
+        font-family: 'Jost', sans-serif;
+        font-size: 0.95rem;
+        color: #111;
+        background: #fff;
+        outline: none;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        -webkit-appearance: none;
+        appearance: none;
+    }
+    .form-field input:focus,
+    .form-field select:focus {
+        border-color: #111;
+        box-shadow: 0 0 0 3px rgba(0,0,0,0.06);
+    }
+    .form-field input::placeholder { color: #bbb; }
+    .form-field .hint {
+        font-size: 0.72rem;
+        color: #aaa;
+        margin-top: 5px;
+    }
+
+    /* SELECT ARROW */
+    .select-wrap {
+        position: relative;
+    }
+    .select-wrap::after {
+        content: '▾';
+        position: absolute;
+        right: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+        color: #888;
+        font-size: 0.9rem;
+    }
+
+    /* PAYMENT SECTION */
+    .payment-option {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 18px 20px;
+        border: 2px solid #d4cfc6;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: border-color 0.2s, background 0.2s;
+    }
+    .payment-option.active {
+        border-color: #111;
+        background: #f8f5f1;
+    }
+    .payment-dot {
+        width: 20px;
+        height: 20px;
+        border: 2px solid #111;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .payment-dot::after {
+        content: '';
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #111;
+    }
+    .payment-label {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #111;
+    }
+    .payment-desc {
+        margin-left: auto;
+        font-size: 0.8rem;
+        color: #888;
+    }
+
+    /* ── SUMMARY SIDEBAR ── */
+    .sum-card {
+        background: #111;
+        border-radius: 16px;
+        padding: 28px;
+        box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+        position: sticky;
+        top: 115px;
+        color: #fff;
+    }
+    .sum-card-title {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 20px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .sum-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.88rem;
+        margin-bottom: 12px;
+    }
+    .sum-item .name { color: rgba(255,255,255,0.65); }
+    .sum-item .price { font-weight: 600; color: #fff; }
+
+    .sum-divider {
+        border: none;
+        border-top: 1px solid rgba(255,255,255,0.1);
+        margin: 18px 0;
+    }
+    .sum-total {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 24px;
+    }
+    .sum-total .lbl {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 1.15rem;
+        color: rgba(255,255,255,0.8);
+    }
+    .sum-total .val {
+        font-size: 1.65rem;
+        font-weight: 800;
+        color: #fff;
+    }
+
+    /* PLACE ORDER BTN */
+    .btn-place-order {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        width: 100%;
+        padding: 16px 20px;
+        background: #fff;
+        color: #111;
+        border: none;
+        border-radius: 50px;
+        font-family: 'Jost', sans-serif;
+        font-size: 0.85rem;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: background 0.25s, transform 0.25s, box-shadow 0.25s;
+        box-shadow: 0 8px 28px rgba(255,255,255,0.12);
+    }
+    .btn-place-order:hover {
+        background: var(--amber);
+        color: #fff;
+        transform: translateY(-3px);
+        box-shadow: 0 12px 36px rgba(196,100,12,0.3);
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 900px) {
+        .checkout-wrap { margin: 20px 16px 60px; }
+        .checkout-grid { grid-template-columns: 1fr; }
+        .sum-card { position: static; }
+        .form-row.cols-3 { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 540px) {
+        .checkout-wrap { margin: 14px 12px 50px; }
+        .checkout-heading { font-size: 1.8rem; }
+        .form-row.cols-2,
+        .form-row.cols-3 { grid-template-columns: 1fr; }
+        .form-card { padding: 20px; }
+    }
+</style>
+
+<div class="checkout-wrap">
+    <h1 class="checkout-heading">Checkout</h1>
+
+    <form method="POST" novalidate>
+    <div class="checkout-grid">
+
+        <!-- ─── LEFT: FORM ─── -->
+        <div class="form-card">
+
+            <!-- STEP 1: CONTACT INFO -->
+            <div style="margin-bottom: 32px;">
+                <div class="form-section-title">
+                    <span class="step-num">1</span> Contact Information
+                </div>
+                <div class="form-row cols-2">
+                    <div class="form-field">
+                        <label>Full Name <span class="req">*</span></label>
+                        <input type="text" name="name" placeholder="e.g. Rahul Sharma" required
+                               value="{{ current_user.name if current_user.is_authenticated and current_user.name else '' }}">
+                    </div>
+                    <div class="form-field">
+                        <label>Email Address <span class="req">*</span></label>
+                        <input type="email" name="email" placeholder="you@example.com" required
+                               value="{{ current_user.email if current_user.is_authenticated else '' }}">
+                    </div>
+                </div>
+                <div class="form-row cols-1">
+                    <div class="form-field">
+                        <label>Phone Number <span class="req">*</span></label>
+                        <input type="tel" name="phone" placeholder="+91 98765 43210" required
+                               pattern="[0-9+\-\s()]{7,15}" title="Enter a valid phone number">
+                        <div class="hint">We'll only contact you about your order.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 2: SHIPPING ADDRESS -->
+            <div style="margin-bottom: 32px;">
+                <div class="form-section-title">
+                    <span class="step-num">2</span> Shipping Address
+                </div>
+
+                <div class="form-row cols-1">
+                    <div class="form-field">
+                        <label>Address Line 1 <span class="req">*</span></label>
+                        <input type="text" name="address_line1" placeholder="House / Flat No., Street, Building" required>
+                    </div>
+                </div>
+                <div class="form-row cols-1">
+                    <div class="form-field">
+                        <label>Address Line 2 <span style="color:#aaa;font-size:0.7rem;font-weight:500;text-transform:none;letter-spacing:0;">(Optional)</span></label>
+                        <input type="text" name="address_line2" placeholder="Landmark, Colony, Area">
+                    </div>
+                </div>
+                <div class="form-row cols-3">
+                    <div class="form-field">
+                        <label>City <span class="req">*</span></label>
+                        <input type="text" name="city" placeholder="e.g. Delhi" required>
+                    </div>
+                    <div class="form-field">
+                        <label>State <span class="req">*</span></label>
+                        <input type="text" name="state" placeholder="e.g. Uttar Pradesh" required>
+                    </div>
+                    <div class="form-field">
+                        <label>PIN Code <span class="req">*</span></label>
+                        <input type="text" name="pincode" placeholder="e.g. 110001" required
+                               pattern="[0-9]{4,10}" title="Enter a valid PIN / ZIP code">
+                    </div>
+                </div>
+                <div class="form-row cols-1">
+                    <div class="form-field">
+                        <label>Country <span class="req">*</span></label>
+                        <div class="select-wrap">
+                            <select name="country" required>
+                                <option value="India" selected>India</option>
+                                <option value="Pakistan">Pakistan</option>
+                                <option value="Bangladesh">Bangladesh</option>
+                                <option value="Sri Lanka">Sri Lanka</option>
+                                <option value="UAE">UAE</option>
+                                <option value="Saudi Arabia">Saudi Arabia</option>
+                                <option value="UK">United Kingdom</option>
+                                <option value="USA">United States</option>
+                                <option value="Canada">Canada</option>
+                                <option value="Australia">Australia</option>
+                                <option value="Germany">Germany</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 3: PAYMENT -->
+            <div>
+                <div class="form-section-title">
+                    <span class="step-num">3</span> Payment Method
+                </div>
+
+                {% if not cod_enabled and not online_enabled %}
+                <div style="padding:16px; background:#fef2f2; border-radius:10px; color:#991b1b; font-size:0.88rem;">
+                    ⚠ No payment methods are currently enabled. Please contact the store.
+                </div>
+                {% endif %}
+
+                {% if cod_enabled %}
+                <label class="payment-option {% if not online_enabled %}active{% endif %}" style="cursor:pointer; margin-bottom:10px; display:flex;">
+                    <input type="radio" name="payment_method" value="cod" {% if not online_enabled %}checked{% endif %} style="display:none;">
+                    <div class="payment-dot"></div>
+                    <span class="payment-label" style="margin-left:12px;">Cash on Delivery</span>
+                    <span class="payment-desc">Pay when your order arrives</span>
+                </label>
+                {% endif %}
+
+                {% if online_enabled %}
+                <label class="payment-option {% if not cod_enabled %}active{% endif %}" style="cursor:pointer; display:flex;">
+                    <input type="radio" name="payment_method" value="online" {% if not cod_enabled %}checked{% endif %} style="display:none;">
+                    <div class="payment-dot"></div>
+                    <span class="payment-label" style="margin-left:12px;">Online Payment</span>
+                    <span class="payment-desc">Card, UPI, Net Banking via Razorpay</span>
+                </label>
+                {% endif %}
+            </div>
+
+            <!-- COUPON CODE -->
+            <div style="margin-top: 28px; padding-top: 22px; border-top: 1px solid #e8e3da;">
+                <div class="form-section-title" style="margin-bottom:14px; border:none; padding:0;">
+                    <span class="step-num">4</span> Coupon Code
+                    <span style="font-family:'Jost',sans-serif; font-size:0.78rem; font-weight:400; color:#aaa; margin-left:8px;">(Optional)</span>
+                </div>
+                <div style="display:flex; gap:12px; align-items:stretch;">
+                    <div class="form-field" style="flex-grow:1; margin:0;">
+                        <input type="text" name="coupon_code" id="coupon_code" placeholder="Enter code e.g. SAVE20"
+                               style="text-transform:uppercase; letter-spacing:0.06em;">
+                    </div>
+                    <button type="button" onclick="checkCoupon()" id="coupon-btn"
+                            style="padding:13px 20px; background:#111; color:#fff; border:none; border-radius:10px; font-family:'Jost',sans-serif; font-size:0.82rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; cursor:pointer; white-space:nowrap; flex-shrink:0; transition:background 0.2s;">
+                        Apply
+                    </button>
+                </div>
+                <div id="coupon-msg" style="margin-top:8px; font-size:0.82rem; font-weight:600;"></div>
+            </div>
+
+        </div>
+
+        <!-- ─── RIGHT: SUMMARY ─── -->
+        <aside class="sum-card">
+            <div class="sum-card-title">Order Summary</div>
+
+            {% for item in items %}
+            <div class="sum-item">
+                <span class="name">{{ item.v.product.name }}<br>
+                    <span style="font-size:0.76rem; opacity:0.5;">{{ item.v.size }} × {{ item.q }}</span>
+                </span>
+                <span class="price">${{ "{:,.2f}".format(item.v.price * item.q) }}</span>
+            </div>
+            {% endfor %}
+
+            <hr class="sum-divider">
+
+            <div class="sum-item">
+                <span class="name">Shipping</span>
+                <span style="font-size:0.75rem; color: var(--amber); font-weight:700; text-transform:uppercase; letter-spacing:0.06em;">Calculated</span>
+            </div>
+
+            <div class="sum-divider"></div>
+
+            <div class="sum-total">
+                <span class="lbl">Total</span>
+                <span class="val">${{ "{:,.2f}".format(total) }}</span>
+            </div>
+
+            <button type="submit" class="btn-place-order">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                Place Order
+            </button>
+
+            <p style="text-align:center; font-size:0.72rem; color:rgba(255,255,255,0.4); margin-top:14px; line-height:1.5;">
+                By placing your order you agree to our<br>
+                <a href="#" style="color:rgba(255,255,255,0.5); text-decoration:underline;">Terms</a> &amp;
+                <a href="#" style="color:rgba(255,255,255,0.5); text-decoration:underline;">Privacy Policy</a>.
+            </p>
+        </aside>
+
+    </div>
+    </form>
+</div>
+
+<script>
+    // Clean up migration script after it's done running
+</script>
+{% endblock %}

@@ -1,0 +1,167 @@
+{% extends 'admin/base.html' %}
+
+{% block content %}
+<div class="header">
+    <h1>Add New Product</h1>
+    <a href="{{ url_for('admin.manage_products') }}" style="color: var(--primary); text-decoration: none; font-size: 0.875rem;"><i class="fa-solid fa-arrow-left"></i> Back to Products</a>
+</div>
+
+<style>
+    .form-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 32px; }
+    .card { background: var(--white); padding: 32px; border-radius: 12px; box-shadow: var(--card-shadow); margin-bottom: 32px; }
+    .card h3 { font-size: 1.1rem; color: #1e293b; margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+
+    .group { margin-bottom: 24px; }
+    .group label { display: block; font-size: 0.875rem; font-weight: 500; color: #475569; margin-bottom: 8px; }
+    .group input, .group textarea, .group select { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 0.95rem; color: #1e293b; }
+    .group input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+
+    .variants-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 20px; background: #f8fafc; border-radius: 10px; border: 1px dashed var(--border); }
+    .btn-save { background: var(--primary); color: #fff; border: none; padding: 12px 32px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; width: 100%; }
+    .btn-save:hover { background: #1d4ed8; transform: translateY(-1px); }
+</style>
+
+<form action="{{ url_for('admin.add_product') }}" method="POST" enctype="multipart/form-data">
+    <div class="form-grid">
+        <div class="left-col">
+            <div class="card">
+                <h3>General Information</h3>
+                <div class="group">
+                    <label>Product Name</label>
+                    <input type="text" name="name" required placeholder="e.g. Oud Noir Reserve">
+                </div>
+                <div class="group">
+                    <label>Short Description</label>
+                    <textarea name="short_description" rows="2" placeholder="Brief tagline..."></textarea>
+                </div>
+                <div class="group">
+                    <label>Full Description</label>
+                    <textarea name="full_description" rows="6" placeholder="Detailed product story..."></textarea>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Fragrance Architecture</h3>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+                    <div class="group">
+                        <label>Top Notes</label>
+                        <input type="text" name="top_notes" placeholder="e.g. Bergamot, Saffron">
+                    </div>
+                    <div class="group">
+                        <label>Middle Notes</label>
+                        <input type="text" name="middle_notes" placeholder="e.g. Rose, Jasmine">
+                    </div>
+                    <div class="group">
+                        <label>Base Notes</label>
+                        <input type="text" name="base_notes" placeholder="e.g. Oud, Vanilla">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="group">
+                        <label>Longevity</label>
+                        <select name="longevity">
+                            <option>Moderate</option>
+                            <option>Long Lasting</option>
+                            <option>Eternal</option>
+                        </select>
+                    </div>
+                    <div class="group">
+                        <label>Projection</label>
+                        <select name="projection">
+                            <option>Intimate</option>
+                            <option>Moderate</option>
+                            <option>Strong</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Pricing & Inventory (Variants)</h3>
+                <div style="display: flex; flex-direction: column; gap: 24px;">
+                    <div class="variants-row">
+                        <h4 style="font-size: 0.9rem; margin-bottom: 12px; color: var(--text-muted);">50ml Variation</h4>
+                        <div class="variants-grid" style="grid-template-columns: repeat(3, 1fr);">
+                            <div class="group" style="margin-bottom: 0;">
+                                <label>Original Price ($)</label>
+                                <input type="number" step="0.01" name="orig_price_50ml" placeholder="0.00">
+                            </div>
+                            <div class="group" style="margin-bottom: 0;">
+                                <label>Sale Price ($)</label>
+                                <input type="number" step="0.01" name="price_50ml" placeholder="0.00">
+                            </div>
+                            <div class="group" style="margin-bottom: 0;">
+                                <label>Stock Qty</label>
+                                <input type="number" name="stock_50ml" placeholder="0">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="variants-row">
+                        <h4 style="font-size: 0.9rem; margin-bottom: 12px; color: var(--text-muted);">100ml Variation</h4>
+                        <div class="variants-grid" style="grid-template-columns: repeat(3, 1fr);">
+                            <div class="group" style="margin-bottom: 0;">
+                                <label>Original Price ($)</label>
+                                <input type="number" step="0.01" name="orig_price_100ml" placeholder="0.00">
+                            </div>
+                            <div class="group" style="margin-bottom: 0;">
+                                <label>Sale Price ($)</label>
+                                <input type="number" step="0.01" name="price_100ml" placeholder="0.00">
+                            </div>
+                            <div class="group" style="margin-bottom: 0;">
+                                <label>Stock Qty</label>
+                                <input type="number" name="stock_100ml" placeholder="0">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-col">
+            <div class="card">
+                <h3>Publishing</h3>
+                <div class="group">
+                    <label>Category</label>
+                    <select name="category_id" required>
+                        {% for cat in categories %}
+                        <option value="{{ cat.id }}">{{ cat.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="group">
+                    <label>Special Tag</label>
+                    <select name="tag">
+                        <option value="">— None —</option>
+                        <option value="best_seller">⭐ Best Seller</option>
+                        <option value="new_arrival">🆕 New Arrival</option>
+                        <option value="featured">✨ Featured</option>
+                    </select>
+                    <small style="color: var(--text-muted); font-size: 0.78rem; margin-top: 6px; display: block;">Best Seller tag puts this product in the homepage Crown Jewels section.</small>
+                </div>
+                <div class="group">
+                    <label>Best Seller Rank (1–4)</label>
+                    <select name="best_seller_rank">
+                        <option value="">— Not Ranked —</option>
+                        <option value="1">#1 Best Seller</option>
+                        <option value="2">#2 Top Rated</option>
+                        <option value="3">#3 Trending</option>
+                        <option value="4">#4 Most Gifted</option>
+                    </select>
+                    <small style="color: var(--text-muted); font-size: 0.78rem; margin-top: 6px; display: block;">Controls which slot this occupies in the Crown Jewels grid. Requires Best Seller tag above.</small>
+                </div>
+                <button type="submit" class="btn-save">Save Product</button>
+            </div>
+
+            <div class="card">
+                <h3>Product Images</h3>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 16px;">Upload images for this perfume. First image will be primary.</p>
+                <div class="group">
+                    <label>Select Perfume Images</label>
+                    <input type="file" name="images" multiple accept="image/*">
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}
