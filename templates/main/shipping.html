@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block title %}Shipping & Delivery - Zuhraan{% endblock %}
+
+{% block extra_css %}
+<style>
+    .legal-container {
+        max-width: 1000px;
+        margin: 100px auto 140px;
+        padding: 0 40px;
+        color: #334155;
+        font-size: 1.25rem;
+        line-height: 2;
+        font-family: 'Jost', sans-serif;
+    }
+    .legal-container h1 {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 4rem;
+        color: #0f172a;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #e2e8f0;
+        padding-bottom: 30px;
+        text-align: center;
+    }
+    .legal-container h3 {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 2.4rem;
+        color: #0f172a;
+        margin: 60px 0 25px;
+    }
+    .legal-container p {
+        margin-bottom: 24px;
+        letter-spacing: 0.02em;
+    }
+    .legal-container .highlight-box {
+        background: #f8fafc;
+        border-left: 4px solid var(--amber, #d97706);
+        padding: 30px 40px;
+        margin: 40px 0;
+        border-radius: 0 12px 12px 0;
+    }
+    .legal-container .highlight-box h4 {
+        font-family: 'Jost', sans-serif;
+        font-size: 1.3rem;
+        font-weight: 600;
+        margin-bottom: 15px;
+        color: #1e293b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    .legal-container ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+    .legal-container ul li {
+        margin-bottom: 16px;
+        position: relative;
+        padding-left: 36px;
+    }
+    .legal-container ul li::before {
+        content: '✧';
+        color: var(--amber, #d97706);
+        position: absolute;
+        left: 0;
+        font-size: 1.4rem;
+        line-height: 1.2;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="legal-container">
+    <h1>Shipping & Delivery</h1>
+    
+    <p>At Zuhraan Perfumes, we orchestrate the transit of your delicate fragrances with the absolute highest standards of care. We partner only with premium logistics corridors to guarantee your luxury goods arrive completely pristine, sealed, and impeccably presented.</p>
+    
+    <h3>1. Precision Order Processing</h3>
+    <p>Every single bottle undergoes a meticulous quality assurance check prior to packaging. Consequently, all standard orders execute and dispatch from our boutique facilities within <strong>1–2 business days</strong>. Note that our logistical framework suspends operations during national holidays and weekends.</p>
+    
+    <div class="highlight-box">
+        <h4>Transit Timelines & Execution</h4>
+        <p style="margin-bottom: 15px;">We deploy the following delivery brackets based on proximity:</p>
+        <ul>
+            <li><strong>Domestic Fast-Track:</strong> 2–4 Business Days</li>
+            <li><strong>Standard PAN-India:</strong> 4–7 Business Days</li>
+        </ul>
+        <p style="margin-top:20px; margin-bottom:0; font-size: 1.1rem; color: #64748b;">*Please be advised that exceptionally high seasonal volumes or atmospheric disruptors may minimally delay the last-mile sprint.</p>
+    </div>
+    
+    <h3>2. Real-Time Security Tracking</h3>
+    <p>Simultaneously as your acquisition clears our loading bay, our servers will autonomously transmit an executive dispatch e-mail containing your cryptographic tracking waybill. This tracking node activates within 24 hours of origin scanning.</p>
+</section>
+{% endblock %}

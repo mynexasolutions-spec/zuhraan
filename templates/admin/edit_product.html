@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="header">
-    <h1>Add New Product</h1>
+    <h1>Edit Product: {{ product.name }}</h1>
     <a href="{{ url_for('admin.manage_products') }}" style="color: var(--primary); text-decoration: none; font-size: 1.075rem;"><i class="fa-solid fa-arrow-left"></i> Back to Products</a>
 </div>
 
@@ -21,7 +21,7 @@
     .btn-save:hover { background: #1d4ed8; transform: translateY(-1px); }
 </style>
 
-<form action="{{ url_for('admin.add_product') }}" method="POST" enctype="multipart/form-data">
+<form action="{{ url_for('admin.edit_product', product_id=product.id) }}" method="POST" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-grid">
         <div class="left-col">
@@ -29,15 +29,15 @@
                 <h3>General Information</h3>
                 <div class="group">
                     <label>Product Name</label>
-                    <input type="text" name="name" required placeholder="e.g. Oud Noir Reserve">
+                    <input type="text" name="name" required value="{{ product.name }}">
                 </div>
                 <div class="group">
                     <label>Short Description</label>
-                    <textarea name="short_description" rows="2" placeholder="Brief tagline..."></textarea>
+                    <textarea name="short_description" rows="2">{{ product.short_description or '' }}</textarea>
                 </div>
                 <div class="group">
-                    <label>Full Description</label>
-                    <textarea name="full_description" rows="6" placeholder="Detailed product story..."></textarea>
+                    <label>Full Description (HTML enabled)</label>
+                    <textarea name="full_description" rows="6">{{ product.full_description or '' }}</textarea>
                 </div>
             </div>
 
@@ -46,32 +46,32 @@
                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
                     <div class="group">
                         <label>Top Notes</label>
-                        <input type="text" name="top_notes" placeholder="e.g. Bergamot, Saffron">
+                        <input type="text" name="top_notes" value="{{ product.top_notes or '' }}">
                     </div>
                     <div class="group">
                         <label>Middle Notes</label>
-                        <input type="text" name="middle_notes" placeholder="e.g. Rose, Jasmine">
+                        <input type="text" name="middle_notes" value="{{ product.middle_notes or '' }}">
                     </div>
                     <div class="group">
                         <label>Base Notes</label>
-                        <input type="text" name="base_notes" placeholder="e.g. Oud, Vanilla">
+                        <input type="text" name="base_notes" value="{{ product.base_notes or '' }}">
                     </div>
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                     <div class="group">
                         <label>Longevity</label>
                         <select name="longevity">
-                            <option>Moderate</option>
-                            <option>Long Lasting</option>
-                            <option>Eternal</option>
+                            <option {% if product.longevity == 'Moderate' %}selected{% endif %}>Moderate</option>
+                            <option {% if product.longevity == 'Long Lasting' %}selected{% endif %}>Long Lasting</option>
+                            <option {% if product.longevity == 'Eternal' %}selected{% endif %}>Eternal</option>
                         </select>
                     </div>
                     <div class="group">
                         <label>Projection</label>
                         <select name="projection">
-                            <option>Intimate</option>
-                            <option>Moderate</option>
-                            <option>Strong</option>
+                            <option {% if product.projection == 'Intimate' %}selected{% endif %}>Intimate</option>
+                            <option {% if product.projection == 'Moderate' %}selected{% endif %}>Moderate</option>
+                            <option {% if product.projection == 'Strong' %}selected{% endif %}>Strong</option>
                         </select>
                     </div>
                 </div>
@@ -85,15 +85,15 @@
                         <div class="variants-grid" style="grid-template-columns: repeat(3, 1fr);">
                             <div class="group" style="margin-bottom: 0;">
                                 <label>Original Price (₹)</label>
-                                <input type="number" step="0.01" name="orig_price_50ml" placeholder="0.00">
+                                <input type="number" step="0.01" name="orig_price_50ml" value="{{ var50.original_price if var50 and var50.original_price else '' }}">
                             </div>
                             <div class="group" style="margin-bottom: 0;">
                                 <label>Sale Price (₹)</label>
-                                <input type="number" step="0.01" name="price_50ml" placeholder="0.00">
+                                <input type="number" step="0.01" name="price_50ml" value="{{ var50.price if var50 else '' }}">
                             </div>
                             <div class="group" style="margin-bottom: 0;">
                                 <label>Stock Qty</label>
-                                <input type="number" name="stock_50ml" placeholder="0">
+                                <input type="number" name="stock_50ml" value="{{ var50.stock_quantity if var50 else 0 }}">
                             </div>
                         </div>
                     </div>
@@ -103,15 +103,15 @@
                         <div class="variants-grid" style="grid-template-columns: repeat(3, 1fr);">
                             <div class="group" style="margin-bottom: 0;">
                                 <label>Original Price (₹)</label>
-                                <input type="number" step="0.01" name="orig_price_100ml" placeholder="0.00">
+                                <input type="number" step="0.01" name="orig_price_100ml" value="{{ var100.original_price if var100 and var100.original_price else '' }}">
                             </div>
                             <div class="group" style="margin-bottom: 0;">
                                 <label>Sale Price (₹)</label>
-                                <input type="number" step="0.01" name="price_100ml" placeholder="0.00">
+                                <input type="number" step="0.01" name="price_100ml" value="{{ var100.price if var100 else '' }}">
                             </div>
                             <div class="group" style="margin-bottom: 0;">
                                 <label>Stock Qty</label>
-                                <input type="number" name="stock_100ml" placeholder="0">
+                                <input type="number" name="stock_100ml" value="{{ var100.stock_quantity if var100 else 0 }}">
                             </div>
                         </div>
                     </div>
@@ -124,42 +124,52 @@
                 <h3>Publishing</h3>
                 <div class="group">
                     <label>Category</label>
-                    <select name="category_id" required>
+                    <select name="category" required>
                         {% for cat in categories %}
-                        <option value="{{ cat.id }}">{{ cat.name }}</option>
+                        <option value="{{ cat.id }}" {% if product.category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
                 <div class="group">
                     <label>Special Tag</label>
                     <select name="tag">
-                        <option value="">— None —</option>
-                        <option value="best_seller">⭐ Best Seller</option>
-                        <option value="new_arrival">🆕 New Arrival</option>
-                        <option value="featured">✨ Featured</option>
+                        <option value="" {% if not product.tag %}selected{% endif %}>— None —</option>
+                        <option value="best_seller" {% if product.tag == 'best_seller' %}selected{% endif %}>⭐ Best Seller</option>
+                        <option value="new_arrival" {% if product.tag == 'new_arrival' %}selected{% endif %}>🆕 New Arrival</option>
+                        <option value="featured" {% if product.tag == 'featured' %}selected{% endif %}>✨ Featured</option>
                     </select>
                     <small style="color: var(--text-muted); font-size: 0.98rem; margin-top: 6px; display: block;">Best Seller tag puts this product in the homepage Crown Jewels section.</small>
                 </div>
                 <div class="group">
                     <label>Best Seller Rank (1–4)</label>
                     <select name="best_seller_rank">
-                        <option value="">— Not Ranked —</option>
-                        <option value="1">#1 Best Seller</option>
-                        <option value="2">#2 Top Rated</option>
-                        <option value="3">#3 Trending</option>
-                        <option value="4">#4 Most Gifted</option>
+                        <option value="" {% if not product.best_seller_rank %}selected{% endif %}>— Not Ranked —</option>
+                        <option value="1" {% if product.best_seller_rank == 1 %}selected{% endif %}>#1 Best Seller</option>
+                        <option value="2" {% if product.best_seller_rank == 2 %}selected{% endif %}>#2 Top Rated</option>
+                        <option value="3" {% if product.best_seller_rank == 3 %}selected{% endif %}>#3 Trending</option>
+                        <option value="4" {% if product.best_seller_rank == 4 %}selected{% endif %}>#4 Most Gifted</option>
                     </select>
                     <small style="color: var(--text-muted); font-size: 0.98rem; margin-top: 6px; display: block;">Controls which slot this occupies in the Crown Jewels grid. Requires Best Seller tag above.</small>
                 </div>
-                <button type="submit" class="btn-save">Save Product</button>
+                <button type="submit" class="btn-save">Update Product</button>
             </div>
 
             <div class="card">
                 <h3>Product Images</h3>
-                <p style="font-size: 1.0rem; color: var(--text-muted); margin-bottom: 16px;">Upload images for this perfume. First image will be primary.</p>
+                {% if product.images %}
+                <div style="margin-bottom: 16px;">
+                    <p style="font-size: 1.0rem; color: var(--text-muted); margin-bottom: 8px;">Current Images:</p>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        {% for img in product.images.split(',') %}
+                        <img src="{{ url_for('static', filename=img) }}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid #ccc;">
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
                 <div class="group">
-                    <label>Select Perfume Images</label>
+                    <label>Add Additional Images</label>
                     <input type="file" name="images" multiple accept="image/*">
+                    <p style="font-size: 0.95rem; color: #888; margin-top: 4px;">Leave blank to keep existing images.</p>
                 </div>
             </div>
         </div>

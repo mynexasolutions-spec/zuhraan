@@ -145,7 +145,7 @@
         justify-content: center;
         flex-shrink: 0;
     }
-    .payment-dot::after {
+    .payment-option.active .payment-dot::after {
         content: '';
         width: 10px;
         height: 10px;
@@ -262,6 +262,7 @@
     <h1 class="checkout-heading">Checkout</h1>
 
     <form method="POST" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="checkout-grid">
 
         <!-- ─── LEFT: FORM ─── -->
@@ -288,7 +289,8 @@
                     <div class="form-field">
                         <label>Phone Number <span class="req">*</span></label>
                         <input type="tel" name="phone" placeholder="+91 98765 43210" required
-                               pattern="[0-9+\-\s()]{7,15}" title="Enter a valid phone number">
+                               pattern="[0-9+\-\s()]{7,15}" title="Enter a valid phone number"
+                               value="{{ current_user.phone if current_user.is_authenticated and current_user.phone else '' }}">
                         <div class="hint">We'll only contact you about your order.</div>
                     </div>
                 </div>
@@ -303,47 +305,53 @@
                 <div class="form-row cols-1">
                     <div class="form-field">
                         <label>Address Line 1 <span class="req">*</span></label>
-                        <input type="text" name="address_line1" placeholder="House / Flat No., Street, Building" required>
+                        <input type="text" name="address_line1" placeholder="House / Flat No., Street, Building" required
+                               value="{{ current_user.address_line1 if current_user.is_authenticated and current_user.address_line1 else '' }}">
                     </div>
                 </div>
                 <div class="form-row cols-1">
                     <div class="form-field">
                         <label>Address Line 2 <span style="color:#aaa;font-size:0.7rem;font-weight:500;text-transform:none;letter-spacing:0;">(Optional)</span></label>
-                        <input type="text" name="address_line2" placeholder="Landmark, Colony, Area">
+                        <input type="text" name="address_line2" placeholder="Landmark, Colony, Area"
+                               value="{{ current_user.address_line2 if current_user.is_authenticated and current_user.address_line2 else '' }}">
                     </div>
                 </div>
                 <div class="form-row cols-3">
                     <div class="form-field">
                         <label>City <span class="req">*</span></label>
-                        <input type="text" name="city" placeholder="e.g. Delhi" required>
+                        <input type="text" name="city" placeholder="e.g. Delhi" required
+                               value="{{ current_user.city if current_user.is_authenticated and current_user.city else '' }}">
                     </div>
                     <div class="form-field">
                         <label>State <span class="req">*</span></label>
-                        <input type="text" name="state" placeholder="e.g. Uttar Pradesh" required>
+                        <input type="text" name="state" placeholder="e.g. Uttar Pradesh" required
+                               value="{{ current_user.state if current_user.is_authenticated and current_user.state else '' }}">
                     </div>
                     <div class="form-field">
                         <label>PIN Code <span class="req">*</span></label>
                         <input type="text" name="pincode" placeholder="e.g. 110001" required
-                               pattern="[0-9]{4,10}" title="Enter a valid PIN / ZIP code">
+                               pattern="[0-9]{4,10}" title="Enter a valid PIN / ZIP code"
+                               value="{{ current_user.pincode if current_user.is_authenticated and current_user.pincode else '' }}">
                     </div>
                 </div>
                 <div class="form-row cols-1">
                     <div class="form-field">
                         <label>Country <span class="req">*</span></label>
                         <div class="select-wrap">
+                            {% set saved_country = current_user.country if current_user.is_authenticated and current_user.country else 'India' %}
                             <select name="country" required>
-                                <option value="India" selected>India</option>
-                                <option value="Pakistan">Pakistan</option>
-                                <option value="Bangladesh">Bangladesh</option>
-                                <option value="Sri Lanka">Sri Lanka</option>
-                                <option value="UAE">UAE</option>
-                                <option value="Saudi Arabia">Saudi Arabia</option>
-                                <option value="UK">United Kingdom</option>
-                                <option value="USA">United States</option>
-                                <option value="Canada">Canada</option>
-                                <option value="Australia">Australia</option>
-                                <option value="Germany">Germany</option>
-                                <option value="Other">Other</option>
+                                <option value="India" {% if saved_country == 'India' %}selected{% endif %}>India</option>
+                                <option value="Pakistan" {% if saved_country == 'Pakistan' %}selected{% endif %}>Pakistan</option>
+                                <option value="Bangladesh" {% if saved_country == 'Bangladesh' %}selected{% endif %}>Bangladesh</option>
+                                <option value="Sri Lanka" {% if saved_country == 'Sri Lanka' %}selected{% endif %}>Sri Lanka</option>
+                                <option value="UAE" {% if saved_country == 'UAE' %}selected{% endif %}>UAE</option>
+                                <option value="Saudi Arabia" {% if saved_country == 'Saudi Arabia' %}selected{% endif %}>Saudi Arabia</option>
+                                <option value="UK" {% if saved_country == 'UK' %}selected{% endif %}>United Kingdom</option>
+                                <option value="USA" {% if saved_country == 'USA' %}selected{% endif %}>United States</option>
+                                <option value="Canada" {% if saved_country == 'Canada' %}selected{% endif %}>Canada</option>
+                                <option value="Australia" {% if saved_country == 'Australia' %}selected{% endif %}>Australia</option>
+                                <option value="Germany" {% if saved_country == 'Germany' %}selected{% endif %}>Germany</option>
+                                <option value="Other" {% if not saved_country in ['India', 'Pakistan', 'Bangladesh', 'Sri Lanka', 'UAE', 'Saudi Arabia', 'UK', 'USA', 'Canada', 'Australia', 'Germany'] %}selected{% endif %}>Other</option>
                             </select>
                         </div>
                     </div>
@@ -372,8 +380,8 @@
                 {% endif %}
 
                 {% if online_enabled %}
-                <label class="payment-option {% if not cod_enabled %}active{% endif %}" style="cursor:pointer; display:flex;">
-                    <input type="radio" name="payment_method" value="online" {% if not cod_enabled %}checked{% endif %} style="display:none;">
+                <label class="payment-option {% if online_enabled %}active{% endif %}" style="cursor:pointer; display:flex;">
+                    <input type="radio" name="payment_method" value="online" {% if online_enabled %}checked{% endif %} style="display:none;">
                     <div class="payment-dot"></div>
                     <span class="payment-label" style="margin-left:12px;">Online Payment</span>
                     <span class="payment-desc">Card, UPI, Net Banking via Razorpay</span>
@@ -411,7 +419,7 @@
                 <span class="name">{{ item.v.product.name }}<br>
                     <span style="font-size:0.76rem; opacity:0.5;">{{ item.v.size }} × {{ item.q }}</span>
                 </span>
-                <span class="price">${{ "{:,.2f}".format(item.v.price * item.q) }}</span>
+                <span class="price">₹{{ "{:,.2f}".format(item.v.price * item.q) }}</span>
             </div>
             {% endfor %}
 
@@ -426,7 +434,7 @@
 
             <div class="sum-total">
                 <span class="lbl">Total</span>
-                <span class="val">${{ "{:,.2f}".format(total) }}</span>
+                <span class="val" id="displayTotal">₹{{ "{:,.2f}".format(total) }}</span>
             </div>
 
             <button type="submit" class="btn-place-order">
@@ -446,6 +454,44 @@
 </div>
 
 <script>
-    // Clean up migration script after it's done running
+    // Handle payment option selection
+    const paymentOptions = document.querySelectorAll('.payment-option');
+    paymentOptions.forEach(opt => {
+        opt.addEventListener('click', function() {
+            paymentOptions.forEach(o => o.classList.remove('active'));
+            this.classList.add('active');
+            this.querySelector('input[type="radio"]').checked = true;
+        });
+    });
+
+    async function checkCoupon() {
+        const code = document.getElementById('coupon_code').value.trim();
+        const msg = document.getElementById('coupon-msg');
+        if (!code) return;
+        
+        msg.style.color = '#777';
+        msg.textContent = 'Checking...';
+        
+        try {
+            const res = await fetch('/api/validate-coupon', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: code, total: Number("{{ total }}") })
+            });
+            const data = await res.json();
+            if (data.valid) {
+                msg.style.color = '#16a34a';
+                msg.textContent = data.message;
+                document.getElementById('displayTotal').textContent = '₹' + data.final_total.toLocaleString('en-IN', {minimumFractionDigits: 2});
+            } else {
+                msg.style.color = '#dc2626';
+                msg.textContent = data.message;
+                document.getElementById('displayTotal').textContent = '₹' + Number("{{ total }}").toLocaleString('en-IN', {minimumFractionDigits: 2});
+            }
+        } catch (e) {
+            msg.textContent = 'Error checking coupon.';
+            document.getElementById('displayTotal').textContent = '₹' + Number("{{ total }}").toLocaleString('en-IN', {minimumFractionDigits: 2});
+        }
+    }
 </script>
 {% endblock %}

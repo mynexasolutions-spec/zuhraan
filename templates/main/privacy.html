@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% block title %}Privacy Policy - Zuhraan{% endblock %}
+
+{% block extra_css %}
+<style>
+    .legal-container {
+        max-width: 1000px;
+        margin: 100px auto 140px;
+        padding: 0 40px;
+        color: #334155;
+        font-size: 1.25rem;
+        line-height: 2;
+        font-family: 'Jost', sans-serif;
+    }
+    .legal-container h1 {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 4rem;
+        color: #0f172a;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #e2e8f0;
+        padding-bottom: 30px;
+        text-align: center;
+    }
+    .legal-container h3 {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 2.4rem;
+        color: #0f172a;
+        margin: 60px 0 25px;
+    }
+    .legal-container p {
+        margin-bottom: 24px;
+        letter-spacing: 0.02em;
+    }
+    .legal-container .highlight-box {
+        background: #f8fafc;
+        border-left: 4px solid var(--amber, #d97706);
+        padding: 30px 40px;
+        margin: 40px 0;
+        border-radius: 0 12px 12px 0;
+    }
+    .legal-container .highlight-box h4 {
+        font-family: 'Jost', sans-serif;
+        font-size: 1.3rem;
+        font-weight: 600;
+        margin-bottom: 15px;
+        color: #1e293b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    .legal-container ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+    .legal-container ul li {
+        margin-bottom: 16px;
+        position: relative;
+        padding-left: 36px;
+    }
+    .legal-container ul li::before {
+        content: '✧';
+        color: var(--amber, #d97706);
+        position: absolute;
+        left: 0;
+        font-size: 1.4rem;
+        line-height: 1.2;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="legal-container">
+    <h1>Privacy Policy</h1>
+    
+    <p>At Zuhraan Perfumes, an exclusive destination for olfactory masterpieces, one of our main priorities is the supreme privacy of our discerning clientele. This Privacy Policy document establishes the stringent protocols defining the types of information we collect, record, and how securely we deploy it to optimize your shopping experience.</p>
+    <p>Should you require further clarity or assistance regarding our Privacy practices, our concierge team remains entirely at your disposal.</p>
+    
+    <h3>1. Information Architecture</h3>
+    <p>The personal information you are asked to provide—and the specific luxury reasons why you are asked to provide it—will be made transparently clear at every touchpoint where your details are securely requested.</p>
+    
+    <p>If you connect with us directly to discuss a bespoke fragrance or a custom order, we may receive additional context about you such as your name, email address, phone number, the precise contents of your message, and any signature attachments you wish to share.</p>
+
+    <h3>2. How We Employ Your Information</h3>
+    <div class="highlight-box">
+        <h4>Data Utilization Protocols</h4>
+        <p style="margin-bottom: 15px;">We deploy the information entrusted to us via highly encrypted protocols, specifically executing the following operations:</p>
+        <ul>
+            <li>To gracefully provide, operate, and flawlessly secure our digital storefront.</li>
+            <li>To refine, personalize, and elevate your fragrance discovery journey.</li>
+            <li>To perform behavioral analytics to understand precisely what blends and profiles captivate your interest.</li>
+            <li>To seamlessly orchestrate the processing of your acquisitions, from payment clearing to premium doorstep delivery.</li>
+            <li>To communicate with you regarding pristine new collections, VIP restocks, and exclusive seasonal releases.</li>
+        </ul>
+    </div>
+    
+    <h3>3. Security Disclosures</h3>
+    <p>Your transactions are encrypted end-to-end via Razorpay standard tokenization frameworks. We unequivocally guarantee that Zuhraan Perfumes does not, and will never, sell or indiscriminately lease your email or personal purchase history to unregulated third-party marketing syndicates.</p>
+</section>
+{% endblock %}

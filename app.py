@@ -1,5 +1,11 @@
 import os
+from dotenv import load_dotenv
+load_dotenv() # Load variables from .env
+
 from flask import Flask, session
+from flask_wtf.csrf import CSRFProtect
+import bleach
+
 from models import db, Category, User, Setting
 from routes.main import main_bp
 from routes.admin import admin_bp
@@ -7,9 +13,16 @@ from flask_login import LoginManager
 from werkzeug.security import generate_password_hash
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'zuhraan_secret_key'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///zuhraan_v2.db'
+csrf = CSRFProtect(app)
+
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default_secret_key')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///zuhraan_v2.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Razorpay Config (TEST MODE)
+app.config['RAZORPAY_KEY_ID'] = os.environ.get('RAZORPAY_KEY_ID')
+app.config['RAZORPAY_KEY_SECRET'] = os.environ.get('RAZORPAY_KEY_SECRET')
+app.config['RAZORPAY_WEBHOOK_SECRET'] = os.environ.get('RAZORPAY_WEBHOOK_SECRET')
 
 # Initialize DB
 db.init_app(app)
@@ -23,16 +36,28 @@ login_manager.login_view = 'main.login'
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# Context Processors
+# Context Processors and Filters
 @app.context_processor
 def inject_cart_count():
     cart = session.get('cart', {})
     total_items = sum(cart.values()) if cart else 0
     return dict(cart_count=total_items)
 
+@app.template_filter('clean_html')
+def clean_html(text):
+    if not text:
+        return ""
+    allowed_tags = ['b', 'i', 'strong', 'em', 'p', 'br', 'ul', 'li', 'ol', 'h3', 'h4', 'span', 'div']
+    return bleach.clean(text, tags=allowed_tags, attributes={'*': ['class', 'style']}, strip=True)
+
 # Register Blueprints
 app.register_blueprint(main_bp)
 app.register_blueprint(admin_bp)
+
+# Exempt webhook route and AJAX API routes from CSRF
+csrf.exempt("routes.main.payment_webhook")
+csrf.exempt("routes.main.api_validate_coupon")
+csrf.exempt("routes.admin.validate_coupon_api")
 
 # CREATE DB CLI COMMAND
 @app.cli.command('init-db')
@@ -46,20 +71,33 @@ def seed_db():
             db.session.add(Category(name=cat_name))
             
     # Seed Admin User
+    admin_email = os.environ.get('ADMIN_EMAIL', 'admin@zuhraan.com')
+    admin_password = os.environ.get('ADMIN_PASSWORD', 'admin123')
+    
     admin = User.query.filter_by(role='admin').first()
     if not admin:
         new_admin = User(
-            email='admin@zuhraan.com',
-            password=generate_password_hash('admin123', method='pbkdf2:sha256'),
+            email=admin_email,
+            password=generate_password_hash(admin_password, method='pbkdf2:sha256'),
             role='admin'
         )
         db.session.add(new_admin)
         
     # Seed Settings
-    settings = {'shipping_charge': '0', 'razorpay_key': '', 'razorpay_secret': ''}
+    settings = {
+        'shipping_charge': '0', 
+        'razorpay_key': 'rzp_test_RbJeXJAhskSAHd', 
+        'razorpay_secret': '0Z7vD3Oy3QliqQqW82jw1yML',
+        'payment_cod_enabled': '0',
+        'payment_online_enabled': '1'
+    }
     for k, v in settings.items():
         if not Setting.query.filter_by(key=k).first():
             db.session.add(Setting(key=k, value=v))
+        else:
+            # Update existing if needed
+            s = Setting.query.filter_by(key=k).first()
+            s.value = v
             
     db.session.commit()
     print('Database initialized with default categories and admin user (admin@zuhraan.com / admin123)')
@@ -67,4 +105,4 @@ def seed_db():
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(debug=True)
+    app.run(port=5001, host='0.0.0.0', debug=True) 

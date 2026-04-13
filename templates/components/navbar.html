@@ -1,6 +1,15 @@
 <!-- NAV -->
 <nav>
-    <div class="nav-logo"><a href="{{ url_for('main.index') }}">Zuhraan</a></div>
+    <div class="nav-logo-container">
+        <div class="nav-logo"><a href="{{ url_for('main.index') }}">Zuhraan</a></div>
+        <a href="https://www.instagram.com/zuhraan_officials/" target="_blank" class="instagram-link" aria-label="Instagram">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+                <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
+            </svg>
+        </a>
+    </div>
     <ul class="nav-links">
         <li><a href="{{ url_for('main.index') }}">Home</a></li>
         <li><a href="{{ url_for('main.shop') }}">Shop</a></li>
@@ -8,13 +17,15 @@
         <li><a href="#">Contact</a></li>
     </ul>
     <div class="nav-icons">
-        <div class="search-box">
-            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.35-4.35" />
-            </svg>
-            <input type="text" placeholder="Search...">
-        </div>
+        <form action="{{ url_for('main.shop') }}" method="GET" class="search-form">
+            <div class="search-box">
+                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.35-4.35" />
+                </svg>
+                <input type="text" name="search" placeholder="Search..." value="{{ request.args.get('search', '') }}">
+            </div>
+        </form>
 
         <a href="{{ url_for('main.cart') }}" class="account-link" style="position: relative;">
             <svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
@@ -41,25 +52,38 @@
 </nav>
 
 <div class="mobile-menu" id="mobile-menu">
-    <button class="close-menu" id="close-menu">
-        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path d="M18 6L6 18M6 6l12 12" />
-        </svg>
-    </button>
+    <div class="mobile-menu-header">
+        <div class="nav-logo" style="color: #fff;">Zuhraan</div>
+        <button class="close-menu" id="close-menu">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+        </button>
+    </div>
     <ul class="mobile-links">
         <li><a href="{{ url_for('main.index') }}">Home</a></li>
         <li><a href="{{ url_for('main.shop') }}">Shop</a></li>
         <li><a href="{{ url_for('main.cart') }}">Cart</a></li>
-        <li><a href="#">About</a></li>
-        <li><a href="#">Contact</a></li>
+        <li><a href="#">About Us</a></li>
+        <li><a href="#">Contact Us</a></li>
     </ul>
+    
+    <div class="mobile-menu-footer">
+        <div class="social-links">
+            <a href="https://www.instagram.com/zuhraan_officials/" target="_blank">Instagram</a>
+            <a href="#">Facebook</a>
+        </div>
+        <p>© 2024 Zuhraan Officials</p>
+    </div>
 </div>
 
 <script>
     document.getElementById('nav-toggle').addEventListener('click', function() {
         document.getElementById('mobile-menu').classList.add('active');
+        document.body.style.overflow = 'hidden'; // Prevent scroll when menu is open
     });
     document.getElementById('close-menu').addEventListener('click', function() {
         document.getElementById('mobile-menu').classList.remove('active');
+        document.body.style.overflow = ''; // Restore scroll
     });
 </script>

@@ -8,12 +8,12 @@
 
 <style>
     .card { background: var(--white); padding: 32px; border-radius: 12px; box-shadow: var(--card-shadow); margin-bottom: 28px; max-width: 800px; }
-    .card h3 { font-size: 1rem; font-weight: 600; color: #1e293b; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 12px; display: flex; align-items: center; gap: 10px; }
+    .card h3 { font-size: 1.2rem; font-weight: 600; color: #1e293b; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 12px; display: flex; align-items: center; gap: 10px; }
     .card h3 i { color: var(--primary); }
     .group { margin-bottom: 20px; }
-    .group label { display: block; font-size: 0.82rem; font-weight: 600; color: #475569; margin-bottom: 8px; }
-    .group input { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 0.9rem; color: #1e293b; }
-    .group p { font-size: 0.75rem; color: var(--text-muted); margin-top: 7px; }
+    .group label { display: block; font-size: 1.02rem; font-weight: 600; color: #475569; margin-bottom: 8px; }
+    .group input { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 1.1rem; color: #1e293b; }
+    .group p { font-size: 0.95rem; color: var(--text-muted); margin-top: 7px; }
 
     /* TOGGLE SWITCH */
     .toggle-row {
@@ -24,8 +24,8 @@
         border-bottom: 1px solid #f1f5f9;
     }
     .toggle-row:last-of-type { border-bottom: none; }
-    .toggle-info h4 { font-size: 0.95rem; font-weight: 600; color: #1e293b; margin-bottom: 3px; }
-    .toggle-info p { font-size: 0.78rem; color: var(--text-muted); }
+    .toggle-info h4 { font-size: 1.15rem; font-weight: 600; color: #1e293b; margin-bottom: 3px; }
+    .toggle-info p { font-size: 0.98rem; color: var(--text-muted); }
     .switch { position: relative; display: inline-block; width: 46px; height: 26px; flex-shrink: 0; }
     .switch input { opacity: 0; width: 0; height: 0; }
     .slider {
@@ -42,22 +42,23 @@
     }
     .switch input:checked + .slider { background: #22c55e; }
     .switch input:checked + .slider::before { transform: translateX(20px); }
-    .btn-save { background: var(--primary); color: #fff; border: none; padding: 11px 30px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: opacity 0.2s; }
+    .btn-save { background: var(--primary); color: #fff; border: none; padding: 11px 30px; border-radius: 8px; font-weight: 600; font-size: 1.1rem; cursor: pointer; transition: opacity 0.2s; }
     .btn-save:hover { opacity: 0.85; }
 </style>
 
 <form action="{{ url_for('admin.manage_settings') }}" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
     <!-- SHIPPING -->
     <div class="card">
         <h3><i class="fa-solid fa-truck"></i> Shipping Operations</h3>
         <div class="group">
-            <label>Standard Shipping Charge ($)</label>
+            <label>Standard Shipping Charge (₹)</label>
             <input type="number" step="0.01" name="shipping_charge" value="{{ settings.get('shipping_charge', '0') }}">
             <p>Applied to overall order total during checkout.</p>
         </div>
         <div class="group">
-            <label>Free Shipping Threshold ($)</label>
+            <label>Free Shipping Threshold (₹)</label>
             <input type="number" step="0.01" name="free_shipping_threshold" value="{{ settings.get('free_shipping_threshold', '0') }}">
             <p>Orders above this amount get free shipping. Set to 0 to disable.</p>
         </div>
@@ -66,7 +67,7 @@
     <!-- PAYMENT METHODS -->
     <div class="card">
         <h3><i class="fa-solid fa-wallet"></i> Payment Methods</h3>
-        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:20px;">
+        <p style="font-size: 1.0rem; color:var(--text-muted); margin-bottom:20px;">
             Toggle which payment methods customers can use at checkout. At least one must be enabled.
         </p>
 
@@ -106,7 +107,7 @@
             <label>Razorpay Secret Key</label>
             <input type="password" name="razorpay_secret" value="{{ settings.get('razorpay_secret', '') }}" placeholder="••••••••••••••••">
         </div>
-        <p style="font-size: 0.75rem; color: #ef4444; font-weight: 500;">Securely stored for server-side order generation and signature verification.</p>
+        <p style="font-size: 0.95rem; color: #ef4444; font-weight: 500;">Securely stored for server-side order generation and signature verification.</p>
     </div>
 
     <div style="max-width: 800px;">

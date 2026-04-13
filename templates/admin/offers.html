@@ -1,0 +1,65 @@
+{% extends 'admin/base.html' %}
+
+{% block content %}
+<style>
+    .card { background: #fff; border-radius: 12px; box-shadow: var(--card-shadow); padding: 30px; margin-bottom: 30px; }
+    .card h3 { font-size: 1.3rem; color: #1e293b; margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+    
+    .group label { display: block; font-size: 1.075rem; font-weight: 500; color: #475569; margin-bottom: 8px; }
+    .group input, .group select { width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 1.15rem; color: #1e293b; background: #fafafa; }
+    
+    .btn-save { background: var(--primary); color: #fff; border: none; padding: 12px 30px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 1.15rem; }
+    .btn-save:hover { background: #1d4ed8; }
+    
+    .offers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
+    .offer-item { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: var(--card-shadow); border: 1px solid var(--border); display: flex; flex-direction: column; }
+    .offer-img { width: 100%; height: 260px; object-fit: cover; border-bottom: 1px solid var(--border); }
+    .offer-actions { padding: 16px; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; }
+    .offer-date { font-size: 0.95rem; color: var(--text-muted); }
+    .btn-delete { color: #ef4444; background: none; border: none; font-size: 1.05rem; cursor: pointer; display: flex; align-items: center; gap: 6px; text-decoration: none; font-weight: 500;}
+</style>
+
+<div class="header">
+    <h1>Manage Offer Banners</h1>
+</div>
+
+<div class="card" style="max-width: 600px;">
+    <h3>Add New Offer Banner</h3>
+    <form action="{{ url_for('admin.manage_offers') }}" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        
+        <div class="group" style="margin-bottom: 24px;">
+            <label>Upload Banner Image <span style="color:#ef4444">*</span></label>
+            <input type="file" name="image" accept="image/*" required>
+            <p style="font-size: 0.95rem; color: var(--text-muted); margin-top: 8px;">Recommended ratio for perfect oval center slot fitting.</p>
+        </div>
+        
+        <button type="submit" class="btn-save">Upload Banner</button>
+    </form>
+</div>
+
+<div class="card">
+    <h3 style="margin-bottom: 30px;">Active Offers (Displayed on Homepage)</h3>
+    
+    {% if not offers %}
+    <div style="padding: 40px; text-align: center; border: 2px dashed var(--border); border-radius: 12px; color: var(--text-muted);">
+        <i class="fa-regular fa-images" style="font-size: 3rem; margin-bottom: 16px; opacity: 0.5;"></i>
+        <p style="font-size: 1.15rem;">No offer banners uploaded yet. The default static image will be displayed on the homepage.</p>
+    </div>
+    {% else %}
+    <div class="offers-grid">
+        {% for offer in offers %}
+        <div class="offer-item">
+            <img src="{{ url_for('static', filename=offer.image) }}" alt="Offer Banner" class="offer-img">
+            <div class="offer-actions">
+                <span class="offer-date">Added {{ offer.created_at.strftime('%b %d, %Y') }}</span>
+                <a href="javascript:void(0)" onclick="openDeleteModal(`Offer Banner #{{ offer.id }}`, `{{ url_for('admin.delete_offer', offer_id=offer.id) }}`)" class="btn-delete">
+                    <i class="fa-solid fa-trash"></i> Delete
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -9,40 +9,40 @@
 <style>
     .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-bottom: 40px; }
     .stat-card { background: var(--white); padding: 24px; border-radius: 12px; box-shadow: var(--card-shadow); display: flex; align-items: center; justify-content: space-between; }
-    .stat-card .icon { width: 48px; height: 48px; border-radius: 10px; background: rgba(37, 99, 235, 0.1); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.25rem; }
-    .stat-card .value { font-size: 1.5rem; font-weight: 700; color: #1e293b; }
-    .stat-card .label { color: var(--text-muted); font-size: 0.875rem; margin-top: 4px; }
-    .stat-card .trend { font-size: 0.75rem; font-weight: 500; display: flex; align-items: center; gap: 4px; margin-top: 8px; }
+    .stat-card .icon { width: 48px; height: 48px; border-radius: 10px; background: rgba(37, 99, 235, 0.1); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.45rem; }
+    .stat-card .value { font-size: 1.7rem; font-weight: 700; color: #1e293b; }
+    .stat-card .label { color: var(--text-muted); font-size: 1.075rem; margin-top: 4px; }
+    .stat-card .trend { font-size: 0.95rem; font-weight: 500; display: flex; align-items: center; gap: 4px; margin-top: 8px; }
     .trend.green { color: #22c55e; }
     .trend.red { color: #ef4444; }
 
     .dash-main { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
     .dash-box { background: var(--white); border-radius: 12px; padding: 24px; box-shadow: var(--card-shadow); }
     .box-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-    .box-header h3 { font-size: 1.1rem; color: #1e293b; }
-    .box-header a { text-decoration: none; color: var(--primary); font-size: 0.875rem; font-weight: 500; }
+    .box-header h3 { font-size: 1.3rem; color: #1e293b; }
+    .box-header a { text-decoration: none; color: var(--primary); font-size: 1.075rem; font-weight: 500; }
 
     .table-lite { width: 100%; border-collapse: collapse; }
-    .table-lite th { text-align: left; padding: 12px 16px; font-size: 0.75rem; color: var(--text-muted); border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: 0.05em; }
-    .table-lite td { padding: 16px; font-size: 0.875rem; border-bottom: 1px solid var(--border); }
-    .badge { padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 500; }
+    .table-lite th { text-align: left; padding: 12px 16px; font-size: 0.95rem; color: var(--text-muted); border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: 0.05em; }
+    .table-lite td { padding: 16px; font-size: 1.075rem; border-bottom: 1px solid var(--border); }
+    .badge { padding: 4px 8px; border-radius: 6px; font-size: 0.95rem; font-weight: 500; }
     .badge-pending { background: #fef3c7; color: #92400e; }
     .badge-paid { background: #dcfce7; color: #166534; }
 
     .stock-list { list-style: none; }
     .stock-item { display: flex; align-items: center; justify-content: space-between; padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
     .stock-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-    .stock-name { font-size: 0.875rem; font-weight: 500; }
-    .stock-val { font-size: 0.875rem; color: #ef4444; font-weight: 600; }
+    .stock-name { font-size: 1.075rem; font-weight: 500; }
+    .stock-val { font-size: 1.075rem; color: #ef4444; font-weight: 600; }
 </style>
 
 <div class="stats-grid">
     <div class="stat-card">
         <div>
-            <div class="value">${{ "{:,.2f}".format(revenue) }}</div>
+            <div class="value">₹{{ "{:,.2f}".format(revenue) }}</div>
             <div class="label">Total Revenue</div>
         </div>
-        <div class="icon"><i class="fa-solid fa-dollar-sign"></i></div>
+        <div class="icon"><i class="fa-solid fa-indian-rupee-sign"></i></div>
     </div>
     <div class="stat-card">
         <div>
@@ -95,7 +95,7 @@
                     <td>{{ order.customer_name }}</td>
                     <td><span class="badge badge-pending">{{ order.status }}</span></td>
                     <td><span class="badge badge-paid">{{ order.payment_status }}</span></td>
-                    <td>${{ "{:,.2f}".format(order.total_amount) }}</td>
+                    <td>₹{{ "{:,.2f}".format(order.total_amount) }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -108,7 +108,7 @@
         </div>
         <div class="stock-list">
             {% if not low_stock %}
-            <p style="color: var(--text-muted); font-size: 0.875rem;">Great! All stock is healthy.</p>
+            <p style="color: var(--text-muted); font-size: 1.075rem;">Great! All stock is healthy.</p>
             {% endif %}
             {% for variant in low_stock %}
             <div class="stock-item">

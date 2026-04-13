@@ -6,6 +6,7 @@
     <p style="color: var(--muted); margin-bottom: 40px;">Begin your definitive olfactory narrative.</p>
     
     <form method="POST" style="background: #fff; padding: 60px; border-radius: 40px; box-shadow: 0 25px 80px rgba(0,0,0,0.06); text-align: left;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div style="margin-bottom: 25px;">
             <label style="display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 600; margin-bottom: 12px; color: var(--dark);">Full Name</label>
             <input type="text" name="name" placeholder="e.g. Alexander Rose" required style="width: 100%; padding: 18px; border: 1px solid #ddd; border-radius: 12px; font-family: 'Jost', sans-serif; font-size: 1rem; color: var(--dark); outline: none;">

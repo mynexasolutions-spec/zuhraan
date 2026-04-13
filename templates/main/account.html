@@ -1,46 +1,372 @@
 {% extends 'base.html' %}
 {% block title %}Account - Zuhraan{% endblock %}
+
 {% block content %}
-<section style="max-width: 1200px; margin: 60px auto 120px; padding: 0 40px;">
-    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 60px; border-bottom: 1px solid #eee; padding-bottom: 30px;">
-        <div>
-            <h1 style="font-family: 'Cormorant Garamond', serif; font-size: 3rem; margin-bottom: 10px;">The Collector's Profile</h1>
-            <p style="color: var(--muted);">{{ current_user.email }}</p>
-        </div>
-        <a href="{{ url_for('main.logout') }}" style="color: #e03c3c; font-size: 0.85rem; text-decoration: none; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; border: 1px solid #e03c3c; padding: 10px 20px; border-radius: 30px; transition: all 0.2s;">Sign Out</a>
-    </div>
+<style>
+    .account-wrapper {
+        max-width: 1200px;
+        margin: 60px auto 120px;
+        padding: 0 40px;
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        gap: 40px;
+    }
     
-    <div style="display: grid; grid-template-columns: 1fr; gap: 40px;">
-        <div style="background: #fff; padding: 40px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.03);">
-            <h3 style="font-family: 'Cormorant Garamond', serif; font-size: 1.8rem; margin-bottom: 30px;">Previous Acquisitions</h3>
+    .account-sidebar {
+        background: #fff;
+        border-radius: 20px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.03);
+        padding: 30px 0;
+        height: min-content;
+    }
+    
+    .sidebar-user {
+        padding: 0 30px 20px;
+        border-bottom: 1px solid #eee;
+        margin-bottom: 20px;
+    }
+    .sidebar-user h2 {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 1.5rem;
+        margin-bottom: 5px;
+    }
+    .sidebar-user p {
+        color: var(--muted);
+        font-size: 0.9rem;
+    }
+
+    .account-nav {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    .account-nav li {
+        margin: 0;
+    }
+    .account-nav a {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 15px 30px;
+        text-decoration: none;
+        color: var(--text-color);
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    .account-nav a:hover, .account-nav a.active {
+        background: #f9f9f9;
+        color: var(--amber);
+        border-left: 4px solid var(--amber);
+        padding-left: 26px;
+    }
+    .account-nav a.logout-link {
+        color: #e03c3c;
+    }
+    .account-nav a.logout-link:hover {
+        background: #fef2f2;
+        border-left-color: #e03c3c;
+    }
+
+    .account-content {
+        background: #fff;
+        padding: 40px;
+        border-radius: 20px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.03);
+    }
+    
+    .content-section {
+        display: none;
+    }
+    .content-section.active {
+        display: block;
+        animation: fadeIn 0.4s ease forwards;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .section-title {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 2rem;
+        margin-bottom: 30px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #eee;
+    }
+
+    /* Form Styles */
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    .form-group.full {
+        grid-column: 1 / -1;
+    }
+    .form-group label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 8px;
+        color: #333;
+    }
+    .form-group input, .form-group select {
+        width: 100%;
+        padding: 14px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-family: 'Jost', sans-serif;
+        font-size: 0.95rem;
+    }
+    .form-group input:focus, .form-group select:focus {
+        outline: none;
+        border-color: var(--amber);
+    }
+    .btn-save {
+        background: #111;
+        color: #fff;
+        border: none;
+        padding: 15px 40px;
+        border-radius: 50px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .btn-save:hover {
+        background: var(--amber);
+    }
+    
+    /* Table Styles */
+    .order-table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+    }
+    .order-table th {
+        padding: 15px 0;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--muted);
+        border-bottom: 1px solid #eee;
+    }
+    .order-table td {
+        padding: 20px 0;
+        border-bottom: 1px solid #f9f9f9;
+    }
+    .status-badge {
+        background: #f1f1f1;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    @media (max-width: 900px) {
+        .account-wrapper {
+            grid-template-columns: 1fr;
+            padding: 0 20px;
+        }
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="account-wrapper">
+    <!-- SIDEBAR NAVIGATION -->
+    <aside class="account-sidebar">
+        <div class="sidebar-user">
+            <h2>{{ current_user.name or 'Collector' }}</h2>
+            <p>{{ current_user.email }}</p>
+        </div>
+        <ul class="account-nav">
+            <li>
+                <a href="#dashboard" class="nav-link active" data-target="dashboard">
+                    <i class="fa-solid fa-user"></i> My Account
+                </a>
+            </li>
+            <li>
+                <a href="#orders" class="nav-link" data-target="orders">
+                    <i class="fa-solid fa-box"></i> My Orders
+                </a>
+            </li>
+            <li>
+                <a href="#address" class="nav-link" data-target="address">
+                    <i class="fa-solid fa-location-dot"></i> Shipping Address
+                </a>
+            </li>
+            <li style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;">
+                <a href="{{ url_for('main.logout') }}" class="logout-link">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i> Sign Out
+                </a>
+            </li>
+        </ul>
+    </aside>
+
+    <!-- CONTENT AREA -->
+    <main class="account-content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div style="padding: 15px; margin-bottom: 20px; border-radius: 8px; {% if category == 'error' %}background: #fef2f2; color: #dc2626; border: 1px solid #fecaca;{% else %}background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0;{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- DASHBOARD (OVERVIEW) -->
+        <div id="dashboard" class="content-section active">
+            <h1 class="section-title">Welcome to your Profile</h1>
+            <p style="color: #666; margin-bottom: 30px; font-size: 1.1rem; line-height: 1.6;">
+                Manage your exclusive fragrance collection directly from this dashboard. Keep track of recent acquisitions, and update your preferred drop-off location to ensure your perfumes arrive perfectly.
+            </p>
             
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px;">
+                <div style="background: #fafafa; padding: 30px; border-radius: 12px; border: 1px solid #eee;">
+                    <div style="font-size: 2.5rem; color: var(--amber); margin-bottom: 10px;"><i class="fa-solid fa-box-open"></i></div>
+                    <h3 style="font-size: 1.2rem; margin-bottom: 5px;">Total Orders</h3>
+                    <p style="font-size: 1.8rem; font-weight: 700;">{{ orders|length }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- MY ORDERS -->
+        <div id="orders" class="content-section">
+            <h1 class="section-title">Order History</h1>
             {% if not orders %}
-            <p style="color: var(--muted); padding: 40px 0; text-align: center; border: 1px dashed #eee; border-radius: 12px;">Your olfactory journey is just beginning. No acquisitions yet.</p>
+                <p style="color: var(--muted); padding: 40px 0; text-align: center; border: 1px dashed #eee; border-radius: 12px;">Your olfactory journey is just beginning. No acquisitions yet.</p>
             {% else %}
-            <table style="width: 100%; border-collapse: collapse; text-align: left;">
-                <thead>
-                    <tr style="border-bottom: 1px solid #eee;">
-                        <th style="padding: 15px 0; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);">Order ID</th>
-                        <th style="padding: 15px 0; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);">Date</th>
-                        <th style="padding: 15px 0; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);">Total</th>
-                        <th style="padding: 15px 0; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);">Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for order in orders %}
-                    <tr style="border-bottom: 1px solid #f9f9f9;">
-                        <td style="padding: 20px 0; font-weight: 600;">#{{ order.id }}</td>
-                        <td style="padding: 20px 0; color: #666;">{{ order.created_at.strftime('%b %d, %Y') }}</td>
-                        <td style="padding: 20px 0; font-weight: 600;">${{ "{:,.2f}".format(order.total_amount) }}</td>
-                        <td style="padding: 20px 0;">
-                            <span style="background: #f1f1f1; padding: 6px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase;">{{ order.status }}</span>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                <table class="order-table">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Date</th>
+                            <th>Total</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                        <tr>
+                            <td style="font-weight: 600;">#{{ order.id }}</td>
+                            <td style="color: #666;">{{ order.created_at.strftime('%b %d, %Y') }}</td>
+                            <td style="font-weight: 600;">₹{{ "{:,.2f}".format(order.total_amount) }}</td>
+                            <td>
+                                <span class="status-badge">{{ order.status }}</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             {% endif %}
         </div>
-    </div>
-</section>
+
+        <!-- SHIPPING ADDRESS -->
+        <div id="address" class="content-section">
+            <h1 class="section-title">Shipping Address</h1>
+            <p style="color: #666; margin-bottom: 30px;">Update your default address. This will be automatically prefilled during your next checkout.</p>
+            
+            <form action="{{ url_for('main.account') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <div class="form-grid">
+                    <div class="form-group full">
+                        <label>Phone Number</label>
+                        <input type="tel" name="phone" value="{{ current_user.phone or '' }}" placeholder="+91 98765 43210">
+                    </div>
+                    
+                    <div class="form-group full">
+                        <label>Address Line 1</label>
+                        <input type="text" name="address_line1" value="{{ current_user.address_line1 or '' }}" placeholder="House / Flat No., Street, Building" required>
+                    </div>
+                    
+                    <div class="form-group full">
+                        <label>Address Line 2 (Optional)</label>
+                        <input type="text" name="address_line2" value="{{ current_user.address_line2 or '' }}" placeholder="Landmark, Area">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>City</label>
+                        <input type="text" name="city" value="{{ current_user.city or '' }}" placeholder="e.g. Mumbai" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>State</label>
+                        <input type="text" name="state" value="{{ current_user.state or '' }}" placeholder="e.g. Maharashtra" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>PIN Code</label>
+                        <input type="text" name="pincode" value="{{ current_user.pincode or '' }}" placeholder="e.g. 400001" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Country</label>
+                        <select name="country">
+                            {% set current_country = current_user.country or 'India' %}
+                            <option value="India" {% if current_country == 'India' %}selected{% endif %}>India</option>
+                            <option value="UAE" {% if current_country == 'UAE' %}selected{% endif %}>UAE</option>
+                            <option value="Saudi Arabia" {% if current_country == 'Saudi Arabia' %}selected{% endif %}>Saudi Arabia</option>
+                            <option value="USA" {% if current_country == 'USA' %}selected{% endif %}>United States</option>
+                            <option value="UK" {% if current_country == 'UK' %}selected{% endif %}>United Kingdom</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group full" style="margin-top: 10px;">
+                        <button type="submit" class="btn-save">Save Address</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </main>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const links = document.querySelectorAll('.nav-link');
+        const sections = document.querySelectorAll('.content-section');
+
+        // Check hash to open specific tab, default to dashboard
+        const hash = window.location.hash || '#dashboard';
+        activateTab(hash.substring(1));
+
+        links.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const target = link.getAttribute('data-target');
+                window.location.hash = target;
+                activateTab(target);
+            });
+        });
+
+        function activateTab(tabId) {
+            // Remove active class from all links and sections
+            links.forEach(l => l.classList.remove('active'));
+            sections.forEach(s => s.classList.remove('active'));
+
+            // Add active to selected
+            const activeLink = document.querySelector(`.nav-link[data-target="${tabId}"]`);
+            const activeSection = document.getElementById(tabId);
+            
+            if (activeLink && activeSection) {
+                activeLink.classList.add('active');
+                activeSection.classList.add('active');
+            } else if (links.length > 0 && sections.length > 0) {
+                // fallback
+                links[0].classList.add('active');
+                sections[0].classList.add('active');
+            }
+        }
+    });
+</script>
 {% endblock %}

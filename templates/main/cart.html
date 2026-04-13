@@ -386,21 +386,23 @@
                                 </div>
                             </div>
                         </td>
-                        <td class="ci-price">${{ "{:,.2f}".format(item.variant.price) }}</td>
+                        <td class="ci-price">₹{{ "{:,.2f}".format(item.variant.price) }}</td>
                         <td style="text-align:center;">
                             <div class="qty-stepper">
                                 <form method="POST" action="{{ url_for('main.update_cart', variant_id=item.variant.id) }}" style="display:contents;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="action" value="decrease">
                                     <button type="submit" class="qty-btn" title="Decrease">−</button>
                                 </form>
                                 <span class="qty-num">{{ item.quantity }}</span>
                                 <form method="POST" action="{{ url_for('main.update_cart', variant_id=item.variant.id) }}" style="display:contents;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="action" value="increase">
                                     <button type="submit" class="qty-btn" title="Increase">+</button>
                                 </form>
                             </div>
                         </td>
-                        <td class="ci-line-total">${{ "{:,.2f}".format(item.variant.price * item.quantity) }}</td>
+                        <td class="ci-line-total">₹{{ "{:,.2f}".format(item.variant.price * item.quantity) }}</td>
                     </tr>
                 {% endfor %}
                 </tbody>
@@ -418,7 +420,7 @@
 
             <div class="sum-line">
                 <span class="lbl">Subtotal</span>
-                <span class="val">${{ "{:,.2f}".format(total) }}</span>
+                <span class="val">₹{{ "{:,.2f}".format(total) }}</span>
             </div>
             <div class="sum-line">
                 <span class="lbl">Shipping</span>
@@ -427,7 +429,7 @@
 
             <div class="sum-total-box">
                 <span class="t-lbl">Grand Total</span>
-                <span class="t-val">${{ "{:,.2f}".format(total) }}</span>
+                <span class="t-val">₹{{ "{:,.2f}".format(total) }}</span>
             </div>
 
             <a href="{{ url_for('main.checkout') }}" class="btn-chk">

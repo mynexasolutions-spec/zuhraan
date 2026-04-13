@@ -45,9 +45,21 @@
         </h1>
         <div class="oval-wrap">
             <div class="center-glow"></div>
+            {% if offers %}
+                <div class="swiper hero-offers-slider" style="width:100%; height:100%; border-radius: inherit;">
+                    <div class="swiper-wrapper">
+                        {% for offer in offers %}
+                        <div class="swiper-slide">
+                            <img class="hero-main-img" src="{{ url_for('static', filename=offer.image) }}" alt="Offer Banner" style="width:100%; height:100%; object-fit:cover; border-radius: inherit;">
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% else %}
             <!-- Dark floral perfume hero image -->
             <img class="hero-main-img" src="{{ url_for('static', filename='images/banner/zuhran_2.webp') }}"
                 alt="Hero Fragrance">
+            {% endif %}
         </div>
     </div>
 
@@ -91,57 +103,24 @@
     <h2 class="section-title">Discover By Category</h2>
     
     <div class="categories-grid">
-        <a href="#" class="category-card">
-            <img src="/static/images/banner/zuhran_1.webp" alt="Eau De Parfum">
-            <div class="cat-overlay"></div>
-            <div class="cat-content">
-                <h3 class="cat-title">Eau De Parfum</h3>
-                <div class="cat-bottom">
-                    <div class="cat-shop">
-                        <button class="btn-pill-white">Shop Now</button>
+        {% if not categories %}
+            <div style="text-align: center; color: #888; grid-column: 1/-1; padding: 40px;">No categories configured yet.</div>
+        {% else %}
+            {% for cat in categories %}
+            <a href="{{ url_for('main.shop', cat=cat.id) }}" class="category-card">
+                <img src="/static/{{ cat.image or 'images/banner/zuhran_2.webp' }}" alt="{{ cat.name }}">
+                <div class="cat-overlay"></div>
+                <div class="cat-content">
+                    <h3 class="cat-title">{{ cat.name }}</h3>
+                    <div class="cat-bottom">
+                        <div class="cat-shop">
+                            <span class="btn-pill-white">Shop Now</span>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </a>
-
-        <a href="#" class="category-card">
-            <img src="/static/images/banner/zuhran_2.webp" alt="Extrait De Parfum">
-            <div class="cat-overlay"></div>
-            <div class="cat-content">
-                <h3 class="cat-title">Extrait De Parfum</h3>
-                <div class="cat-bottom">
-                    <div class="cat-shop">
-                        <button class="btn-pill-white">Shop Now</button>
-                    </div>
-                </div>
-            </div>
-        </a>
-
-        <a href="#" class="category-card">
-            <img src="/static/images/banner/zuhran_3.jpg" alt="Premium Collection">
-            <div class="cat-overlay"></div>
-            <div class="cat-content">
-                <h3 class="cat-title">Premium Collection</h3>
-                <div class="cat-bottom">
-                    <div class="cat-shop">
-                        <button class="btn-pill-white">Shop Now</button>
-                    </div>
-                </div>
-            </div>
-        </a>
-
-        <a href="#" class="category-card">
-            <img src="/static/images/banner/zuhran_1.webp" alt="Room Freshener">
-            <div class="cat-overlay"></div>
-            <div class="cat-content">
-                <h3 class="cat-title">Room Freshener</h3>
-                <div class="cat-bottom">
-                    <div class="cat-shop">
-                        <button class="btn-pill-white">Shop Now</button>
-                    </div>
-                </div>
-            </div>
-        </a>
+            </a>
+            {% endfor %}
+        {% endif %}
     </div>
 </section>
 </div>
@@ -209,7 +188,7 @@
                             <img src="/static/images/banner/zuhran_1.webp" alt="Aurora mystique">
                             <div class="product-card-body">
                                 <h4>Aurora mystique</h4>
-                                <p class="price">$120.00</p>
+                                <p class="price">₹120.00</p>
                                 <span class="btn-buy-now">Buy Now</span>
                             </div>
                         </div>
@@ -222,7 +201,7 @@
                             <img src="/static/images/banner/zuhran_2.webp" alt="Crimson Whispers">
                             <div class="product-card-body">
                                 <h4>Crimson Whispers</h4>
-                                <p class="price">$189.00</p>
+                                <p class="price">₹189.00</p>
                                 <span class="btn-buy-now">Buy Now</span>
                             </div>
                         </div>
@@ -235,7 +214,7 @@
                             <img src="/static/images/banner/zuhran_3.jpg" alt="Amethyst Glow">
                             <div class="product-card-body">
                                 <h4>Amethyst Glow</h4>
-                                <p class="price">$255.00</p>
+                                <p class="price">₹255.00</p>
                                 <span class="btn-buy-now">Buy Now</span>
                             </div>
                         </div>
@@ -248,7 +227,7 @@
                             <img src="/static/images/banner/zuhran_1.webp" alt="Wild Orchid">
                             <div class="product-card-body">
                                 <h4>Wild Orchid</h4>
-                                <p class="price">$150.00</p>
+                                <p class="price">₹150.00</p>
                                 <span class="btn-buy-now">Buy Now</span>
                             </div>
                         </div>
@@ -261,7 +240,7 @@
                             <img src="/static/images/banner/zuhran_2.webp" alt="Midnight Ember">
                             <div class="product-card-body">
                                 <h4>Midnight Ember</h4>
-                                <p class="price">$195.00</p>
+                                <p class="price">₹195.00</p>
                                 <span class="btn-buy-now">Buy Now</span>
                             </div>
                         </div>
@@ -274,7 +253,7 @@
                             <img src="/static/images/banner/zuhran_1.webp" alt="Golden Elixir">
                             <div class="product-card-body">
                                 <h4>Golden Elixir</h4>
-                                <p class="price">$210.00</p>
+                                <p class="price">₹210.00</p>
                                 <span class="btn-buy-now">Buy Now</span>
                             </div>
                         </div>
@@ -287,7 +266,7 @@
                             <img src="/static/images/banner/zuhran_3.jpg" alt="Velvet Rose">
                             <div class="product-card-body">
                                 <h4>Velvet Rose</h4>
-                                <p class="price">$175.00</p>
+                                <p class="price">₹175.00</p>
                                 <span class="btn-buy-now">Buy Now</span>
                             </div>
                         </div>
@@ -331,8 +310,8 @@
                     <h4>{{ product.name }}</h4>
                     <p class="price">
                         {% if first_variant %}
-                            {% if isOnSale %}<span class="old-price" style="text-decoration: line-through; opacity: 0.6; margin-right: 8px;">${{ "{:,.2f}".format(first_variant.original_price) }}</span>{% endif %}
-                            <span class="current-price">${{ "{:,.2f}".format(first_variant.price) }}</span>
+                            {% if isOnSale %}<span class="old-price" style="text-decoration: line-through; opacity: 0.6; margin-right: 8px;">₹{{ "{:,.2f}".format(first_variant.original_price) }}</span>{% endif %}
+                            <span class="current-price">₹{{ "{:,.2f}".format(first_variant.price) }}</span>
                         {% else %}
                             Price TBD
                         {% endif %}
@@ -470,6 +449,19 @@
                 }
             }
         });
+
+        {% if offers %}
+        const offerSwiper = new Swiper('.hero-offers-slider', {
+            loop: true,
+            effect: 'fade',
+            autoplay: {
+                delay: 4000,
+                disableOnInteraction: false,
+            },
+            speed: 1000,
+            allowTouchMove: false
+        });
+        {% endif %}
     });
 </script>
 {% endblock %}

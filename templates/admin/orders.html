@@ -1,0 +1,87 @@
+{% extends 'admin/base.html' %}
+
+{% block content %}
+<div class="header">
+    <h1>Manage Orders</h1>
+</div>
+
+<style>
+    .card { background: var(--white); border-radius: 12px; box-shadow: var(--card-shadow); padding: 24px; }
+    .table { width: 100%; border-collapse: collapse; }
+    .table th { text-align: left; padding: 12px 16px; font-size: 1.0rem; color: var(--text-muted); border-bottom: 1px solid var(--border); text-transform: uppercase; }
+    .table td { padding: 16px; border-bottom: 1px solid var(--border); font-size: 1.1rem; }
+    
+    .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.95rem; font-weight: 600; }
+    .badge-paid { background: #dcfce7; color: #166534; }
+    .badge-unpaid { background: #fee2e2; color: #991b1b; }
+    .badge-pending { background: #fef9c3; color: #92400e; }
+    .badge-processing { background: #e0e7ff; color: #3730a3; }
+</style>
+
+<div class="card">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Order ID</th>
+                <th>Customer</th>
+                <th>Items & Total</th>
+                <th>Payment</th>
+                <th>Status</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if not orders %}
+            <tr><td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">No orders yet.</td></tr>
+            {% endif %}
+            {% for order in orders %}
+            <tr>
+                <td style="font-weight: 600;">#{{ order.id }}</td>
+                <td>
+                    <div style="font-weight: 500;">{{ order.customer_name }}</div>
+                    <div style="font-size: 1.0rem; color: var(--text-muted);">{{ order.customer_email }}</div>
+                    <div style="font-size: 1.0rem; color: var(--text-muted);">{{ order.customer_phone }}</div>
+                </td>
+                <td>
+                    {% for item in order.items %}
+                    <div style="font-size: 1.05rem;">{{ item.quantity }}x {{ item.variant.product.name }} ({{ item.variant.size }})</div>
+                    {% endfor %}
+                    <div style="font-weight: 600; margin-top: 6px;">Total: ₹{{ "{:,.2f}".format(order.total_amount) }}</div>
+                    {% if order.coupon_id %}
+                    <div style="font-size: 0.95rem; color: #16a34a;">Coupon Applied</div>
+                    {% endif %}
+                </td>
+                <td>
+                    <div style="font-weight: 600; margin-bottom: 6px; font-size: 1.05rem; color: var(--dark);">
+                        {% if order.razorpay_order_id %}
+                            <i class="fa-solid fa-credit-card" style="margin-right: 4px;"></i> Online
+                        {% else %}
+                            <i class="fa-solid fa-money-bill-wave" style="margin-right: 4px;"></i> COD
+                        {% endif %}
+                    </div>
+                    <span class="badge {% if order.payment_status == 'paid' %}badge-paid{% else %}badge-unpaid{% endif %}">
+                        {{ order.payment_status | upper }}
+                    </span>
+                    {% if order.razorpay_payment_id %}
+                    <div style="font-size: 0.9rem; color: #aaa; margin-top: 4px;" title="{{ order.razorpay_payment_id }}">Txn ID saved</div>
+                    {% endif %}
+                </td>
+                <td>
+                    <form action="{{ url_for('admin.update_order_status', order_id=order.id) }}" method="POST" style="margin:0;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <select name="status" onchange="this.form.submit()" style="padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); font-family: 'Jost', sans-serif; font-size: 1.0rem; outline: none; background: #fff; cursor: pointer;">
+                            <option value="pending" {% if order.status == 'pending' %}selected{% endif %}>Pending</option>
+                            <option value="processing" {% if order.status == 'processing' %}selected{% endif %}>Processing</option>
+                            <option value="shipped" {% if order.status == 'shipped' %}selected{% endif %}>Shipped</option>
+                            <option value="delivered" {% if order.status == 'delivered' %}selected{% endif %}>Delivered</option>
+                            <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                        </select>
+                    </form>
+                </td>
+                <td style="font-size: 1.05rem; color: var(--text-muted);">{{ order.created_at.strftime('%b %d, %Y') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

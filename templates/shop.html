@@ -6,8 +6,14 @@
 <section class="shop-banner">
     <div class="shop-banner-content">
         <p class="shop-banner-eyebrow">Explore The Full Collection</p>
-        <h1 class="shop-banner-title">Our Fragrances</h1>
-        <p class="shop-banner-sub">Discover over {{ pagination.total }} handcrafted perfumes curated for the discerning nose.</p>
+        <h1 class="shop-banner-title">{% if search_query %}Results for "{{ search_query }}"{% else %}Our Fragrances{% endif %}</h1>
+        <p class="shop-banner-sub">
+            {% if search_query %}
+                Found {{ pagination.total }} fragrance{{ 's' if pagination.total != 1 else '' }} matching your search.
+            {% else %}
+                Discover over {{ pagination.total }} handcrafted perfumes curated for the discerning nose.
+            {% endif %}
+        </p>
 
         <!-- CATEGORY PILLS -->
         <div class="shop-cat-pills">
@@ -110,8 +116,8 @@
                             <h4>{{ product.name }}</h4>
                             <p class="price">
                                 {% if first_variant %}
-                                    {% if isOnSale %}<span class="old-price">${{ "{:,.2f}".format(first_variant.original_price) }}</span>{% endif %}
-                                    <span class="current-price">${{ "{:,.2f}".format(first_variant.price) }}</span>
+                                    {% if isOnSale %}<span class="old-price">₹{{ "{:,.2f}".format(first_variant.original_price) }}</span>{% endif %}
+                                    <span class="current-price">₹{{ "{:,.2f}".format(first_variant.price) }}</span>
                                 {% else %}Price TBD{% endif %}
                             </p>
                             <span class="btn-buy-now">Buy Now</span>
@@ -125,18 +131,18 @@
             {% if pagination.pages > 1 %}
             <div class="shop-pagination">
                 {% if pagination.has_prev %}
-                <a href="{{ url_for('main.shop', cat=active_cat, sort=active_sort, on_sale=active_sale, page=pagination.prev_num) }}" class="pg-btn">Prev</a>
+                <a href="{{ url_for('main.shop', cat=active_cat, sort=active_sort, on_sale=active_sale, search=search_query, page=pagination.prev_num) }}" class="pg-btn">Prev</a>
                 {% else %}<span class="pg-btn pg-btn--disabled">Prev</span>{% endif %}
 
                 {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
                     {% if p %}
-                    <a href="{{ url_for('main.shop', cat=active_cat, sort=active_sort, on_sale=active_sale, page=p) }}"
+                    <a href="{{ url_for('main.shop', cat=active_cat, sort=active_sort, on_sale=active_sale, search=search_query, page=p) }}"
                        class="pg-btn {% if p == page %}pg-btn--active{% endif %}">{{ p }}</a>
                     {% else %}<span class="pg-dots">...</span>{% endif %}
                 {% endfor %}
 
                 {% if pagination.has_next %}
-                <a href="{{ url_for('main.shop', cat=active_cat, sort=active_sort, on_sale=active_sale, page=pagination.next_num) }}" class="pg-btn">Next</a>
+                <a href="{{ url_for('main.shop', cat=active_cat, sort=active_sort, on_sale=active_sale, search=search_query, page=pagination.next_num) }}" class="pg-btn">Next</a>
                 {% else %}<span class="pg-btn pg-btn--disabled">Next</span>{% endif %}
             </div>
             {% endif %}

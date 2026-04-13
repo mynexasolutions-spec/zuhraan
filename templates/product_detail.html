@@ -46,14 +46,15 @@
 
             <div class="price-display">
                 <span id="currentPrice" class="detail-current-price">
-                    {% if product.variants %}${{ "{:,.2f}".format(product.variants[0].price) }}{% else %}Price TBD{% endif %}
+                    {% if product.variants %}₹{{ "{:,.2f}".format(product.variants[0].price) }}{% else %}Price TBD{% endif %}
                 </span>
                 <span id="oldPrice" class="detail-old-price" style="display: {% if product.variants and product.variants[0].original_price and product.variants[0].original_price > product.variants[0].price %}inline{% else %}none{% endif %};">
-                    {% if product.variants and product.variants[0].original_price %}${{ "{:,.2f}".format(product.variants[0].original_price) }}{% endif %}
+                    {% if product.variants and product.variants[0].original_price %}₹{{ "{:,.2f}".format(product.variants[0].original_price) }}{% endif %}
                 </span>
             </div>
 
             <form id="addToCartForm" data-action="{{ url_for('main.add_to_cart') }}" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="variant_id" id="selectedVariantId" value="{{ product.variants[0].id if product.variants else '' }}">
                 
                 <div class="quantity-controller" style="display: flex; align-items: center; gap: 20px; margin-bottom: 30px;">
@@ -103,7 +104,7 @@
     <div class="product-long-description">
         <h2 class="section-heading">Detailed Narrative</h2>
         <div class="description-content">
-            {{ product.full_description or "No detailed description available." }}
+            {{ (product.full_description or "No detailed description available.") | clean_html | safe }}
         </div>
     </div>
 
@@ -112,7 +113,7 @@
     {% if related_products %}
     <div class="related-section">
         <h2 class="section-heading">You May Also Exquisite</h2>
-        <div class="related-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 80px 25px; margin-bottom: 60px;">
+        <div class="related-grid">
             {% for rel in related_products %}
             {% set rel_variant = rel.variants[0] if rel.variants else None %}
             {% set rel_img = rel.images.split(',')[0] if rel.images else 'images/products/default.webp' %}
@@ -135,9 +136,9 @@
                         <p class="price">
                             {% if rel_variant %}
                                 {% if rel_variant.original_price and (rel_variant.original_price > rel_variant.price) %}
-                                <span class="old-price">${{ "{:,.2f}".format(rel_variant.original_price) }}</span>
+                                <span class="old-price">₹{{ "{:,.2f}".format(rel_variant.original_price) }}</span>
                                 {% endif %}
-                                <span class="current-price">${{ "{:,.2f}".format(rel_variant.price) }}</span>
+                                <span class="current-price">₹{{ "{:,.2f}".format(rel_variant.price) }}</span>
                             {% else %}Price TBD{% endif %}
                         </p>
                         <span class="btn-buy-now">Buy Now</span>
@@ -179,6 +180,7 @@
         <div class="add-review-box">
             <h3 class="box-title">Share Your Experience</h3>
             <form action="{{ url_for('main.submit_review', slug=product.slug) }}" method="POST" class="review-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-row">
                     <div class="form-group">
                         <label>Your Name</label>
@@ -407,18 +409,33 @@
         text-align: center;
     }
 
-    /* RELATED */
+    /* RELATED GRID BASE */
+    .related-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 80px 36px;
+        margin-bottom: 60px;
+    }
+
+    /* RELATED — RESPONSIVE */
     @media (max-width: 1024px) {
         .product-container { grid-template-columns: 1fr; gap: 40px; }
         .product-gallery { position: static; }
-        .related-grid { grid-template-columns: repeat(2, 1fr); }
+        .related-grid { grid-template-columns: repeat(2, 1fr); gap: 80px 24px; }
+    }
+
+    @media (max-width: 800px) {
+        .related-grid { grid-template-columns: repeat(2, 1fr); gap: 70px 12px; }
+        .rel-img-box { height: 210px; }
+        .rel-card .product-card-body { padding: 18px 10px 36px; border-radius: 0 0 150px 150px; }
+        .rel-card h4 { font-size: 1rem; }
+        .rel-card .btn-buy-now { padding: 8px 18px; font-size: 0.78rem; bottom: -14px; }
     }
 
     @media (max-width: 600px) {
         .product-page { padding: 0 16px; margin-top: 20px; }
         .product-name-h1 { font-size: 2.2rem; }
         .detail-current-price { font-size: 1.8rem; }
-        .related-grid { grid-template-columns: 1fr; gap: 60px; }
         .section-heading { font-size: 1.8rem; }
         .product-specs-tabular { margin-top: 40px; }
         .btn-add-to-cart { padding: 16px; font-size: 0.9rem; }
@@ -426,53 +443,50 @@
         .thumb { width: 60px; height: 60px; }
     }
 
-    /* RELATED CARD MATCHING HOME PAGE */
-    .rel-card { text-decoration: none; }
+    /* RELATED CARD MATCHING SHOP / HOME PAGE */
+    .rel-card { text-decoration: none; color: inherit; display: block; }
     .rel-card .product-card {
         background: transparent;
         overflow: visible;
         width: 100%;
-        max-width: 320px;
         position: relative;
-        margin: 0 auto;
-        display: flex;
-        flex-direction: column;
     }
     .rel-img-box {
         width: 100%;
         height: 300px;
         overflow: hidden;
-        border-radius: 20px 20px 0 0;
+        position: relative;
     }
     .rel-img-box img {
         width: 100%;
         height: 100%;
         object-fit: cover;
         display: block;
-        transition: transform 0.5s ease;
+        transition: transform 0.55s ease;
     }
-    .rel-card:hover .rel-img-box img { transform: scale(1.05); }
+    .rel-card:hover .rel-img-box img { transform: scale(1.07); }
 
     .rel-card .product-card-body {
         background: #fff;
-        border-radius: 0 0 250px 250px;
+        border-radius: 0 0 220px 220px;
         display: flex;
         flex-direction: column;
         align-items: center;
         text-align: center;
-        padding: 24px 18px 46px;
+        padding: 24px 14px 44px;
         position: relative;
-        box-shadow: 0 15px 30px rgba(0,0,0,0.03);
+        box-shadow: 0 10px 32px rgba(0,0,0,0.04);
+        margin-top: -8px;
     }
     .rel-card h4 {
         font-family: 'Cormorant Garamond', serif;
-        font-size: 1.3rem;
+        font-size: 1.2rem;
         font-weight: 700;
         color: var(--dark);
-        margin: 0 0 8px;
+        margin-bottom: 4px;
     }
     .rel-card .price {
-        font-size: 1.1rem;
+        font-size: 0.98rem;
         color: var(--dark);
         font-weight: 600;
         margin-bottom: 10px;
@@ -480,35 +494,37 @@
     .rel-card .current-price { color: var(--dark); }
     .rel-card .old-price {
         text-decoration: line-through;
-        opacity: 0.5;
-        font-size: 0.85rem;
-        margin-right: 8px;
+        color: var(--muted);
+        font-size: 0.82rem;
+        margin-right: 5px;
+        opacity: 0.55;
     }
     .rel-card .btn-buy-now {
         position: absolute;
-        bottom: -22px;
+        bottom: -18px;
         left: 50%;
         transform: translateX(-50%);
         background: var(--dark);
         color: #fff;
         border: none;
-        padding: 12px 30px;
+        padding: 10px 26px;
         border-radius: 30px;
         font-family: 'Jost', sans-serif;
-        font-size: 0.95rem;
-        font-weight: 500;
+        font-size: 0.84rem;
+        font-weight: 600;
         cursor: pointer;
-        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-        transition: transform 0.2s, background 0.2s;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.18);
+        transition: all 0.28s;
         white-space: nowrap;
+        text-decoration: none;
     }
     .rel-card:hover .btn-buy-now {
-        transform: translateX(-50%) scale(1.05);
         background: var(--amber);
+        transform: translateX(-50%) translateY(-2px);
     }
 
-    /* TAG BADGES FROM SHOP */
-    .rel-card .shop-tag-badge {
+    /* TAG BADGES — identical to shop page */
+    .shop-tag-badge {
         position: absolute; top: 13px; left: 13px; z-index: 5;
         padding: 5px 11px; border-radius: 20px;
         font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
@@ -527,10 +543,10 @@ function updateMainImage(src, thumb) {
 }
 
 function updatePrice(price, original, pill, variantId) {
-    document.getElementById('currentPrice').innerText = '$' + parseFloat(price).toLocaleString(undefined, {minimumFractionDigits: 2});
+    document.getElementById('currentPrice').innerText = '₹' + parseFloat(price).toLocaleString(undefined, {minimumFractionDigits: 2});
     const oldPriceEl = document.getElementById('oldPrice');
     if (original && parseFloat(original) > parseFloat(price)) {
-        oldPriceEl.innerText = '$' + parseFloat(original).toLocaleString(undefined, {minimumFractionDigits: 2});
+        oldPriceEl.innerText = '₹' + parseFloat(original).toLocaleString(undefined, {minimumFractionDigits: 2});
         oldPriceEl.style.display = 'inline';
     } else {
         oldPriceEl.style.display = 'none';

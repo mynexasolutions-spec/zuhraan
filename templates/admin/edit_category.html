@@ -1,0 +1,33 @@
+{% extends 'admin/base.html' %}
+
+{% block content %}
+<div class="header">
+    <h1>Edit Category: {{ category.name }}</h1>
+    <a href="{{ url_for('admin.manage_categories') }}" style="color: var(--primary); text-decoration: none; font-size: 1.075rem;"><i class="fa-solid fa-arrow-left"></i> Back to Categories</a>
+</div>
+
+<div style="background: #fff; padding: 32px; border-radius: 12px; box-shadow: var(--card-shadow); max-width: 600px;">
+    <form action="{{ url_for('admin.edit_category', category_id=category.id) }}" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        
+        <div style="margin-bottom: 24px;">
+            <label style="display: block; font-size: 1.075rem; font-weight: 500; color: #475569; margin-bottom: 8px;">Category Name</label>
+            <input type="text" name="name" value="{{ category.name }}" required style="width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 1.15rem;">
+        </div>
+        
+        <div style="margin-bottom: 24px;">
+            <label style="display: block; font-size: 1.075rem; font-weight: 500; color: #475569; margin-bottom: 8px;">Update Category Image (Optional)</label>
+            {% if category.image %}
+            <div style="margin-bottom: 12px;">
+                <p style="font-size: 0.95rem; color: #64748b; margin-bottom: 4px;">Current Image:</p>
+                <img src="{{ url_for('static', filename=category.image) }}" style="height: 80px; border-radius: 8px; border: 1px solid var(--border); object-fit: cover;">
+            </div>
+            {% endif %}
+            <input type="file" name="image" accept="image/*" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: #fafafa;">
+            <p style="font-size: 0.95rem; color: #64748b; margin-top: 5px;">Leave empty to keep the existing image.</p>
+        </div>
+        
+        <button type="submit" style="background: var(--primary); color: #fff; border: none; padding: 12px 32px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s;">Save Changes</button>
+    </form>
+</div>
+{% endblock %}

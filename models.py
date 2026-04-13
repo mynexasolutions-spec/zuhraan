@@ -10,11 +10,22 @@ class User(db.Model, UserMixin):
     name = db.Column(db.String(100), nullable=True) # Added for personalized narrative
     password = db.Column(db.String(200), nullable=False)
     role = db.Column(db.String(20), default='user') # 'admin' or 'user'
+    
+    # Saved Address Fields
+    phone = db.Column(db.String(20))
+    address_line1 = db.Column(db.String(255))
+    address_line2 = db.Column(db.String(255))
+    city = db.Column(db.String(100))
+    state = db.Column(db.String(100))
+    pincode = db.Column(db.String(20))
+    country = db.Column(db.String(100), default='India')
+    
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Category(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
+    image = db.Column(db.String(255), nullable=True) # Category cover image
     products = db.relationship('Product', backref='category', lazy=True)
 
 class Product(db.Model):
@@ -77,6 +88,7 @@ class Order(db.Model):
     payment_status = db.Column(db.String(50), default='unpaid') # unpaid, paid
     razorpay_order_id = db.Column(db.String(100))
     razorpay_payment_id = db.Column(db.String(100))
+    coupon_id = db.Column(db.Integer, db.ForeignKey('coupon.id'), nullable=True) # To safely increment usage
     
     items = db.relationship('OrderItem', backref='order', lazy=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -112,10 +124,16 @@ class Coupon(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     code = db.Column(db.String(50), unique=True, nullable=False)           # e.g. "SAVE20"
     discount_type = db.Column(db.String(10), nullable=False, default='percent')  # 'percent' or 'fixed'
-    discount_value = db.Column(db.Float, nullable=False)                   # 20 (= 20% or $20)
+    discount_value = db.Column(db.Float, nullable=False)                   # 20 (= 20% or ₹20)
     min_order_amount = db.Column(db.Float, default=0.0)                    # minimum cart value
     max_uses = db.Column(db.Integer, nullable=True)                        # null = unlimited
     used_count = db.Column(db.Integer, default=0)
     is_active = db.Column(db.Boolean, default=True)
     expires_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class OfferBanner(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    image = db.Column(db.String(200), nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

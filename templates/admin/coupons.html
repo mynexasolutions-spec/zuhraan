@@ -9,39 +9,40 @@
 
 <style>
     .panel { background: var(--white); padding: 28px; border-radius: 12px; box-shadow: var(--card-shadow); margin-bottom: 28px; }
-    .panel h3 { font-size: 1rem; font-weight: 600; color: #1e293b; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+    .panel h3 { font-size: 1.2rem; font-weight: 600; color: #1e293b; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
     .form-row-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
     .fg { display: flex; flex-direction: column; gap: 6px; }
-    .fg label { font-size: 0.8rem; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.06em; }
-    .fg input, .fg select { padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 0.9rem; color: #1e293b; outline: none; }
+    .fg label { font-size: 1.0rem; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.06em; }
+    .fg input, .fg select { padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 1.1rem; color: #1e293b; outline: none; }
     .fg input:focus, .fg select:focus { border-color: var(--primary); }
-    .btn-create { background: var(--primary); color: #fff; border: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: opacity 0.2s; }
+    .btn-create { background: var(--primary); color: #fff; border: none; padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 1.1rem; cursor: pointer; transition: opacity 0.2s; }
     .btn-create:hover { opacity: 0.85; }
 
     /* TABLE */
     table { width: 100%; border-collapse: collapse; }
-    th { text-align: left; padding: 10px 14px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); border-bottom: 1px solid var(--border); }
-    td { padding: 14px; font-size: 0.88rem; color: #334155; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+    th { text-align: left; padding: 10px 14px; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+    td { padding: 14px; font-size: 1.08rem; color: #334155; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
     tr:last-child td { border-bottom: none; }
-    .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.05em; }
+    .badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: 0.92rem; font-weight: 700; letter-spacing: 0.05em; }
     .badge.active { background: #f0fdf4; color: #16a34a; }
     .badge.inactive { background: #fef2f2; color: #dc2626; }
     .badge.percent { background: #eff6ff; color: #2563eb; }
     .badge.fixed { background: #fef9c3; color: #ca8a04; }
-    .code-pill { font-family: 'Courier New', monospace; background: #f1f5f9; padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; font-weight: 700; color: #1e293b; letter-spacing: 0.05em; }
-    .action-link { font-size: 0.78rem; font-weight: 600; text-decoration: none; padding: 5px 10px; border-radius: 6px; transition: background 0.15s; }
+    .code-pill { font-family: 'Courier New', monospace; background: #f1f5f9; padding: 4px 10px; border-radius: 6px; font-size: 1.05rem; font-weight: 700; color: #1e293b; letter-spacing: 0.05em; }
+    .action-link { font-size: 0.98rem; font-weight: 600; text-decoration: none; padding: 5px 10px; border-radius: 6px; transition: background 0.15s; }
     .action-toggle { color: #2563eb; background: #eff6ff; }
     .action-toggle:hover { background: #dbeafe; }
     .action-delete { color: #dc2626; background: #fef2f2; margin-left: 6px; }
     .action-delete:hover { background: #fee2e2; }
-    .empty { text-align: center; padding: 60px 20px; color: var(--text-muted); font-size: 0.95rem; }
+    .empty { text-align: center; padding: 60px 20px; color: var(--text-muted); font-size: 1.15rem; }
 </style>
 
 <!-- CREATE FORM -->
 <div class="panel">
     <h3><i class="fa-solid fa-plus-circle" style="color:var(--primary)"></i> Create New Coupon</h3>
     <form action="{{ url_for('admin.create_coupon') }}" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-row">
             <div class="fg">
                 <label>Coupon Code <span style="color:#ef4444">*</span></label>
@@ -51,7 +52,7 @@
                 <label>Discount Type <span style="color:#ef4444">*</span></label>
                 <select name="discount_type" required>
                     <option value="percent">Percentage (%)</option>
-                    <option value="fixed">Fixed Amount ($)</option>
+                    <option value="fixed">Fixed Amount (₹)</option>
                 </select>
             </div>
             <div class="fg">
@@ -61,7 +62,7 @@
         </div>
         <div class="form-row-4">
             <div class="fg">
-                <label>Min. Order Amount ($)</label>
+                <label>Min. Order Amount (₹)</label>
                 <input type="number" name="min_order_amount" min="0" step="0.01" placeholder="0 = no minimum">
             </div>
             <div class="fg">
@@ -105,13 +106,13 @@
                 <td><span class="code-pill">{{ c.code }}</span></td>
                 <td>
                     <span class="badge {{ c.discount_type }}">
-                        {% if c.discount_type == 'percent' %}<i class="fa-solid fa-percent" style="font-size:0.65rem"></i> Percent{% else %}<i class="fa-solid fa-dollar-sign" style="font-size:0.65rem"></i> Fixed{% endif %}
+                        {% if c.discount_type == 'percent' %}<i class="fa-solid fa-percent" style="font-size: 0.85rem"></i> Percent{% else %}<i class="fa-solid fa-indian-rupee-sign" style="font-size: 0.85rem"></i> Fixed{% endif %}
                     </span>
                 </td>
                 <td style="font-weight:700;">
-                    {% if c.discount_type == 'percent' %}{{ c.discount_value }}%{% else %}${{ "{:,.2f}".format(c.discount_value) }}{% endif %}
+                    {% if c.discount_type == 'percent' %}{{ c.discount_value }}%{% else %}₹{{ "{:,.2f}".format(c.discount_value) }}{% endif %}
                 </td>
-                <td>{% if c.min_order_amount > 0 %}${{ "{:,.2f}".format(c.min_order_amount) }}{% else %}<span style="color:#aaa;">None</span>{% endif %}</td>
+                <td>{% if c.min_order_amount > 0 %}₹{{ "{:,.2f}".format(c.min_order_amount) }}{% else %}<span style="color:#aaa;">None</span>{% endif %}</td>
                 <td>{{ c.used_count }}{% if c.max_uses %} / {{ c.max_uses }}{% else %} / ∞{% endif %}</td>
                 <td>{% if c.expires_at %}{{ c.expires_at.strftime('%d %b %Y') }}{% else %}<span style="color:#aaa;">Never</span>{% endif %}</td>
                 <td>
@@ -123,9 +124,9 @@
                     <a href="{{ url_for('admin.toggle_coupon', coupon_id=c.id) }}" class="action-link action-toggle">
                         {% if c.is_active %}Deactivate{% else %}Activate{% endif %}
                     </a>
-                    <a href="{{ url_for('admin.delete_coupon', coupon_id=c.id) }}"
+                    <a href="javascript:void(0)"
                        class="action-link action-delete"
-                       onclick="return confirm('Delete coupon {{ c.code }}?')">Delete</a>
+                       onclick="openDeleteModal(`coupon {{ c.code }}`, `{{ url_for('admin.delete_coupon', coupon_id=c.id) }}`)">Delete</a>
                 </td>
             </tr>
             {% endfor %}
@@ -133,7 +134,7 @@
     </table>
     {% else %}
     <div class="empty">
-        <i class="fa-solid fa-tag" style="font-size: 2rem; opacity:0.2;"></i>
+        <i class="fa-solid fa-tag" style="font-size: 2.2rem; opacity:0.2;"></i>
         <p style="margin-top:12px;">No coupons created yet. Add your first one above.</p>
     </div>
     {% endif %}
