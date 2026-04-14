@@ -305,7 +305,7 @@
 .categories-section {
     max-width: 1600px;
     margin: 0 auto;
-    padding: 100px 60px;
+    padding: 100px 60px 40px;
 }
 
 .section-title {
@@ -427,7 +427,7 @@
 
 @media (max-width: 768px) {
     .categories-section {
-        padding: 60px 16px 20px; /* Restored space after banner */
+        padding: 60px 16px 10px;
     }
     .categories-grid {
         gap: 12px;
@@ -450,6 +450,29 @@
     .section-title {
         font-size: 2.2rem;
         margin-bottom: 30px;
+    }
+}
+
+/* ── PROMO BANNER ── */
+.full-width-banner {
+    width: 100%;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    padding: 60px 0;
+}
+
+.full-width-banner img {
+    width: 95%;
+    max-width: 1600px;
+    height: auto;
+    display: block;
+    object-fit: contain;
+}
+
+@media (max-width: 768px) {
+    .full-width-banner {
+        padding: 30px 0;
     }
 }
 

@@ -107,7 +107,7 @@
             <div style="text-align: center; color: #888; grid-column: 1/-1; padding: 40px;">No categories configured yet.</div>
         {% else %}
             {% for cat in categories %}
-            <a href="{{ url_for('main.shop', cat=cat.id) }}" class="category-card">
+            <a href="{{ url_for('main.shop', cat=cat.slug) }}" class="category-card">
                 <img src="{{ get_image_url(cat.image) }}" alt="{{ cat.name }}">
                 <div class="cat-overlay"></div>
                 <div class="cat-content">
@@ -122,6 +122,12 @@
             {% endfor %}
         {% endif %}
     </div>
+</section>
+</div>
+
+<div class="section-bg-white">
+<section class="full-width-banner">
+    <img src="{{ get_image_url('images/banner/element_4.png') }}" alt="Promotional Banner">
 </section>
 </div>
 

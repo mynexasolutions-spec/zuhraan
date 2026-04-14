@@ -89,7 +89,7 @@ def submit_review(slug):
 
 @main_bp.route('/shop')
 def shop():
-    cat_id = request.args.get('cat', type=int)
+    cat_slug = request.args.get('cat')
     sort = request.args.get('sort', 'newest')
     on_sale = request.args.get('on_sale', type=int)
     min_price = request.args.get('min_price', type=float)
@@ -107,7 +107,12 @@ def shop():
             (Product.tag.ilike(f'%{search_query}%'))
         )
         
-    if cat_id: query = query.filter_by(category_id=cat_id)
+    active_category = None
+    if cat_slug:
+        active_category = Category.query.filter_by(slug=cat_slug).first()
+        if active_category:
+            query = query.filter_by(category_id=active_category.id)
+            
     if on_sale == 1:
         query = query.join(ProductVariant).filter(ProductVariant.original_price > ProductVariant.price)
     if min_price is not None: query = query.join(ProductVariant, isouter=True, aliased=True).filter(ProductVariant.price >= min_price)
@@ -119,7 +124,7 @@ def shop():
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
     products = pagination.items
     categories = Category.query.all()
-    return render_template('shop.html', categories=categories, products=products, active_cat=cat_id, active_sort=sort, active_sale=on_sale, active_min_price=min_price, active_max_price=max_price, search_query=search_query, pagination=pagination, page=page)
+    return render_template('shop.html', categories=categories, products=products, active_cat=cat_slug, active_sort=sort, active_sale=on_sale, active_min_price=min_price, active_max_price=max_price, search_query=search_query, pagination=pagination, page=page)
 
 # --- CART LOGIC ---
 @main_bp.route('/cart/add', methods=['POST'])

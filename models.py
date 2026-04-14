@@ -25,6 +25,7 @@ class User(db.Model, UserMixin):
 class Category(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
+    slug = db.Column(db.String(100), unique=True, nullable=True)
     image = db.Column(db.String(255), nullable=True) # Category cover image/Cloudinary URL
     image_pub_id = db.Column(db.String(255), nullable=True)
     products = db.relationship('Product', backref='category', lazy=True)

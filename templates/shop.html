@@ -73,7 +73,7 @@
                 <ul class="side-filter-list">
                     <li><a href="{{ url_for('main.shop') }}" class="{% if not active_cat and not active_sale %}active{% endif %}">Show All</a></li>
                     {% for cat in categories %}
-                    <li><a href="{{ url_for('main.shop', cat=cat.id, sort=active_sort, on_sale=active_sale, min_price=active_min_price, max_price=active_max_price) }}" class="{% if active_cat == cat.id %}active{% endif %}">{{ cat.name }}</a></li>
+                    <li><a href="{{ url_for('main.shop', cat=cat.slug, sort=active_sort, on_sale=active_sale, min_price=active_min_price, max_price=active_max_price) }}" class="{% if active_cat == cat.slug %}active{% endif %}">{{ cat.name }}</a></li>
                     {% endfor %}
                 </ul>
             </div>

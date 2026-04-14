@@ -6,6 +6,14 @@ from functools import wraps
 from models import db, Product, Category, ProductVariant, Order, User, Setting, Review, Coupon, OfferBanner
 import cloudinary.uploader
 from datetime import datetime, timedelta
+import re
+
+def slugify(text):
+    text = text.lower()
+    text = re.sub(r'[^\w\s-]', '', text)
+    text = re.sub(r'[\s_-]+', '-', text)
+    text = text.strip('-')
+    return text
 
 def admin_required(f):
     @wraps(f)
@@ -98,9 +106,18 @@ def add_product():
                 else:
                     flash(f'Invalid file type: {file.filename}. Only images are allowed.', 'error')
         
+        # Generate unique slug
+        base_slug = slugify(name)
+        slug = base_slug
+        counter = 1
+        while Product.query.filter_by(slug=slug).first():
+            slug = f"{base_slug}-{counter}"
+            counter += 1
+
         # Create Product
         new_product = Product(
             name=name,
+            slug=slug,
             category_id=category_id,
             short_description=short_desc,
             full_description=full_desc,
@@ -152,7 +169,17 @@ def add_product():
 def edit_product(product_id):
     product = Product.query.get_or_404(product_id)
     if request.method == 'POST':
-        product.name = request.form.get('name')
+        new_name = request.form.get('name')
+        if product.name != new_name:
+            product.name = new_name
+            base_slug = slugify(new_name)
+            slug = base_slug
+            counter = 1
+            while Product.query.filter(Product.slug == slug, Product.id != product.id).first():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            product.slug = slug
+            
         product.category_id = int(request.form.get('category'))
         product.short_description = request.form.get('short_description')
         product.full_description = request.form.get('full_description')
@@ -236,7 +263,15 @@ def manage_categories():
     if request.method == 'POST':
         name = request.form.get('name')
         if name:
-            new_cat = Category(name=name)
+            # Generate unique slug
+            base_slug = slugify(name)
+            slug = base_slug
+            counter = 1
+            while Category.query.filter_by(slug=slug).first():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+                
+            new_cat = Category(name=name, slug=slug)
             
             # Handle image upload
             image_file = request.files.get('image')
@@ -279,7 +314,15 @@ def edit_category(category_id):
     if request.method == 'POST':
         name = request.form.get('name')
         if name:
-            cat.name = name
+            if cat.name != name:
+                cat.name = name
+                base_slug = slugify(name)
+                slug = base_slug
+                counter = 1
+                while Category.query.filter(Category.slug == slug, Category.id != cat.id).first():
+                    slug = f"{base_slug}-{counter}"
+                    counter += 1
+                cat.slug = slug
             
             image_file = request.files.get('image')
             if image_file and image_file.filename:
