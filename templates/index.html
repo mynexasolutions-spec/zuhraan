@@ -108,7 +108,7 @@
         {% else %}
             {% for cat in categories %}
             <a href="{{ url_for('main.shop', cat=cat.id) }}" class="category-card">
-                <img src="/static/{{ cat.image or 'images/banner/zuhran_2.webp' }}" alt="{{ cat.name }}">
+                <img src="{{ get_image_url(cat.image) }}" alt="{{ cat.name }}">
                 <div class="cat-overlay"></div>
                 <div class="cat-content">
                     <h3 class="cat-title">{{ cat.name }}</h3>
