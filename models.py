@@ -25,7 +25,8 @@ class User(db.Model, UserMixin):
 class Category(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    image = db.Column(db.String(255), nullable=True) # Category cover image
+    image = db.Column(db.String(255), nullable=True) # Category cover image/Cloudinary URL
+    image_pub_id = db.Column(db.String(255), nullable=True)
     products = db.relationship('Product', backref='category', lazy=True)
 
 class Product(db.Model):
@@ -48,6 +49,7 @@ class Product(db.Model):
     
     # Images - Store multiple image paths as a JSON or comma-separated string
     images = db.Column(db.Text) 
+    image_pub_ids = db.Column(db.Text) # Comma-separated public ids for bulk delete
     
     # Special tag for homepage features: 'best_seller', 'new_arrival', 'featured'
     tag = db.Column(db.String(50), nullable=True)
@@ -134,6 +136,32 @@ class Coupon(db.Model):
 
 class OfferBanner(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    image = db.Column(db.String(200), nullable=False)
+    image = db.Column(db.String(255), nullable=False)
+    image_pub_id = db.Column(db.String(255), nullable=True)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+import cloudinary.uploader
+from sqlalchemy import event
+
+def auto_delete_category_image(mapper, connection, target):
+    if target.image_pub_id:
+        try: cloudinary.uploader.destroy(target.image_pub_id)
+        except: pass
+
+def auto_delete_product_images(mapper, connection, target):
+    if target.image_pub_ids:
+        pub_ids = target.image_pub_ids.split(',')
+        for pid in pub_ids:
+            if pid:
+                try: cloudinary.uploader.destroy(pid)
+                except: pass
+
+def auto_delete_offer_image(mapper, connection, target):
+    if target.image_pub_id:
+        try: cloudinary.uploader.destroy(target.image_pub_id)
+        except: pass
+
+event.listen(Category, 'after_delete', auto_delete_category_image)
+event.listen(Product, 'after_delete', auto_delete_product_images)
+event.listen(OfferBanner, 'after_delete', auto_delete_offer_image)

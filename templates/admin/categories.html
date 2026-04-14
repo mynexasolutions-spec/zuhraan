@@ -39,7 +39,7 @@
                 <tr style="border-bottom: 1px solid #f1f5f9;">
                     <td style="padding: 16px;">
                         {% if cat.image %}
-                        <img src="{{ url_for('static', filename=cat.image) }}" style="width: 48px; height: 48px; object-fit: cover; border-radius: 8px;">
+                        <img src="{{ get_image_url(cat.image) }}" style="width: 48px; height: 48px; object-fit: cover; border-radius: 8px;">
                         {% else %}
                         <div style="width: 48px; height: 48px; background: #e2e8f0; border-radius: 8px; display:flex; align-items:center; justify-content:center; color:#aaa;"><i class="fa-solid fa-image"></i></div>
                         {% endif %}

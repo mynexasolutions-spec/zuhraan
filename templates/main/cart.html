@@ -375,7 +375,7 @@
                     <tr>
                         <td>
                             <div class="ci-wrap">
-                                <img src="/static/{{ img }}" class="ci-img" alt="{{ item.variant.product.name }}">
+                                <img src="{{ get_image_url(img) }}" class="ci-img" alt="{{ item.variant.product.name }}">
                                 <div>
                                     <div class="ci-name">{{ item.variant.product.name }}</div>
                                     <div class="ci-sub">{{ item.variant.size }} &middot; {{ item.variant.product.category.name }}</div>

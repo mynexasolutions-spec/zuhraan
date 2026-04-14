@@ -109,7 +109,7 @@
                         {% endif %}
 
                         <div class="product-img-box">
-                            <img src="{% if img_list %}/static/{{ img_list[0] }}{% else %}/static/images/banner/zuhran_2.webp{% endif %}"
+                            <img src="{% if img_list %}{{ get_image_url(img_list[0]) }}{% else %}/static/images/banner/zuhran_2.webp{% endif %}"
                                  alt="{{ product.name }}">
                         </div>
                         <div class="product-card-body">

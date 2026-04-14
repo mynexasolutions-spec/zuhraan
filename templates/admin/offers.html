@@ -50,7 +50,7 @@
     <div class="offers-grid">
         {% for offer in offers %}
         <div class="offer-item">
-            <img src="{{ url_for('static', filename=offer.image) }}" alt="Offer Banner" class="offer-img">
+            <img src="{{ get_image_url(offer.image) }}" alt="Offer Banner" class="offer-img">
             <div class="offer-actions">
                 <span class="offer-date">Added {{ offer.created_at.strftime('%b %d, %Y') }}</span>
                 <a href="javascript:void(0)" onclick="openDeleteModal(`Offer Banner #{{ offer.id }}`, `{{ url_for('admin.delete_offer', offer_id=offer.id) }}`)" class="btn-delete">

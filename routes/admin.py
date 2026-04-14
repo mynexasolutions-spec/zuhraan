@@ -4,6 +4,7 @@ from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from functools import wraps
 from models import db, Product, Category, ProductVariant, Order, User, Setting, Review, Coupon, OfferBanner
+import cloudinary.uploader
 from datetime import datetime, timedelta
 
 def admin_required(f):
@@ -81,16 +82,19 @@ def add_product():
         # Processing Images
         uploaded_files = request.files.getlist('images')
         image_paths = []
-        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        image_pubs = []
         ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'gif'}
         
         for file in uploaded_files:
             if file and file.filename:
                 ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
                 if ext in ALLOWED_EXTENSIONS:
-                    filename = secure_filename(file.filename)
-                    file.save(os.path.join(UPLOAD_FOLDER, filename))
-                    image_paths.append(f'images/products/{filename}')
+                    try:
+                        res = cloudinary.uploader.upload(file, folder='products')
+                        image_paths.append(res.get('secure_url'))
+                        image_pubs.append(res.get('public_id'))
+                    except Exception as e:
+                        flash(f'Upload failed: {str(e)}', 'error')
                 else:
                     flash(f'Invalid file type: {file.filename}. Only images are allowed.', 'error')
         
@@ -107,7 +111,8 @@ def add_product():
             projection=proj,
             tag=tag,
             best_seller_rank=best_seller_rank,
-            images=','.join(image_paths) if image_paths else ''
+            images=','.join(image_paths) if image_paths else '',
+            image_pub_ids=','.join(image_pubs) if image_pubs else ''
         )
         db.session.add(new_product)
         db.session.flush() # To get ID for variants
@@ -163,18 +168,22 @@ def edit_product(product_id):
         # New Images addition
         uploaded_files = request.files.getlist('images')
         image_paths = product.images.split(',') if product.images else []
-        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        image_pubs = product.image_pub_ids.split(',') if product.image_pub_ids else []
         ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'gif'}
         
         for file in uploaded_files:
             if file and file.filename:
                 ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
                 if ext in ALLOWED_EXTENSIONS:
-                    filename = secure_filename(file.filename)
-                    file.save(os.path.join(UPLOAD_FOLDER, filename))
-                    image_paths.append(f'images/products/{filename}')
+                    try:
+                        res = cloudinary.uploader.upload(file, folder='products')
+                        image_paths.append(res.get('secure_url'))
+                        image_pubs.append(res.get('public_id'))
+                    except Exception as e:
+                        flash(f'Upload error: {str(e)}', 'error')
         
         product.images = ','.join(image_paths) if image_paths else ''
+        product.image_pub_ids = ','.join(image_pubs) if image_pubs else ''
         
         # Variants update
         # 50ml
@@ -235,11 +244,12 @@ def manage_categories():
                 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'gif'}
                 ext = image_file.filename.rsplit('.', 1)[1].lower() if '.' in image_file.filename else ''
                 if ext in ALLOWED_EXTENSIONS:
-                    filename = secure_filename(image_file.filename)
-                    UPLOAD_FOLDER = os.path.join(current_app.root_path, 'static', 'images', 'banner')
-                    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-                    image_file.save(os.path.join(UPLOAD_FOLDER, filename))
-                    new_cat.image = f'images/banner/{filename}'
+                    try:
+                        res = cloudinary.uploader.upload(image_file, folder='categories')
+                        new_cat.image = res.get('secure_url')
+                        new_cat.image_pub_id = res.get('public_id')
+                    except Exception as e:
+                        flash(f'Upload error: {str(e)}', 'error')
                 else:
                     flash(f'Invalid file type: {image_file.filename}. Only images are allowed.', 'error')
             
@@ -276,11 +286,16 @@ def edit_category(category_id):
                 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'gif'}
                 ext = image_file.filename.rsplit('.', 1)[1].lower() if '.' in image_file.filename else ''
                 if ext in ALLOWED_EXTENSIONS:
-                    filename = secure_filename(image_file.filename)
-                    UPLOAD_FOLDER = os.path.join(current_app.root_path, 'static', 'images', 'banner')
-                    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-                    image_file.save(os.path.join(UPLOAD_FOLDER, filename))
-                    cat.image = f'images/banner/{filename}'
+                    try:
+                        # Auto delete old image from Cloudinary to save space
+                        if hasattr(cat, 'image_pub_id') and cat.image_pub_id:
+                            try: cloudinary.uploader.destroy(cat.image_pub_id)
+                            except: pass
+                        res = cloudinary.uploader.upload(image_file, folder='categories')
+                        cat.image = res.get('secure_url')
+                        cat.image_pub_id = res.get('public_id')
+                    except Exception as e:
+                        flash(f'Upload error: {str(e)}', 'error')
                 else:
                     flash(f'Invalid file type: {image_file.filename}. Only images are allowed.', 'error')
             
@@ -422,15 +437,14 @@ def manage_offers():
             ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'gif'}
             ext = image_file.filename.rsplit('.', 1)[1].lower() if '.' in image_file.filename else ''
             if ext in ALLOWED_EXTENSIONS:
-                filename = secure_filename(image_file.filename)
-                UPLOAD_FOLDER = os.path.join(current_app.root_path, 'static', 'images', 'banner')
-                os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-                image_file.save(os.path.join(UPLOAD_FOLDER, filename))
-                
-                new_offer = OfferBanner(image=f'images/banner/{filename}', is_active=True)
-                db.session.add(new_offer)
-                db.session.commit()
-                flash('Offer banner added successfully.', 'success')
+                try:
+                    res = cloudinary.uploader.upload(image_file, folder='offers')
+                    new_offer = OfferBanner(image=res.get('secure_url'), image_pub_id=res.get('public_id'), is_active=True)
+                    db.session.add(new_offer)
+                    db.session.commit()
+                    flash('Offer banner added successfully.', 'success')
+                except Exception as e:
+                    flash(f'Upload error: {str(e)}', 'error')
             else:
                 flash(f'Invalid file type: {image_file.filename}. Only images are allowed.', 'error')
         return redirect(url_for('admin.manage_offers'))

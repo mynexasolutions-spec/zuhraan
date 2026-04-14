@@ -50,7 +50,7 @@
                     <div class="swiper-wrapper">
                         {% for offer in offers %}
                         <div class="swiper-slide">
-                            <img class="hero-main-img" src="{{ url_for('static', filename=offer.image) }}" alt="Offer Banner" style="width:100%; height:100%; object-fit:cover; border-radius: inherit;">
+                            <img class="hero-main-img" src="{{ get_image_url(offer.image) }}" alt="Offer Banner" style="width:100%; height:100%; object-fit:cover; border-radius: inherit;">
                         </div>
                         {% endfor %}
                     </div>
@@ -304,7 +304,7 @@
                 {% endif %}
                 <div class="product-img-box">
                     {% set img_list = product.images.split(',') if product.images else [] %}
-                    <img src="{% if img_list %}/static/{{ img_list[0] }}{% else %}/static/images/banner/zuhran_2.webp{% endif %}" alt="{{ product.name }}">
+                    <img src="{% if img_list %}{{ get_image_url(img_list[0]) }}{% else %}/static/images/banner/zuhran_2.webp{% endif %}" alt="{{ product.name }}">
                 </div>
                 <div class="product-card-body">
                     <h4>{{ product.name }}</h4>

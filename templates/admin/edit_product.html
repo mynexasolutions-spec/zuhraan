@@ -161,7 +161,7 @@
                     <p style="font-size: 1.0rem; color: var(--text-muted); margin-bottom: 8px;">Current Images:</p>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                         {% for img in product.images.split(',') %}
-                        <img src="{{ url_for('static', filename=img) }}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid #ccc;">
+                        <img src="{{ get_image_url(img) }}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid #ccc;">
                         {% endfor %}
                     </div>
                 </div>

@@ -20,7 +20,7 @@
             {% if category.image %}
             <div style="margin-bottom: 12px;">
                 <p style="font-size: 0.95rem; color: #64748b; margin-bottom: 4px;">Current Image:</p>
-                <img src="{{ url_for('static', filename=category.image) }}" style="height: 80px; border-radius: 8px; border: 1px solid var(--border); object-fit: cover;">
+                <img src="{{ get_image_url(category.image) }}" style="height: 80px; border-radius: 8px; border: 1px solid var(--border); object-fit: cover;">
             </div>
             {% endif %}
             <input type="file" name="image" accept="image/*" style="width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: #fafafa;">

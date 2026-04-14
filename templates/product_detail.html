@@ -9,13 +9,13 @@
         <div class="product-gallery">
             {% set img_list = product.images.split(',') if product.images else [] %}
             <div class="main-image-display">
-                <img src="{% if img_list %}/static/{{ img_list[0] }}{% else %}/static/images/products/default.webp{% endif %}" id="mainProductImage" alt="{{ product.name }}">
+                <img src="{% if img_list %}{{ get_image_url(img_list[0]) }}{% else %}/static/images/products/default.webp{% endif %}" id="mainProductImage" alt="{{ product.name }}">
             </div>
             {% if img_list|length > 1 %}
             <div class="thumbnail-strip">
                 {% for img in img_list %}
-                <div class="thumb {% if loop.first %}thumb--active{% endif %}" onclick="updateMainImage('/static/{{ img }}', this)">
-                    <img src="/static/{{ img }}" alt="Thumbnail">
+                <div class="thumb {% if loop.first %}thumb--active{% endif %}" onclick="updateMainImage('{{ get_image_url(img) }}', this)">
+                    <img src="{{ get_image_url(img) }}" alt="Thumbnail">
                 </div>
                 {% endfor %}
             </div>
@@ -129,7 +129,7 @@
                     {% endif %}
 
                     <div class="rel-img-box">
-                        <img src="/static/{{ rel_img }}" alt="{{ rel.name }}">
+                        <img src="{{ get_image_url(rel_img) }}" alt="{{ rel.name }}">
                     </div>
                     <div class="product-card-body">
                         <h4>{{ rel.name }}</h4>
