@@ -204,7 +204,14 @@
                     <i class="fa-solid fa-location-dot"></i> Shipping Address
                 </a>
             </li>
-            <li style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;">
+            {% if current_user.role == 'admin' %}
+            <li style="margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px;">
+                <a href="{{ url_for('admin.dashboard') }}" style="color: var(--amber);">
+                    <i class="fa-solid fa-lock"></i> Admin Panel
+                </a>
+            </li>
+            {% endif %}
+            <li style="margin-top: 5px;">
                 <a href="{{ url_for('main.logout') }}" class="logout-link">
                     <i class="fa-solid fa-arrow-right-from-bracket"></i> Sign Out
                 </a>
