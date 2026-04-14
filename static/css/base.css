@@ -381,41 +381,43 @@ nav {
         display: flex !important;
     }
     nav {
-        margin: 10px 16px 0;
-        padding: 0 15px;
-        height: 70px;
+        margin: 10px 12px 0;
+        padding: 0 12px;
+        height: 64px;
     }
     .nav-logo {
-        font-size: 1.2rem;
+        font-size: 1.3rem; 
         white-space: nowrap;
-        margin-right: 10px;
+        margin-right: 5px;
         flex-shrink: 0;
     }
     .nav-icons {
-        gap: 10px;
+        gap: 6px;
         flex-grow: 1;
         justify-content: flex-end;
+        align-items: center;
+        overflow: hidden; /* Prevent spillover */
     }
     .search-box {
-        padding: 6px 10px;
-        max-width: 140px;
+        padding: 6px 8px;
+        max-width: 120px;
     }
     .search-box input {
-        width: 80px;
-        font-size: 16px; /* Prevents auto-zoom on iOS */
+        width: 60px;
+        font-size: 14px;
     }
     .search-box input:focus {
-        width: 100px;
+        width: 80px;
     }
     .nav-logo-container {
-        gap: 8px;
+        gap: 6px;
     }
-    .nav-logo {
-        font-size: 1.45rem;
+    .instagram-link {
+        display: none;
     }
-    .instagram-link svg {
-        width: 20px;
-        height: 20px;
+    .hamburger {
+        padding-right: 0;
+        margin-right: -4px;
     }
 }
 
