@@ -37,12 +37,19 @@
 
         <!-- MOBILE FILTER BUTTON -->
         <button class="mobile-filter-btn" id="filter-toggle-btn">
-            <i class="fa-solid fa-filter"></i> Filters
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="margin-right: 8px;">
+                <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>
+            </svg>
+            Filters
         </button>
 
         <!-- SIDEBAR -->
         <aside class="shop-sidebar" id="filter-drawer">
-            <button class="close-drawer" id="close-filter-drawer"><i class="fa-solid fa-xmark"></i></button>
+            <button class="close-drawer" id="close-filter-drawer" aria-label="Close Filters">
+                <svg width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+            </button>
 
             <div class="sidebar-section">
                 <h3 class="sidebar-title">Price Range</h3>
@@ -267,40 +274,6 @@
         gap: 80px 36px;
     }
 
-    /* PRODUCT CARD */
-    .product-card-link { text-decoration: none; color: inherit; display: block; }
-    .product-card { background: transparent; overflow: visible; position: relative; }
-    .product-img-box { width: 100%; height: 300px; overflow: hidden; position: relative; }
-    .product-img-box img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.55s ease; display: block; }
-    .product-card:hover .product-img-box img { transform: scale(1.07); }
-    .product-card-body {
-        background: #fff; border-radius: 0 0 220px 220px;
-        display: flex; flex-direction: column; align-items: center; text-align: center;
-        padding: 24px 14px 44px; position: relative;
-        box-shadow: 0 10px 32px rgba(0,0,0,0.04); margin-top: -8px;
-    }
-    .product-card-body h4 { font-family: 'Cormorant Garamond', serif; font-size: 1.2rem; font-weight: 700; color: var(--dark); margin-bottom: 4px; }
-    .product-card-body .price { font-size: 0.98rem; color: var(--dark); font-weight: 600; margin-bottom: 10px; }
-    .old-price { text-decoration: line-through; color: var(--muted); font-size: 0.82rem; margin-right: 5px; opacity: 0.55; }
-    .btn-buy-now {
-        position: absolute; bottom: -18px;
-        background: var(--dark); color: #fff; border: none;
-        padding: 10px 26px; border-radius: 30px; font-weight: 600; cursor: pointer;
-        transition: all 0.28s; box-shadow: 0 8px 20px rgba(0,0,0,0.18);
-        text-decoration: none; font-size: 0.84rem; font-family: 'Jost', sans-serif;
-    }
-    .btn-buy-now:hover { background: var(--amber); transform: translateY(-2px); }
-
-    /* TAG BADGES */
-    .shop-tag-badge {
-        position: absolute; top: 13px; left: 13px; z-index: 5;
-        padding: 5px 11px; border-radius: 20px;
-        font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
-        font-family: 'Jost', sans-serif;
-    }
-    .tag-sale     { background: linear-gradient(135deg, #ffd700, #ffa500); color: #1a1000; }
-    .tag-new      { background: linear-gradient(135deg, #d1fae5, #6ee7b7); color: #064e3b; }
-    .tag-featured { background: linear-gradient(135deg, #ede9fe, #c4b5fd); color: #3b0764; }
 
     .shop-empty { text-align: center; padding: 80px 20px; color: var(--muted); font-size: 1.05rem; }
 
@@ -337,9 +310,13 @@
         }
         .shop-sidebar.active { left: 0; }
         .close-drawer {
-            display: block; position: absolute; top: 22px; right: 22px;
-            font-size: 1.6rem; background: none; border: none; cursor: pointer; color: var(--dark);
+            display: block; position: absolute; top: 20px; right: 20px;
+            background: rgba(0,0,0,0.05); border: none; cursor: pointer; color: var(--dark);
+            width: 44px; height: 44px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 10; transition: background 0.2s;
         }
+        .close-drawer:hover { background: rgba(0,0,0,0.1); }
         .mobile-filter-btn {
             display: inline-flex; align-items: center; gap: 8px;
             background: #fff; border: 1px solid rgba(0,0,0,0.1);

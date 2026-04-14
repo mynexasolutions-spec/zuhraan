@@ -39,7 +39,12 @@ def index():
                     .limit(4).all())
     categories = Category.query.all()
     offers = OfferBanner.query.filter_by(is_active=True).order_by(OfferBanner.created_at.desc()).all()
-    return render_template('index.html', best_sellers=best_sellers, categories=categories, offers=offers)
+    # Products for the hero right-side card transition
+    hero_products = Product.query.order_by(Product.created_at.desc()).limit(8).all()
+    # Homepage media
+    homepage_video_url = (Setting.query.filter_by(key='homepage_video_url').first() or Setting(value='')).value
+    bottom_banner_url = (Setting.query.filter_by(key='bottom_banner_url').first() or Setting(value='')).value
+    return render_template('index.html', best_sellers=best_sellers, categories=categories, offers=offers, hero_products=hero_products, homepage_video_url=homepage_video_url, bottom_banner_url=bottom_banner_url)
 
 @main_bp.route('/privacy-policy')
 def privacy():
@@ -103,7 +108,8 @@ def shop():
     if search_query:
         query = query.filter(
             (Product.name.ilike(f'%{search_query}%')) | 
-            (Product.description.ilike(f'%{search_query}%')) |
+            (Product.short_description.ilike(f'%{search_query}%')) |
+            (Product.full_description.ilike(f'%{search_query}%')) |
             (Product.tag.ilike(f'%{search_query}%'))
         )
         

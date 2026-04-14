@@ -52,24 +52,24 @@
 
 .left-card-body {
     background: #fff;
-    border-radius: 0 0 250px 250px;
+    border-radius: 0 0 500px 500px;
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
-    padding: 24px 18px 42px;
+    padding: 32px 18px 80px;
     position: relative;
 }
 
 .left-card-body h4 {
     font-family: 'Cormorant Garamond', serif;
-    font-size: 1.25rem;
+    font-size: 1.45rem; /* Increased from 1.25rem */
     font-weight: 700;
     color: var(--dark);
 }
 
 .left-card-body p {
-    font-size: 0.8rem;
+    font-size: 0.95rem; /* Increased from 0.8rem */
     color: var(--muted);
     margin-top: 4px;
 }
@@ -169,23 +169,26 @@
 .right-col {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 0;
     animation: fadeUp 0.75s 0.2s ease both;
+    overflow: visible; /* Allow button to hang off the top */
+    padding-top: 20px; /* Space for the button */
 }
 
 .right-top-card {
     background: transparent;
     overflow: visible;
+    transition: transform 0.5s ease, opacity 0.5s ease;
 }
 
 .rtc-head {
     background: #fff;
-    border-radius: 250px 250px 0 0;
+    border-radius: 500px 500px 0 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
-    padding: 42px 18px 24px;
+    padding: 80px 18px 25px;
     position: relative;
 }
 
@@ -202,71 +205,63 @@
 
 .rtc-head h4 {
     font-family: 'Cormorant Garamond', serif;
-    font-size: 1.25rem;
+    font-size: 1.45rem;
     font-weight: 700;
     color: var(--dark);
 }
 
-.rtc-head p {
-    font-size: 0.8rem;
-    color: var(--muted);
-    margin-top: 4px;
+.hero-product-img-wrap {
+    width: 100%;
+    overflow: hidden;
 }
-
-.right-top-card img {
+.hero-product-img-wrap img {
     width: 100%;
     height: 260px;
     object-fit: cover;
     display: block;
 }
 
-/* Promo card */
+/* Promo card — golden Shop Now bar */
 .promo-card {
-    background: #fff;
-    border-radius: 24px;
-    padding: 22px 22px 24px;
-    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.11);
+    background: linear-gradient(135deg, #f6ebd1 0%, #fdf6e6 50%, #f0d9a8 100%);
+    border-radius: 0 0 24px 24px;
+    padding: 18px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.promo-icon {
-    font-size: 1.55rem;
-    margin-bottom: 12px;
-}
-
-.promo-card p {
-    font-size: 0.83rem;
-    color: #333;
-    line-height: 1.68;
-    font-style: italic;
-    font-weight: 300;
-}
-
-.shop-btn {
+.shop-now-btn {
     display: inline-flex;
     align-items: center;
-    gap: 11px;
-    margin-top: 16px;
-    background: none;
+    gap: 12px;
+    background: var(--amber);
     border: none;
     cursor: pointer;
     font-family: 'Jost', sans-serif;
-    font-size: 0.85rem;
+    font-size: 0.92rem;
     font-weight: 600;
-    color: var(--dark);
-    padding: 0;
-    letter-spacing: 0.02em;
-    transition: gap 0.2s;
+    color: #fff;
+    padding: 12px 32px;
+    border-radius: 50px;
+    letter-spacing: 0.04em;
+    text-decoration: none;
+    transition: all 0.28s ease;
+    box-shadow: 0 6px 20px rgba(196, 100, 12, 0.25);
 }
 
-.shop-btn:hover {
-    gap: 16px;
+.shop-now-btn:hover {
+    background: var(--dark);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    color: #fff;
 }
 
-.shop-btn .sc {
-    width: 36px;
-    height: 36px;
+.shop-now-btn .sc {
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
-    background: var(--amber);
+    background: rgba(255,255,255,0.25);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -275,8 +270,13 @@
     transition: background 0.2s;
 }
 
-.shop-btn:hover .sc {
-    background: var(--dark);
+.shop-now-btn:hover .sc {
+    background: rgba(255,255,255,0.15);
+}
+
+/* Increase left-side text */
+.left-note {
+    font-size: 0.88rem;
 }
 
 @keyframes fadeUp {
@@ -289,6 +289,69 @@
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+/* ── HERO RESPONSIVE ── */
+@media (max-width: 1200px) {
+    .hero {
+        grid-template-columns: 250px minmax(380px, 1fr) 280px;
+        column-gap: 28px;
+        padding: 36px 24px 48px;
+    }
+}
+
+@media (max-width: 1024px) {
+    .hero {
+        grid-template-columns: 0.8fr 1.2fr 0.8fr;
+        column-gap: 15px;
+        padding: 20px 10px 40px;
+        min-height: auto;
+        align-items: flex-end; /* Align cards to bottom, title will float top */
+    }
+    
+    /* LEFT COL */
+    .left-col {
+        gap: 8px;
+    }
+    .left-badge { width: 30px; height: 30px; }
+    .left-badge svg { width: 14px; height: 14px; }
+    .left-note { font-size: 0.6rem; line-height: 1.2; text-align: left; margin-bottom: 5px; display: block; }
+    .left-card img { height: 140px; }
+    .left-card-body { padding: 12px 10px 24px; border-radius: 0 0 100px 100px; }
+    .left-card-body h4 { font-size: 0.85rem; }
+    .left-card-body p { font-size: 0.6rem; }
+    .left-card-body .btn-circle { width: 24px; height: 24px; bottom: -12px; }
+    .left-card-body .btn-circle svg { width: 10px; height: 10px; }
+
+    /* CENTER COL */
+    .hero-title { font-size: 1.5rem; margin-bottom: 12px; }
+    .hero-main-img { height: 240px; border-radius: 12px; }
+    .arch-ring { max-width: 100%; top: -10px; bottom: -12px; border-radius: 200px; }
+    .center-glow { width: 200px; height: 200px; top: -100px; }
+
+    /* RIGHT COL */
+    .right-col {
+        padding-top: 12px;
+    }
+    .rtc-head { padding: 24px 8px 12px; border-radius: 100px 100px 0 0; }
+    .rtc-head h4 { font-size: 0.85rem; }
+    .rtc-head .btn-circle { width: 24px; height: 24px; top: -12px; }
+    .rtc-head .btn-circle svg { width: 10px; height: 10px; }
+    .hero-product-img-wrap img { height: 140px; }
+    
+    .promo-card { padding: 10px 12px; border-radius: 0 0 15px 15px; }
+    .shop-now-btn { font-size: 0.65rem; padding: 6px 14px; gap: 6px; }
+    .shop-now-btn .sc { width: 18px; height: 18px; }
+    .shop-now-btn .sc svg { width: 8px; height: 8px; }
+}
+
+@media (max-width: 600px) {
+    .hero {
+        column-gap: 8px;
+        padding: 15px 6px 30px;
+    }
+    .left-col, .right-col { font-size: 0.5rem; }
+    .hero-title { font-size: clamp(1.1rem, 5vw, 1.4rem); }
 }
 
 .section-bg-white {
@@ -968,5 +1031,62 @@
         padding: 4px 8px;
         top: 10px;
         left: 10px;
+    }
+}
+
+/* ── HOMEPAGE VIDEO SECTION ── */
+.homepage-video-section {
+    width: 100%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    padding: 20px 32px 40px; /* Matched side padding with navbar margin */
+}
+.homepage-video {
+    width: 100%;
+    max-width: 1600px; /* Increased max-width */
+    height: 75vh; /* Slightly increased height to balance width */
+    object-fit: cover;
+    display: block;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+}
+@media (max-width: 768px) {
+    .homepage-video-section {
+        padding: 10px 16px;
+    }
+    .homepage-video {
+        height: 50vh;
+        border-radius: 14px;
+    }
+}
+
+/* ── BOTTOM BANNER (9:16 Portrait) ── */
+.bottom-banner-section {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    padding: 40px 32px 80px; /* Matched side padding with navbar margin */
+    background: #fff;
+}
+.bottom-banner-wrap {
+    width: 100%;
+    max-width: 1600px; /* Increased max-width */
+}
+.bottom-banner-img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.12);
+}
+@media (max-width: 768px) {
+    .bottom-banner-section {
+        padding: 20px 16px 50px;
+    }
+    .bottom-banner-img {
+        border-radius: 14px;
     }
 }

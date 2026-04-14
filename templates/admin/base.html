@@ -76,8 +76,44 @@
 
         @media (max-width: 1024px) {
             aside { width: 80px; }
-            .brand span, nav span, .user-block span { display: none; }
+            .brand span, nav span, .user-block span, .user-block div { display: none; }
             main { margin-left: 80px; }
+            nav a { justify-content: center; padding: 14px 0; }
+            nav a i { width: auto; }
+            .brand { justify-content: center; padding: 0 0 24px; }
+        }
+
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            aside {
+                position: fixed; top: 0; left: -280px;
+                width: 280px; z-index: 3000;
+                transition: left 0.35s ease;
+                box-shadow: 6px 0 40px rgba(0,0,0,0.2);
+            }
+            aside.mobile-open { left: 0; }
+            .brand span, nav span, .user-block span, .user-block div { display: block; }
+            nav a { justify-content: flex-start; padding: 12px 24px; }
+            .brand { justify-content: flex-start; padding: 0 24px 32px; }
+            main { margin-left: 0; padding: 20px 16px; padding-top: 70px; }
+            .header { flex-direction: column; gap: 12px; align-items: flex-start; margin-bottom: 24px; }
+            .header h1 { font-size: 1.8rem; }
+            .mobile-menu-toggle {
+                display: flex !important;
+                position: fixed; top: 16px; left: 16px;
+                z-index: 3001; width: 44px; height: 44px;
+                background: var(--sidebar-bg); color: #fff;
+                border: none; border-radius: 10px; cursor: pointer;
+                align-items: center; justify-content: center;
+                font-size: 1.4rem;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            }
+            .mobile-overlay {
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.4); z-index: 2999;
+                display: none;
+            }
+            .mobile-overlay.active { display: block; }
         }
 
         /* CUSTOM MODAL */
@@ -163,6 +199,12 @@
     {% block head %}{% endblock %}
 </head>
 <body>
+    <!-- Mobile Admin Toggle -->
+    <button class="mobile-menu-toggle" style="display:none;" onclick="document.querySelector('aside').classList.add('mobile-open'); document.getElementById('adminOverlay').classList.add('active');">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+    <div class="mobile-overlay" id="adminOverlay" onclick="document.querySelector('aside').classList.remove('mobile-open'); this.classList.remove('active');"></div>
+
     <aside>
         <div class="brand">
             <i class="fa-solid fa-gem"></i>
@@ -196,6 +238,10 @@
             <a href="{{ url_for('admin.manage_offers') }}" class="{% if 'offer' in request.endpoint %}active{% endif %}">
                 <i class="fa-solid fa-image"></i>
                 <span>Offers</span>
+            </a>
+            <a href="{{ url_for('admin.homepage_media') }}" class="{% if 'homepage_media' in request.endpoint %}active{% endif %}">
+                <i class="fa-solid fa-film"></i>
+                <span>Homepage Media</span>
             </a>
             <a href="{{ url_for('admin.manage_settings') }}" class="{% if 'settings' in request.endpoint %}active{% endif %}">
                 <i class="fa-solid fa-gear"></i>
@@ -267,6 +313,14 @@
                 closeModal();
             }
         }
+
+        // Close mobile sidebar when a nav link is clicked
+        document.querySelectorAll('aside nav a').forEach(link => {
+            link.addEventListener('click', () => {
+                document.querySelector('aside').classList.remove('mobile-open');
+                document.getElementById('adminOverlay').classList.remove('active');
+            });
+        });
     </script>
 </body>
 </html>
