@@ -1047,7 +1047,7 @@
 .homepage-video {
     width: 100%;
     max-width: 1600px; /* Increased max-width */
-    height: 75vh; /* Slightly increased height to balance width */
+    height: auto;
     object-fit: cover;
     display: block;
     border-radius: 20px;
@@ -1058,7 +1058,6 @@
         padding: 10px 16px;
     }
     .homepage-video {
-        height: 50vh;
         border-radius: 14px;
     }
 }
