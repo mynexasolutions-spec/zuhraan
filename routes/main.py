@@ -42,9 +42,10 @@ def index():
     # Products for the hero right-side card transition
     hero_products = Product.query.order_by(Product.created_at.desc()).limit(8).all()
     # Homepage media
-    homepage_video_url = (Setting.query.filter_by(key='homepage_video_url').first() or Setting(value='')).value
+    media_url = (Setting.query.filter_by(key='homepage_media_url').first() or Setting(value='')).value
+    media_type = (Setting.query.filter_by(key='homepage_media_type').first() or Setting(value='')).value
     bottom_banner_url = (Setting.query.filter_by(key='bottom_banner_url').first() or Setting(value='')).value
-    return render_template('index.html', best_sellers=best_sellers, categories=categories, offers=offers, hero_products=hero_products, homepage_video_url=homepage_video_url, bottom_banner_url=bottom_banner_url)
+    return render_template('index.html', best_sellers=best_sellers, categories=categories, offers=offers, hero_products=hero_products, media_url=media_url, media_type=media_type, bottom_banner_url=bottom_banner_url)
 
 @main_bp.route('/privacy-policy')
 def privacy():

@@ -504,63 +504,72 @@ def delete_offer(offer_id):
     flash('Offer banner deleted successfully.', 'success')
     return redirect(url_for('admin.manage_offers'))
 
-# --- HOMEPAGE MEDIA (Video + Bottom Banner) ---
+# --- HOMEPAGE MEDIA (Unified Media + Bottom Banner) ---
 @admin_bp.route('/homepage-media', methods=['GET', 'POST'])
 @admin_required
 def homepage_media():
     if request.method == 'POST':
         action = request.form.get('action')
         
-        # --- Video Upload ---
-        if action == 'upload_video':
-            video_file = request.files.get('video')
-            if video_file and video_file.filename:
-                ALLOWED_VIDEO_EXT = {'mp4', 'webm', 'mov', 'avi'}
-                ext = video_file.filename.rsplit('.', 1)[1].lower() if '.' in video_file.filename else ''
-                if ext in ALLOWED_VIDEO_EXT:
+        # --- Unified Multimedia Upload (Video or Image) ---
+        if action == 'upload_media':
+            media_file = request.files.get('media')
+            if media_file and media_file.filename:
+                ext = media_file.filename.rsplit('.', 1)[1].lower() if '.' in media_file.filename else ''
+                ALLOWED_IMG = {'png', 'jpg', 'jpeg', 'webp'}
+                ALLOWED_VID = {'mp4', 'webm', 'mov', 'avi'}
+                
+                is_img = ext in ALLOWED_IMG
+                is_vid = ext in ALLOWED_VID
+                
+                if is_img or is_vid:
                     try:
-                        # Delete old video from Cloudinary if exists
-                        old_pub_id = Setting.query.filter_by(key='homepage_video_pub_id').first()
+                        # 1. Clean up old media first
+                        old_pub_id = Setting.query.filter_by(key='homepage_media_pub_id').first()
+                        old_type = Setting.query.filter_by(key='homepage_media_type').first()
                         if old_pub_id and old_pub_id.value:
-                            try: cloudinary.uploader.destroy(old_pub_id.value, resource_type='video')
+                            res_type = 'video' if (old_type and old_type.value == 'video') else 'image'
+                            try: cloudinary.uploader.destroy(old_pub_id.value, resource_type=res_type)
                             except: pass
                         
-                        res = cloudinary.uploader.upload(video_file, folder='homepage', resource_type='video')
+                        # 2. Upload new media
+                        res_type = 'video' if is_vid else 'image'
+                        res = cloudinary.uploader.upload(media_file, folder='homepage', resource_type=res_type)
                         
-                        # Save URL
-                        video_url_setting = Setting.query.filter_by(key='homepage_video_url').first()
-                        if not video_url_setting:
-                            video_url_setting = Setting(key='homepage_video_url', value='')
-                            db.session.add(video_url_setting)
-                        video_url_setting.value = res.get('secure_url')
+                        # 3. Update settings
+                        def set_val(k, v):
+                            s = Setting.query.filter_by(key=k).first()
+                            if not s:
+                                s = Setting(key=k, value=v)
+                                db.session.add(s)
+                            else:
+                                s.value = v
                         
-                        # Save public ID for deletion
-                        pub_id_setting = Setting.query.filter_by(key='homepage_video_pub_id').first()
-                        if not pub_id_setting:
-                            pub_id_setting = Setting(key='homepage_video_pub_id', value='')
-                            db.session.add(pub_id_setting)
-                        pub_id_setting.value = res.get('public_id')
+                        set_val('homepage_media_url', res.get('secure_url'))
+                        set_val('homepage_media_pub_id', res.get('public_id'))
+                        set_val('homepage_media_type', res_type)
                         
                         db.session.commit()
-                        flash('Homepage video uploaded successfully.', 'success')
+                        flash(f'Homepage {res_type} uploaded successfully.', 'success')
                     except Exception as e:
-                        flash(f'Video upload error: {str(e)}', 'error')
+                        flash(f'Upload error: {str(e)}', 'error')
                 else:
-                    flash(f'Invalid video type. Allowed: mp4, webm, mov, avi', 'error')
-        
-        # --- Delete Video ---
-        elif action == 'delete_video':
-            pub_id_setting = Setting.query.filter_by(key='homepage_video_pub_id').first()
+                    flash('Invalid file type. Allowed: Image (png, jpg, webp) or Video (mp4, webm, mov)', 'error')
+
+        # --- Delete Multimedia ---
+        elif action == 'delete_media':
+            pub_id_setting = Setting.query.filter_by(key='homepage_media_pub_id').first()
+            type_setting = Setting.query.filter_by(key='homepage_media_type').first()
             if pub_id_setting and pub_id_setting.value:
-                try: cloudinary.uploader.destroy(pub_id_setting.value, resource_type='video')
+                res_type = type_setting.value if type_setting else 'image'
+                try: cloudinary.uploader.destroy(pub_id_setting.value, resource_type=res_type)
                 except: pass
             
-            for key in ['homepage_video_url', 'homepage_video_pub_id']:
+            for key in ['homepage_media_url', 'homepage_media_pub_id', 'homepage_media_type']:
                 s = Setting.query.filter_by(key=key).first()
-                if s:
-                    s.value = ''
+                if s: s.value = ''
             db.session.commit()
-            flash('Homepage video removed.', 'success')
+            flash('Homepage multimedia removed.', 'success')
         
         # --- Banner Upload ---
         elif action == 'upload_banner':
@@ -577,17 +586,16 @@ def homepage_media():
                         
                         res = cloudinary.uploader.upload(banner_file, folder='homepage')
                         
-                        banner_url_setting = Setting.query.filter_by(key='bottom_banner_url').first()
-                        if not banner_url_setting:
-                            banner_url_setting = Setting(key='bottom_banner_url', value='')
-                            db.session.add(banner_url_setting)
-                        banner_url_setting.value = res.get('secure_url')
-                        
-                        pub_id_setting = Setting.query.filter_by(key='bottom_banner_pub_id').first()
-                        if not pub_id_setting:
-                            pub_id_setting = Setting(key='bottom_banner_pub_id', value='')
-                            db.session.add(pub_id_setting)
-                        pub_id_setting.value = res.get('public_id')
+                        def set_val(k, v):
+                            s = Setting.query.filter_by(key=k).first()
+                            if not s:
+                                s = Setting(key=k, value=v)
+                                db.session.add(s)
+                            else:
+                                s.value = v
+
+                        set_val('bottom_banner_url', res.get('secure_url'))
+                        set_val('bottom_banner_pub_id', res.get('public_id'))
                         
                         db.session.commit()
                         flash('Bottom banner uploaded successfully.', 'success')
@@ -612,6 +620,7 @@ def homepage_media():
         
         return redirect(url_for('admin.homepage_media'))
     
-    video_url = (Setting.query.filter_by(key='homepage_video_url').first() or Setting(value='')).value
+    media_url = (Setting.query.filter_by(key='homepage_media_url').first() or Setting(value='')).value
+    media_type = (Setting.query.filter_by(key='homepage_media_type').first() or Setting(value='')).value
     banner_url = (Setting.query.filter_by(key='bottom_banner_url').first() or Setting(value='')).value
-    return render_template('admin/homepage_media.html', video_url=video_url, banner_url=banner_url)
+    return render_template('admin/homepage_media.html', media_url=media_url, media_type=media_type, banner_url=banner_url)

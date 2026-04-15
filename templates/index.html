@@ -190,11 +190,15 @@
 </div>
 
 <!-- VIDEO / ABOUT SECTION -->
-{% if homepage_video_url %}
+{% if media_url %}
 <section class="homepage-video-section">
+    {% if media_type == 'video' %}
     <video autoplay muted loop playsinline class="homepage-video">
-        <source src="{{ homepage_video_url }}" type="video/mp4">
+        <source src="{{ media_url }}" type="video/mp4">
     </video>
+    {% else %}
+    <img src="{{ media_url }}" alt="Zuhraan Atmosphere" class="homepage-video">
+    {% endif %}
 </section>
 {% else %}
 <!-- ABOUT SECTION (Fallback) -->

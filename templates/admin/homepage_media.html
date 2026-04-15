@@ -58,39 +58,43 @@
 </div>
 
 <div class="media-grid">
-    <!-- HOMEPAGE VIDEO -->
+    <!-- HOMEPAGE MULTIMEDIA -->
     <div class="media-card">
-        <h3><i class="fa-solid fa-video" style="color: var(--primary); margin-right: 8px;"></i>Homepage Video</h3>
-        <p class="desc">Landscape video shown in place of the "About" section. Auto-plays on both desktop & mobile.</p>
+        <h3><i class="fa-solid fa-photo-film" style="color: var(--primary); margin-right: 8px;"></i>Homepage Multimedia</h3>
+        <p class="desc">Landscape video or image shown in the main multimedia section. Uploading a new file replaces the existing one.</p>
         
-        {% if video_url %}
-        <span class="status-badge status-active"><i class="fa-solid fa-circle" style="font-size: 0.5rem;"></i> Active</span>
+        {% if media_url %}
+        <span class="status-badge status-active"><i class="fa-solid fa-circle" style="font-size: 0.5rem;"></i> Active ({{ media_type | capitalize }})</span>
         <div class="media-preview" style="margin-top: 16px;">
+            {% if media_type == 'video' %}
             <video autoplay muted loop playsinline style="max-height: 300px; object-fit: cover;">
-                <source src="{{ video_url }}" type="video/mp4">
+                <source src="{{ media_url }}" type="video/mp4">
             </video>
+            {% else %}
+            <img src="{{ media_url }}" alt="Homepage Highlight" style="max-height: 300px; object-fit: cover;">
+            {% endif %}
         </div>
-        <form method="POST">
+        <form method="POST" style="margin-bottom: 20px;">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" name="action" value="delete_video">
-            <button type="submit" class="btn-delete-media" onclick="return confirm('Remove this video?')">
-                <i class="fa-solid fa-trash"></i> Remove Video
+            <input type="hidden" name="action" value="delete_media">
+            <button type="submit" class="btn-delete-media" onclick="return confirm('Remove this {{ media_type }}?')">
+                <i class="fa-solid fa-trash"></i> Remove {{ media_type | capitalize }}
             </button>
         </form>
         {% else %}
         <span class="status-badge status-empty"><i class="fa-solid fa-circle" style="font-size: 0.5rem;"></i> Not Set</span>
         {% endif %}
         
-        <form method="POST" enctype="multipart/form-data" style="margin-top: 20px;">
+        <form method="POST" enctype="multipart/form-data">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" name="action" value="upload_video">
-            <div class="upload-zone" id="videoDropZone">
+            <input type="hidden" name="action" value="upload_media">
+            <div class="upload-zone" id="mediaDropZone">
                 <i class="fa-solid fa-cloud-arrow-up"></i>
-                <p>Click or drag a video file here</p>
-                <p class="file-info" id="videoFileName"></p>
-                <input type="file" name="video" accept="video/mp4,video/webm,video/quicktime" onchange="document.getElementById('videoFileName').textContent = this.files[0]?.name || ''">
+                <p>Click or drag a <strong>Video</strong> or <strong>Image</strong> here</p>
+                <p class="file-info" id="mediaFileName"></p>
+                <input type="file" name="media" accept="video/*,image/*" onchange="document.getElementById('mediaFileName').textContent = this.files[0]?.name || ''">
             </div>
-            <button type="submit" class="btn-upload"><i class="fa-solid fa-upload"></i> Upload Video</button>
+            <button type="submit" class="btn-upload"><i class="fa-solid fa-upload"></i> Upload Media</button>
         </form>
     </div>
 
@@ -120,7 +124,7 @@
             <input type="hidden" name="action" value="upload_banner">
             <div class="upload-zone" id="bannerDropZone">
                 <i class="fa-solid fa-cloud-arrow-up"></i>
-                <p>Click or drag a 9:16 image here</p>
+                <p>Click or drag a 9:16 portrait image here</p>
                 <p class="file-info" id="bannerFileName"></p>
                 <input type="file" name="banner" accept="image/png,image/jpeg,image/webp" onchange="document.getElementById('bannerFileName').textContent = this.files[0]?.name || ''">
             </div>
