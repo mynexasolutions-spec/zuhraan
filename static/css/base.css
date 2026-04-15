@@ -186,11 +186,18 @@ nav {
     margin: 0 auto 60px;
 }
 
-.footer-logo {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 2.2rem;
-    margin-bottom: 20px;
-    color: #fff;
+.footer-logo-img {
+    max-width: 180px;
+    height: auto;
+    margin-bottom: 25px;
+    display: block;
+}
+
+@media (max-width: 768px) {
+    .footer-logo-img {
+        max-width: 140px;
+        margin: 0 auto 20px;
+    }
 }
 
 .footer-desc {

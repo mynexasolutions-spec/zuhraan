@@ -1,15 +1,15 @@
 <footer class="premium-footer">
     <div class="footer-grid">
         <div class="footer-brand">
-            <h2 class="footer-logo">Zuhraan Perfumes</h2>
+            <img src="{{ url_for('static', filename='images/logo/logo.png') }}" alt="Zuhraan Perfumes" class="footer-logo-img">
             <p class="footer-desc">Crafting signature luxury scents that leave an undeniable impression. Discover purity, elegance, and magnetism.</p>
         </div>
         
         <div class="footer-links-col">
             <h4 class="footer-title">Explore</h4>
             <ul>
-                <li><a href="#">Home</a></li>
-                <li><a href="#">Shop All</a></li>
+                <li><a href="{{ url_for('main.index') }}">Home</a></li>
+                <li><a href="{{ url_for('main.shop') }}">Shop All</a></li>
                 <li><a href="#">Our Story</a></li>
                 <li><a href="#">Contact Us</a></li>
             </ul>
@@ -28,7 +28,6 @@
         <div class="footer-contact">
             <h4 class="footer-title">Contact</h4>
             <p>Email: support@zuhraan.com</p>
-            <p>Phone: +91 8630872674</p>
         </div>
     </div>
     
