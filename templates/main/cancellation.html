@@ -47,24 +47,53 @@
         text-transform: uppercase;
         letter-spacing: 0.05em;
     }
+    .legal-container ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+    .legal-container ul li {
+        margin-bottom: 16px;
+        position: relative;
+        padding-left: 36px;
+    }
+    .legal-container ul li::before {
+        content: '✧';
+        color: #ef4444;
+        position: absolute;
+        left: 0;
+        font-size: 1.4rem;
+        line-height: 1.2;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <section class="legal-container">
-    <h1>Cancellation & Returns</h1>
+    <h1>Cancellation & Refunds</h1>
     
-    <p>Given the highly exquisite, consumable nature of luxury fragrances, our return and cancellation architectures are meticulously constructed to guarantee absolutely pristine products for every collector while providing robust consumer protection.</p>
-    
-    <h3>1. The Cancellation Window</h3>
-    <p>Decisions shift, and we respect that. If you must reverse an acquisition, you are granted exactly <strong>24 hours</strong> post-checkout to instigate a full structural cancellation. Once our logistics network pulls the order into the physical packaging phase, instantaneous digital cancellation is mechanically impossible.</p>
-    
-    <h3>2. Returns & Scent Integrity</h3>
+    <h3>Cancellation Policy</h3>
     <div class="highlight-box">
-        <h4>Strict Integrity Protocol</h4>
-        <p style="margin-bottom: 0">We guarantee that every Zuhraan bottle sold is untouched and untampered. As such, we cannot legally or ethically accept returns on fragrances where the external poly-seal has been breached, or the atomizer has been depressed. Valid returns demand the physical product to be exactly in its factory-mint, unsprayed condition, logged within 14 days of tracked delivery.</p>
+        <h4>Order Cancellation</h4>
+        <p>Order cancellation requests may be accepted only if the order has not already been processed, packed, or shipped.</p>
+        <p>Once an order has been shipped, cancellation may no longer be possible.</p>
+        <p>To request cancellation, contact us as soon as possible using our customer support details.</p>
+    </div>
+    
+    <h3>Returns & Refunds</h3>
+    <div class="highlight-box">
+        <h4>Return Eligibility</h4>
+        <p style="margin-bottom: 15px;">A return or replacement may be considered in cases such as:</p>
+        <ul>
+            <li>Product received damaged</li>
+            <li>Wrong product received</li>
+            <li>Product missing from the order</li>
+            <li>Manufacturing or packaging issue attributable to Zuhraan</li>
+        </ul>
     </div>
 
-    <p>If your fragrance survives the visual inspection process via our evaluation team upon return, your funds will be comprehensively reversed through Razorpay directly to your originating credit line or bank within 3-5 business days.</p>
+    <p>For damaged or incorrect orders, customers may be required to provide clear photographs or videos of the package and product within 24-48 hours of delivery.</p>
+    
+    <p>If your fragrance passes the visual inspection process via our evaluation team upon return, your funds will be comprehensively reversed through Razorpay directly to your originating credit line or bank within 3-5 business days.</p>
 </section>
 {% endblock %}

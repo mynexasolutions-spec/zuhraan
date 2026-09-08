@@ -13,8 +13,8 @@
     <ul class="nav-links">
         <li><a href="{{ url_for('main.index') }}">Home</a></li>
         <li><a href="{{ url_for('main.shop') }}">Shop</a></li>
-        <li><a href="#">About</a></li>
-        <li><a href="#">Contact</a></li>
+        <li><a href="{{ url_for('main.about') }}">About</a></li>
+        <li><a href="{{ url_for('main.contact') }}">Contact</a></li>
     </ul>
     <div class="nav-icons">
         <form action="{{ url_for('main.shop') }}" method="GET" class="search-form">
@@ -64,8 +64,8 @@
         <li><a href="{{ url_for('main.index') }}">Home</a></li>
         <li><a href="{{ url_for('main.shop') }}">Shop</a></li>
         <li><a href="{{ url_for('main.cart') }}">Cart</a></li>
-        <li><a href="#">About Us</a></li>
-        <li><a href="#">Contact Us</a></li>
+        <li><a href="{{ url_for('main.about') }}">About Us</a></li>
+        <li><a href="{{ url_for('main.contact') }}">Contact Us</a></li>
     </ul>
     
     <div class="mobile-menu-footer">

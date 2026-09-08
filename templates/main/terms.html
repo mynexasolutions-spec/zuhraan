@@ -47,6 +47,24 @@
         text-transform: uppercase;
         letter-spacing: 0.05em;
     }
+    .legal-container ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+    .legal-container ul li {
+        margin-bottom: 16px;
+        position: relative;
+        padding-left: 36px;
+    }
+    .legal-container ul li::before {
+        content: '✧';
+        color: var(--amber, #d97706);
+        position: absolute;
+        left: 0;
+        font-size: 1.4rem;
+        line-height: 1.2;
+    }
 </style>
 {% endblock %}
 
@@ -54,17 +72,29 @@
 <section class="legal-container">
     <h1>Terms & Conditions</h1>
     
-    <p>Welcome to the exclusive world of Zuhraan Perfumes!</p>
-    <p>These terms and conditions articulate the rules, regulations, and luxury obligations required for accessing and purchasing from the Zuhraan Perfumes digital boutique.</p>
-    <p>By registering an account and placing an order on this website, we rigorously strictly assume that you elegantly accept these terms in full. Do not continue to navigate the Zuhraan selection if you do not unconditionally agree to these stated tenets.</p>
+    <p>Welcome to Zuhraan. By accessing or using our website and purchasing our products, you agree to be bound by these Terms & Conditions.</p>
 
-    <h3>1. Proprietary Licensing</h3>
-    <div class="highlight-box">
-        <h4>Copyright Integrity</h4>
-        <p style="margin-bottom:0">Unless explicitly granted via corporate communication, Zuhraan Perfumes rightfully owns all intellectual property rights for the photography, typography, branding marks, and scent formulations detailed across this platform. Duplication, recreation, or unauthorized commercial exploitation of our media or scent identity results in immediate legal recourse.</p>
-    </div>
+    <h3>Order Cancellation & Refunds</h3>
+    <p>If we cancel an order for which payment has already been received, the applicable amount will be refunded through the appropriate payment method.</p>
     
-    <h3>2. Transactions & Accounts</h3>
-    <p>Upon registration, you warrant that all information provided (shipping coordinates, payment data) remains flawlessly accurate. We reserve the unequivocal right to freeze accounts or terminate pending orders flagged by our payment processors (Razorpay) as fraudulent, compromised, or systematically abusive.</p>
+    <h3>Payment</h3>
+    <div class="highlight-box">
+        <h4>Payment Information</h4>
+        <ul>
+            <li>We may offer multiple payment methods through third-party payment providers.</li>
+            <li>You agree to provide valid and accurate payment information and authorize the applicable payment provider to process your payment.</li>
+            <li>Zuhraan is not responsible for failures, delays, or issues caused by third-party payment providers.</li>
+        </ul>
+    </div>
+
+    <h3>Shipping & Delivery</h3>
+    <div class="highlight-box">
+        <h4>Delivery Information</h4>
+        <ul>
+            <li>Orders are shipped to the address provided by the customer at checkout.</li>
+            <li>Delivery timelines shown on the website are estimates and may vary due to factors such as courier delays, weather conditions, public holidays, incorrect or incomplete addresses, remote delivery locations, or unforeseen circumstances.</li>
+            <li>Once the order has been handed over to the shipping partner, delivery may be subject to the courier company's processes and timelines.</li>
+        </ul>
+    </div>
 </section>
 {% endblock %}

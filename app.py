@@ -25,6 +25,9 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['RAZORPAY_KEY_ID'] = os.environ.get('RAZORPAY_KEY_ID')
 app.config['RAZORPAY_KEY_SECRET'] = os.environ.get('RAZORPAY_KEY_SECRET')
 app.config['RAZORPAY_WEBHOOK_SECRET'] = os.environ.get('RAZORPAY_WEBHOOK_SECRET')
+app.config['BREVO_API_KEY'] = os.environ.get('BREVO_API_KEY')
+app.config['BREVO_SENDER_EMAIL'] = os.environ.get('BREVO_SENDER_EMAIL')
+app.config['BREVO_SENDER_NAME'] = os.environ.get('BREVO_SENDER_NAME', 'Zuhraan')
 
 # Cloudinary Config
 cloudinary.config(

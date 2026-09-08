@@ -181,22 +181,33 @@ nav {
 .footer-grid {
     display: grid;
     grid-template-columns: 2fr 1fr 1fr 1fr;
+    align-items: start;
     gap: 60px;
     max-width: 1400px;
     margin: 0 auto 60px;
 }
 
 .footer-logo-img {
-    max-width: 180px;
+    max-width: 150px;
     height: auto;
-    margin-bottom: 25px;
+    margin: 0 0 25px;
     display: block;
+    border-radius: 12px;
+}
+
+.footer-text-below-logo {
+    color: rgba(255, 255, 255, 0.6);
+    line-height: 1.6;
+    font-size: 1rem;
+    max-width: 320px;
+    margin: 0 0 20px;
 }
 
 @media (max-width: 768px) {
     .footer-logo-img {
-        max-width: 140px;
+        max-width: 120px;
         margin: 0 auto 20px;
+        border-radius: 12px;
     }
 }
 
@@ -205,6 +216,7 @@ nav {
     line-height: 1.6;
     font-size: 1.15rem;
     max-width: 320px;
+    margin: 0;
 }
 
 .footer-title {

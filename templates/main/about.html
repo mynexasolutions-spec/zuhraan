@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% block title %}About Us - Zuhraan{% endblock %}
+
+{% block extra_css %}
+<style>
+    .about-container {
+        max-width: 1000px;
+        margin: 100px auto 140px;
+        padding: 0 40px;
+        color: #334155;
+        font-size: 1.25rem;
+        line-height: 2;
+        font-family: 'Jost', sans-serif;
+    }
+    .about-container h1 {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 4rem;
+        color: #0f172a;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #e2e8f0;
+        padding-bottom: 30px;
+        text-align: center;
+    }
+    .about-container h3 {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 2.4rem;
+        color: #0f172a;
+        margin: 60px 0 25px;
+    }
+    .about-container p {
+        margin-bottom: 24px;
+        letter-spacing: 0.02em;
+    }
+    .about-container .highlight-box {
+        background: #f8fafc;
+        border-left: 4px solid var(--amber, #d97706);
+        padding: 30px 40px;
+        margin: 40px 0;
+        border-radius: 0 12px 12px 0;
+    }
+    .about-container .highlight-box h4 {
+        font-family: 'Jost', sans-serif;
+        font-size: 1.3rem;
+        font-weight: 600;
+        margin-bottom: 15px;
+        color: #1e293b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    .about-container ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+    .about-container ul li {
+        margin-bottom: 16px;
+        position: relative;
+        padding-left: 36px;
+    }
+    .about-container ul li::before {
+        content: '✧';
+        color: var(--amber, #d97706);
+        position: absolute;
+        left: 0;
+        font-size: 1.4rem;
+        line-height: 1.2;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="about-container">
+    <h1>About Zuhraan</h1>
+    
+    <p>At Zuhraan, we believe a fragrance is more than just a scent — it is a part of your identity, your mood, and the memories you leave behind.</p>
+    
+    <h3>Our Story</h3>
+    <p>Born from a passion for refined fragrances, Zuhraan is created for those who appreciate depth, character, and individuality. Each fragrance is carefully crafted to offer a distinctive experience, bringing together thoughtfully selected notes to create scents that feel timeless and memorable.</p>
+    
+    <h3>Our Collection</h3>
+    <div class="highlight-box">
+        <h4>Diverse Fragrance Portfolio</h4>
+        <p style="margin-bottom: 15px;">From rich oud and warm woods to sweet, fresh, and modern accords, our collection is made to suit different personalities and moments:</p>
+        <ul>
+            <li>Eau De Parfum - Premium concentration for lasting elegance</li>
+            <li>Extrait De Parfum - Pure fragrance essence for discerning collectors</li>
+            <li>Premium Collection - Exclusive limited-edition scents</li>
+            <li>Room Freshener - Ambient luxury for your space</li>
+            <li>Best Sellers - Customer favorites and signature scents</li>
+        </ul>
+    </div>
+    
+    <h3>Our Commitment</h3>
+    <p>We focus on creating fragrances that are enjoyable to wear, beautifully presented, and made to leave an impression. Zuhraan was built on a simple vision - to prepare every product with care and deliver it with confidence.</p>
+    
+    <div class="highlight-box">
+        <h4>Our Values</h4>
+        <ul>
+            <li>Quality - Finest ingredients and masterful craftsmanship</li>
+            <li>Authenticity - Genuine fragrances that tell a story</li>
+            <li>Excellence - Premium presentation and customer experience</li>
+            <li>Integrity - Transparent practices and ethical sourcing</li>
+        </ul>
+    </div>
+    
+    <h3>Legacy</h3>
+    <p>Zuhraan — Where fragrance leaves a legacy. We invite you to discover the scent that embodies your essence and becomes part of your unique story.</p>
+</section>
+{% endblock %}

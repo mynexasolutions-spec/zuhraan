@@ -1,8 +1,12 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, current_app, render_template, request, redirect, url_for, flash, session
 from models import db, Product, Category, ProductVariant, Review, User, Order, OrderItem, Setting, Coupon, OfferBanner
 from flask_login import current_user, login_user, logout_user, login_required
 from werkzeug.security import generate_password_hash, check_password_hash
+import hashlib
 import json
+import secrets
+import time
+import requests
 
 from datetime import datetime
 
@@ -62,6 +66,14 @@ def shipping():
 @main_bp.route('/cancellation-and-refunds')
 def cancellation():
     return render_template('main/cancellation.html')
+
+@main_bp.route('/about')
+def about():
+    return render_template('main/about.html')
+
+@main_bp.route('/contact')
+def contact():
+    return render_template('main/contact.html')
 
 @main_bp.route('/product/<string:slug>')
 def product_detail(slug):
@@ -207,6 +219,188 @@ def login():
         flash('Invalid credentials', 'error')
     next_url = request.args.get('next', '')
     return render_template('main/login.html', next_url=next_url)
+
+@main_bp.route('/account/request-otp', methods=['POST'])
+def request_otp():
+    email = request.form.get('email', '').strip().lower()
+    next_url = request.form.get('next', '').strip()
+    if not email:
+        flash('Enter your email address to receive an OTP.', 'error')
+        return redirect(url_for('main.login', next=next_url))
+
+    now = time.time()
+    last_sent = session.get('login_otp_sent_at', 0)
+    if now - last_sent < 60:
+        flash('Please wait before requesting another OTP.', 'error')
+        return redirect(url_for('main.login', next=next_url))
+
+    user = User.query.filter_by(email=email).first()
+    api_key = current_app.config.get('BREVO_API_KEY')
+    sender_email = current_app.config.get('BREVO_SENDER_EMAIL')
+    if not user:
+        flash('If an account exists for this email, an OTP will be sent.', 'info')
+        return redirect(url_for('main.login', next=next_url))
+    if not api_key or not sender_email:
+        current_app.logger.error('Brevo OTP settings are not configured.')
+        flash('Email login is temporarily unavailable. Please use your password.', 'error')
+        return redirect(url_for('main.login', next=next_url))
+
+    otp = f'{secrets.randbelow(1000000):06d}'
+    otp_hash = hashlib.sha256(otp.encode()).hexdigest()
+    session['login_otp'] = {
+        'email': email,
+        'hash': otp_hash,
+        'expires_at': now + 600,
+        'attempts': 0,
+        'next_url': next_url if next_url.startswith('/') else ''
+    }
+
+    payload = {
+        'sender': {
+            'name': current_app.config.get('BREVO_SENDER_NAME', 'Zuhraan'),
+            'email': sender_email
+        },
+        'to': [{'email': email}],
+        'subject': 'Your Zuhraan login OTP',
+        'textContent': f'Your Zuhraan login OTP is {otp}. It expires in 10 minutes.'
+    }
+    try:
+        response = requests.post(
+            'https://api.brevo.com/v3/smtp/email',
+            headers={'accept': 'application/json', 'api-key': api_key, 'content-type': 'application/json'},
+            json=payload,
+            timeout=10
+        )
+        response.raise_for_status()
+    except requests.RequestException:
+        session.pop('login_otp', None)
+        current_app.logger.exception('Brevo failed to send login OTP.')
+        flash('We could not send the OTP. Please try again or use your password.', 'error')
+        return redirect(url_for('main.login', next=next_url))
+
+    session['login_otp_sent_at'] = now
+    flash('A login OTP has been sent to your email.', 'success')
+    return redirect(url_for('main.login', otp_sent=1, next=next_url))
+
+@main_bp.route('/account/verify-otp', methods=['POST'])
+def verify_otp():
+    entered_otp = request.form.get('otp', '').strip()
+    otp_data = session.get('login_otp')
+    if not otp_data or time.time() > otp_data.get('expires_at', 0):
+        session.pop('login_otp', None)
+        flash('Your OTP has expired. Please request a new one.', 'error')
+        return redirect(url_for('main.login'))
+    if otp_data.get('attempts', 0) >= 5:
+        session.pop('login_otp', None)
+        flash('Too many incorrect attempts. Please request a new OTP.', 'error')
+        return redirect(url_for('main.login'))
+
+    otp_data['attempts'] += 1
+    session['login_otp'] = otp_data
+    entered_hash = hashlib.sha256(entered_otp.encode()).hexdigest()
+    if not secrets.compare_digest(entered_hash, otp_data['hash']):
+        flash('Invalid OTP.', 'error')
+        return redirect(url_for('main.login', otp_sent=1, next=otp_data.get('next_url', '')))
+
+    user = User.query.filter_by(email=otp_data['email']).first()
+    session.pop('login_otp', None)
+    session.pop('login_otp_sent_at', None)
+    if not user:
+        flash('Unable to complete email login.', 'error')
+        return redirect(url_for('main.login'))
+    login_user(user)
+    next_url = otp_data.get('next_url', '')
+    return redirect(next_url if next_url.startswith('/') else url_for('main.account'))
+
+@main_bp.route('/account/forgot-password', methods=['POST'])
+def forgot_password():
+    email = request.form.get('email', '').strip().lower()
+    if not email:
+        flash('Enter your email address to reset your password.', 'error')
+        return redirect(url_for('main.login', mode='forgot'))
+
+    user = User.query.filter_by(email=email).first()
+    api_key = current_app.config.get('BREVO_API_KEY')
+    sender_email = current_app.config.get('BREVO_SENDER_EMAIL')
+    if not user:
+        flash('If an account exists for this email, a reset OTP will be sent.', 'info')
+        return redirect(url_for('main.login', mode='forgot'))
+    if not api_key or not sender_email:
+        current_app.logger.error('Brevo password reset settings are not configured.')
+        flash('Password reset is temporarily unavailable. Please contact support.', 'error')
+        return redirect(url_for('main.login', mode='forgot'))
+
+    otp = f'{secrets.randbelow(1000000):06d}'
+    reset_data = {
+        'email': email,
+        'hash': hashlib.sha256(otp.encode()).hexdigest(),
+        'expires_at': time.time() + 600,
+        'attempts': 0
+    }
+    payload = {
+        'sender': {
+            'name': current_app.config.get('BREVO_SENDER_NAME', 'Zuhraan'),
+            'email': sender_email
+        },
+        'to': [{'email': email}],
+        'subject': 'Reset your Zuhraan password',
+        'textContent': f'Your Zuhraan password reset OTP is {otp}. It expires in 10 minutes.'
+    }
+    try:
+        response = requests.post(
+            'https://api.brevo.com/v3/smtp/email',
+            headers={'accept': 'application/json', 'api-key': api_key, 'content-type': 'application/json'},
+            json=payload,
+            timeout=10
+        )
+        response.raise_for_status()
+    except requests.RequestException:
+        current_app.logger.exception('Brevo failed to send password reset OTP.')
+        flash('We could not send the reset OTP. Please try again.', 'error')
+        return redirect(url_for('main.login', mode='forgot'))
+
+    session['password_reset_otp'] = reset_data
+    flash('A password reset OTP has been sent to your email.', 'success')
+    return redirect(url_for('main.login', mode='forgot', reset_sent=1))
+
+@main_bp.route('/account/reset-password', methods=['POST'])
+def reset_password():
+    reset_data = session.get('password_reset_otp')
+    otp = request.form.get('otp', '').strip()
+    password = request.form.get('password', '')
+    confirm_password = request.form.get('confirm_password', '')
+    if not reset_data or time.time() > reset_data.get('expires_at', 0):
+        session.pop('password_reset_otp', None)
+        flash('Your reset OTP has expired. Please request a new one.', 'error')
+        return redirect(url_for('main.login', mode='forgot'))
+    if reset_data.get('attempts', 0) >= 5:
+        session.pop('password_reset_otp', None)
+        flash('Too many incorrect attempts. Please request a new OTP.', 'error')
+        return redirect(url_for('main.login', mode='forgot'))
+
+    reset_data['attempts'] += 1
+    session['password_reset_otp'] = reset_data
+    entered_hash = hashlib.sha256(otp.encode()).hexdigest()
+    if not secrets.compare_digest(entered_hash, reset_data['hash']):
+        flash('Invalid reset OTP.', 'error')
+        return redirect(url_for('main.login', mode='forgot', reset_sent=1))
+    if len(password) < 8:
+        flash('Password must be at least 8 characters.', 'error')
+        return redirect(url_for('main.login', mode='forgot', reset_sent=1))
+    if password != confirm_password:
+        flash('Passwords do not match.', 'error')
+        return redirect(url_for('main.login', mode='forgot', reset_sent=1))
+
+    user = User.query.filter_by(email=reset_data['email']).first()
+    if not user:
+        session.pop('password_reset_otp', None)
+        flash('Unable to reset the password for this account.', 'error')
+        return redirect(url_for('main.login'))
+    user.password = generate_password_hash(password, method='pbkdf2:sha256')
+    db.session.commit()
+    session.pop('password_reset_otp', None)
+    flash('Your password has been reset. You can now sign in.', 'success')
+    return redirect(url_for('main.login'))
 
 @main_bp.route('/account/register', methods=['GET', 'POST'])
 def register():

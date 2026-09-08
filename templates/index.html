@@ -19,7 +19,7 @@
                     d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
             </svg>
         </div>
-        <p class="left-note">Explore the enchanting fragrances as if they were works of art.</p>
+        <p class="left-note">Explore the art of fine fragrances</p>
         <div class="left-card">
             <!-- Warm amber perfume bottle on neutral background -->
             <img src="{{ url_for('static', filename='images/banner/zuhran_1.webp') }}"
@@ -40,8 +40,8 @@
     <div class="center-col">
         <div class="arch-ring"></div>
         <h1 class="hero-title">
-            <span class="t1">A Fragrance that</span>
-            <span class="t2">Captivates</span>
+            <span class="t1">Step into the world of</span>
+            <span class="t2">ZUHRAAN</span>
         </h1>
         <div class="oval-wrap">
             <div class="center-glow"></div>
@@ -102,18 +102,21 @@
 
 <!-- Hero Product Transition Data -->
 {% if hero_products and hero_products|length > 1 %}
+<script type="application/json" id="heroProductData">
+[
+    {% for p in hero_products %}
+    {
+        "name": {{ p.name|tojson }},
+        "slug": {{ p.slug|tojson }},
+        "img": {{ (get_image_url(p.images.split(',')[0]) if p.images else url_for('static', filename='images/banner/zuhran_3.jpg'))|tojson }},
+        "desc": {{ ("Discover the exquisite allure of " ~ p.name ~ " — a masterpiece from Zuhraan.")|tojson }}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+]
+</script>
 <script>
 (function() {
-    const heroData = [
-        {% for p in hero_products %}
-        {
-            name: {{ p.name|tojson }},
-            slug: {{ p.slug|tojson }},
-            img: {{ (get_image_url(p.images.split(',')[0]) if p.images else url_for('static', filename='images/banner/zuhran_3.jpg'))|tojson }},
-            desc: "Discover the exquisite allure of " + {{ p.name|tojson }} + " — a masterpiece from Zuhraan."
-        }{% if not loop.last %},{% endif %}
-        {% endfor %}
-    ];
+    const heroData = JSON.parse(document.getElementById('heroProductData').textContent);
     
     let currentIdx = 0;
     const titleEl = document.getElementById('heroProductTitle');
@@ -213,14 +216,14 @@
         </div>
     </div>
     <div class="about-right">
-        <h2 class="about-heading">Fragrance is a reflection of personality, style, and mood.</h2>
+        <h2 class="about-heading">At Zuhraan, we believe a fragrance is more than just a scent</h2>
         <hr class="about-divider">
         <div class="about-features">
             <div class="feature-box">
                 <div class="feature-icon">
                     <svg width="32" height="32" viewBox="0 0 24 24" fill="#e96b1b"><path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z"/></svg>
                 </div>
-                <p>Our diverse range of perfumes brings together the finest notes crafted by master perfumers.</p>
+                <p>Born from a passion for refined fragrances, each fragrance is carefully crafted to offer a distinctive experience with thoughtfully selected notes.</p>
             </div>
             <div class="feature-box">
                 <div class="feature-icon">
@@ -236,7 +239,7 @@
                         <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
                     </svg>
                 </div>
-                <p>Step into a realm of elegance and sophistication, and find the scent that truly embodies you.</p>
+                <p>From rich oud and warm woods to sweet, fresh, and modern accords, our collection suits different personalities and moments. Zuhraan — Where fragrance leaves a legacy.</p>
             </div>
         </div>
     </div>
@@ -455,8 +458,9 @@
             }
         });
 
-        {% if offers %}
-        const offerSwiper = new Swiper('.hero-offers-slider', {
+        const offerSlider = document.querySelector('.hero-offers-slider');
+        if (offerSlider) {
+        const offerSwiper = new Swiper(offerSlider, {
             loop: true,
             effect: 'fade',
             autoplay: {
@@ -466,7 +470,7 @@
             speed: 1000,
             allowTouchMove: false
         });
-        {% endif %}
+        }
     });
 </script>
 {% endblock %}
