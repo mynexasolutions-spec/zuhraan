@@ -248,6 +248,44 @@ def edit_product(product_id):
     var100 = ProductVariant.query.filter_by(product_id=product.id, size='100ml').first()
     return render_template('admin/edit_product.html', product=product, categories=categories, var50=var50, var100=var100)
 
+@admin_bp.route('/product/<int:product_id>/image/<int:image_index>/delete', methods=['POST'])
+@admin_required
+def delete_product_image(product_id, image_index):
+    product = Product.query.get_or_404(product_id)
+    image_paths = product.images.split(',') if product.images else []
+    image_public_ids = product.image_pub_ids.split(',') if product.image_pub_ids else []
+
+    if image_index < 0 or image_index >= len(image_paths):
+        flash('Image not found.', 'error')
+        return redirect(url_for('admin.edit_product', product_id=product.id))
+
+    public_id = image_public_ids[image_index] if image_index < len(image_public_ids) else ''
+    if public_id:
+        try:
+            deletion_result = cloudinary.uploader.destroy(public_id)
+        except Exception:
+            current_app.logger.exception('Failed to delete product image from Cloudinary.', extra={'product_id': product.id})
+            flash('Could not delete the image from storage. Please try again.', 'error')
+            return redirect(url_for('admin.edit_product', product_id=product.id))
+
+        if deletion_result.get('result') not in {'ok', 'not found'}:
+            current_app.logger.error(
+                'Cloudinary rejected product image deletion.',
+                extra={'product_id': product.id, 'deletion_result': deletion_result},
+            )
+            flash('Could not delete the image from storage. Please try again.', 'error')
+            return redirect(url_for('admin.edit_product', product_id=product.id))
+
+    image_paths.pop(image_index)
+    if image_index < len(image_public_ids):
+        image_public_ids.pop(image_index)
+
+    product.images = ','.join(image_paths)
+    product.image_pub_ids = ','.join(image_public_ids)
+    db.session.commit()
+    flash('Product image deleted successfully.', 'success')
+    return redirect(url_for('admin.edit_product', product_id=product.id))
+
 @admin_bp.route('/product/<int:product_id>/delete')
 @admin_required
 def delete_product(product_id):
