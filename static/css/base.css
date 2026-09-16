@@ -458,6 +458,78 @@ nav {
     opacity: 0.7;
 }
 
+@media (max-width: 600px) {
+    body {
+        padding-top: 82px;
+    }
+
+    nav {
+        height: 58px;
+        margin: 10px 6px 0;
+        padding: 0 12px;
+    }
+
+    .nav-logo-container {
+        gap: 5px;
+    }
+
+    .nav-logo {
+        font-size: 1.25rem;
+        margin-right: 0;
+    }
+
+    .instagram-link {
+        margin-top: 0;
+    }
+
+    .instagram-link svg {
+        width: 19px;
+        height: 19px;
+    }
+
+    .nav-icons {
+        flex-grow: 0;
+        gap: 6px;
+        overflow: visible;
+    }
+
+    .nav-icons .account-link,
+    .nav-icons .hamburger {
+        width: 30px;
+        height: 30px;
+        margin: 0;
+    }
+
+    .search-box {
+        width: 34px;
+        height: 34px;
+        padding: 0;
+        gap: 0;
+        justify-content: center;
+        border-radius: 50%;
+        cursor: text;
+        flex-shrink: 0;
+    }
+
+    .search-box input {
+        width: 0;
+        min-width: 0;
+        opacity: 0;
+    }
+
+    .search-box:focus-within {
+        width: 78px;
+        padding: 0 9px;
+        gap: 5px;
+        border-radius: 18px;
+    }
+
+    .search-box:focus-within input {
+        width: 38px;
+        opacity: 1;
+    }
+}
+
 /* GLOBAL PRODUCT LINK UTILITY */
 .product-card-link {
     text-decoration: none;
@@ -505,6 +577,31 @@ nav {
 .flash-message.info {
     border-left-color: var(--amber);
     color: var(--amber);
+}
+
+.flash-message button {
+    margin-left: 15px;
+    border: 0;
+    background: none;
+    color: inherit;
+    font-size: 1.2rem;
+    cursor: pointer;
+}
+
+.cart-count {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    display: flex;
+    width: 18px;
+    height: 18px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--amber);
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 700;
 }
 
 @keyframes slideIn {
@@ -688,4 +785,50 @@ nav {
     .product-card-body { padding: 18px 10px 36px; border-radius: 0 0 150px 150px; }
     .product-card-body h4 { font-size: 1rem; }
     .btn-buy-now { padding: 8px 18px; font-size: 0.78rem; bottom: -14px; }
+}
+
+/* Floating Contact Buttons */
+.floating-contact {
+    position: fixed;
+    bottom: 25px;
+    right: 25px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    z-index: 1000;
+}
+.float-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: transform 0.3s ease, filter 0.3s ease;
+    text-decoration: none;
+    color: #fff;
+    font-size: 24px;
+    background: transparent;
+    border: none;
+}
+.float-btn img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+.float-btn:hover {
+    transform: scale(1.1);
+    filter: drop-shadow(0 6px 12px rgba(0,0,0,0.3));
+}
+
+@media (max-width: 600px) {
+    .float-btn {
+        width: 32px;
+        height: 32px;
+    }
+    .floating-contact {
+        bottom: 15px;
+        right: 15px;
+        gap: 10px;
+    }
 }

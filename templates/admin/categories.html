@@ -1,59 +1,103 @@
 {% extends 'admin/base.html' %}
 
+{% block head %}
+<style>
+    .category-layout { display: grid; grid-template-columns: minmax(280px, 0.82fr) minmax(0, 1.7fr); gap: 28px; align-items: start; }
+    .category-panel { overflow: hidden; background: var(--white); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 12px 28px -22px rgba(15, 23, 42, 0.45); }
+    .category-panel-header { display: flex; align-items: center; gap: 11px; padding: 21px 24px 17px; border-bottom: 1px solid #eef2f7; }
+    .category-panel-icon { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 10px; color: var(--primary); background: #eff6ff; }
+    .category-panel h3 { margin: 0; color: #1e293b; font-size: 1.18rem; font-weight: 600; }
+    .category-form { padding: 22px 24px 24px; }
+    .form-field { margin-bottom: 18px; }
+    .form-field label { display: block; margin-bottom: 8px; color: #475569; font-size: 0.94rem; font-weight: 600; }
+    .form-field input { width: 100%; min-height: 43px; padding: 10px 12px; color: #1e293b; border: 1px solid #dbe3ee; border-radius: 9px; background: #fff; font: inherit; font-size: 0.97rem; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+    .form-field input:focus { outline: 0; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+    .form-field input[type="file"] { padding: 5px; background: #f8fafc; cursor: pointer; }
+    .form-field input[type="file"]::file-selector-button { margin-right: 10px; padding: 7px 10px; color: #334155; background: #fff; border: 1px solid #dbe3ee; border-radius: 6px; font: inherit; font-size: 0.83rem; font-weight: 600; cursor: pointer; }
+    .field-hint { margin: 7px 0 0; color: #94a3b8; font-size: 0.82rem; line-height: 1.4; }
+    .category-submit { width: 100%; margin-top: 2px; }
+    .category-table-wrap { overflow-x: auto; padding: 4px 24px 12px; }
+    .category-table { width: 100%; min-width: 600px; border-collapse: collapse; }
+    .category-table th { padding: 14px 12px; color: #64748b; border-bottom: 1px solid #e9eef5; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; text-align: left; text-transform: uppercase; }
+    .category-table td { padding: 14px 12px; color: #334155; border-bottom: 1px solid #f0f3f7; font-size: 0.98rem; vertical-align: middle; }
+    .category-table tbody tr:last-child td { border-bottom: 0; }
+    .category-thumb, .category-thumb-placeholder { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 10px; object-fit: cover; }
+    .category-thumb { border: 1px solid #e2e8f0; }
+    .category-thumb-placeholder { color: #94a3b8; background: #f1f5f9; }
+    .category-name { color: #1e293b; font-weight: 600; }
+    .category-count { display: inline-flex; min-width: 31px; min-height: 27px; align-items: center; justify-content: center; padding: 4px 9px; color: #475569; background: #f1f5f9; border-radius: 999px; font-size: 0.84rem; font-weight: 700; }
+    .category-actions { display: flex; align-items: center; gap: 8px; }
+    .category-action { display: inline-flex; min-height: 34px; align-items: center; justify-content: center; gap: 6px; padding: 7px 10px; color: #2563eb; background: #eff6ff; border: 1px solid #dbeafe; border-radius: 7px; font-size: 0.84rem; font-weight: 600; text-decoration: none; transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease; }
+    .category-action:hover { background: #dbeafe; border-color: #bfdbfe; transform: translateY(-1px); }
+    .category-action--delete { color: #b91c1c; background: #fff; border-color: #fecaca; }
+    .category-action--delete:hover { background: #fef2f2; border-color: #fca5a5; }
+    .category-empty { padding: 38px 20px; color: #94a3b8; text-align: center; }
+
+    @media (max-width: 960px) { .category-layout { grid-template-columns: 1fr; } }
+    @media (max-width: 560px) { .category-panel-header, .category-form { padding-right: 18px; padding-left: 18px; } .category-table-wrap { padding-right: 14px; padding-left: 14px; } }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="header">
-    <h1>Manage Categories</h1>
-</div>
+<div class="header"><h1>Manage Categories</h1></div>
 
-<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 40px;">
-    <div class="dash-box" style="background: #fff; padding: 24px; border-radius: 12px; box-shadow: var(--card-shadow); height: fit-content;">
-        <h3 style="margin-bottom: 20px; font-size: 1.3rem;">Add New Category</h3>
-        <form action="{{ url_for('admin.manage_categories') }}" method="POST" enctype="multipart/form-data">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div class="group" style="margin-bottom: 20px;">
-                <label style="display: block; font-size: 1.075rem; margin-bottom: 8px;">Category Name</label>
-                <input type="text" name="name" required style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px;">
+<div class="category-layout">
+    <section class="category-panel">
+        <div class="category-panel-header">
+            <div class="category-panel-icon"><i class="fa-solid fa-folder-plus"></i></div>
+            <h3>Add New Category</h3>
+        </div>
+        <form class="category-form" action="{{ url_for('admin.manage_categories') }}" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-field">
+                <label for="categoryName">Category name</label>
+                <input id="categoryName" type="text" name="name" placeholder="e.g. Eau de Parfum" required>
             </div>
-            <div class="group" style="margin-bottom: 20px;">
-                <label style="display: block; font-size: 1.075rem; margin-bottom: 8px;">Category Image</label>
-                <input type="file" name="image" accept="image/*" required style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; background: #fafafa;">
-                <p style="font-size: 0.95rem; color: #64748b; margin-top: 5px;">This will be used on the homepage.</p>
+            <div class="form-field">
+                <label for="categoryImage">Category image</label>
+                <input id="categoryImage" type="file" name="image" accept="image/*" required>
+                <p class="field-hint">Shown for this category across the storefront.</p>
             </div>
-            <button type="submit" class="btn-save">Add Category</button>
+            <button type="submit" class="btn-save category-submit"><i class="fa-solid fa-plus"></i> Add Category</button>
         </form>
-    </div>
+    </section>
 
-    <div class="dash-box" style="background: #fff; padding: 24px; border-radius: 12px; box-shadow: var(--card-shadow);">
-        <h3 style="margin-bottom: 20px; font-size: 1.3rem;">Existing Categories</h3>
-        <table class="table-lite" style="width: 100%; border-collapse: collapse;">
-            <thead>
-                <tr style="text-align: left; border-bottom: 1px solid #e2e8f0;">
-                    <th style="padding: 12px; width: 60px;">Image</th>
-                    <th style="padding: 12px;">Name</th>
-                    <th style="padding: 12px;">Products Count</th>
-                    <th style="padding: 12px;">Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for cat in categories %}
-                <tr style="border-bottom: 1px solid #f1f5f9;">
-                    <td style="padding: 16px;">
-                        {% if cat.image %}
-                        <img src="{{ get_image_url(cat.image) }}" style="width: 48px; height: 48px; object-fit: cover; border-radius: 8px;">
-                        {% else %}
-                        <div style="width: 48px; height: 48px; background: #e2e8f0; border-radius: 8px; display:flex; align-items:center; justify-content:center; color:#aaa;"><i class="fa-solid fa-image"></i></div>
-                        {% endif %}
-                    </td>
-                    <td style="padding: 16px; font-weight: 500;">{{ cat.name }}</td>
-                    <td style="padding: 16px;">{{ cat.products|length }}</td>
-                    <td style="padding: 16px;">
-                        <a href="{{ url_for('admin.edit_category', category_id=cat.id) }}" style="color: var(--primary); font-size: 1.075rem; text-decoration: none; margin-right: 15px;"><i class="fa-solid fa-pen"></i> Edit</a>
-                        <a href="javascript:void(0)" onclick="openDeleteModal(`{{ cat.name }}`, `{{ url_for('admin.delete_category', category_id=cat.id) }}`)" style="color: #ef4444; font-size: 1.075rem; text-decoration: none;"><i class="fa-solid fa-trash"></i> Delete</a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+    <section class="category-panel">
+        <div class="category-panel-header">
+            <div class="category-panel-icon"><i class="fa-solid fa-layer-group"></i></div>
+            <h3>Existing Categories</h3>
+        </div>
+        <div class="category-table-wrap">
+            <table class="category-table">
+                <thead>
+                    <tr><th>Image</th><th>Category</th><th>Products</th><th>Actions</th></tr>
+                </thead>
+                <tbody>
+                    {% if not categories %}
+                    <tr><td colspan="4" class="category-empty">No categories yet. Add your first category to get started.</td></tr>
+                    {% endif %}
+                    {% for cat in categories %}
+                    <tr>
+                        <td>
+                            {% if cat.image %}
+                            <img class="category-thumb" src="{{ get_image_url(cat.image) }}" alt="{{ cat.name }}">
+                            {% else %}
+                            <div class="category-thumb-placeholder"><i class="fa-solid fa-image"></i></div>
+                            {% endif %}
+                        </td>
+                        <td class="category-name">{{ cat.name }}</td>
+                        <td><span class="category-count">{{ cat.products|length }}</span></td>
+                        <td>
+                            <div class="category-actions">
+                                <a href="{{ url_for('admin.edit_category', category_id=cat.id) }}" class="category-action"><i class="fa-solid fa-pen"></i> Edit</a>
+                                <a href="javascript:void(0)" onclick="openDeleteModal({{ cat.name|tojson }}, {{ url_for('admin.delete_category', category_id=cat.id)|tojson }})" class="category-action category-action--delete"><i class="fa-solid fa-trash"></i> Delete</a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
 </div>
 {% endblock %}

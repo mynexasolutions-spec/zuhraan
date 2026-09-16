@@ -427,14 +427,20 @@
 
             <div class="sum-item">
                 <span class="name">Shipping</span>
-                <span style="font-size:0.75rem; color: var(--amber); font-weight:700; text-transform:uppercase; letter-spacing:0.06em;">Calculated</span>
+                <span id="shippingAmount" style="font-size:0.8rem; font-weight:700;">
+                    {% if actual_shipping == 0 %}
+                    <span style="color: #16a34a;">&#8377;0.00</span>
+                    {% else %}
+                    ₹{{ "{:,.2f}".format(actual_shipping) }}
+                    {% endif %}
+                </span>
             </div>
 
             <div class="sum-divider"></div>
 
             <div class="sum-total">
                 <span class="lbl">Total</span>
-                <span class="val" id="displayTotal">₹{{ "{:,.2f}".format(total) }}</span>
+                <span class="val" id="displayTotal">₹{{ "{:,.2f}".format(total + actual_shipping) }}</span>
             </div>
 
             <button type="submit" class="btn-place-order">
@@ -479,18 +485,22 @@
                 body: JSON.stringify({ code: code, total: Number("{{ total }}") })
             });
             const data = await res.json();
+            const actualShipping = Number("{{ actual_shipping }}");
             if (data.valid) {
                 msg.style.color = '#16a34a';
                 msg.textContent = data.message;
-                document.getElementById('displayTotal').textContent = '₹' + data.final_total.toLocaleString('en-IN', {minimumFractionDigits: 2});
+                const newTotal = data.final_total + actualShipping;
+                document.getElementById('displayTotal').textContent = '₹' + newTotal.toLocaleString('en-IN', {minimumFractionDigits: 2});
             } else {
                 msg.style.color = '#dc2626';
                 msg.textContent = data.message;
-                document.getElementById('displayTotal').textContent = '₹' + Number("{{ total }}").toLocaleString('en-IN', {minimumFractionDigits: 2});
+                const baseTotal = Number("{{ total }}") + actualShipping;
+                document.getElementById('displayTotal').textContent = '₹' + baseTotal.toLocaleString('en-IN', {minimumFractionDigits: 2});
             }
         } catch (e) {
             msg.textContent = 'Error checking coupon.';
-            document.getElementById('displayTotal').textContent = '₹' + Number("{{ total }}").toLocaleString('en-IN', {minimumFractionDigits: 2});
+            const baseTotal = Number("{{ total }}") + Number("{{ actual_shipping }}");
+            document.getElementById('displayTotal').textContent = '₹' + baseTotal.toLocaleString('en-IN', {minimumFractionDigits: 2});
         }
     }
 </script>

@@ -2,134 +2,121 @@
 
 {% block head %}
 <style>
-    .media-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
-    .media-card {
-        background: #fff; border-radius: 16px; padding: 28px;
-        box-shadow: var(--card-shadow); border: 1px solid var(--border);
-    }
-    .media-card h3 { font-size: 1.35rem; font-weight: 600; margin-bottom: 6px; color: var(--text-main); }
-    .media-card .desc { font-size: 1.05rem; color: var(--text-muted); margin-bottom: 20px; }
-    .media-preview { width: 100%; border-radius: 12px; overflow: hidden; margin-bottom: 20px; background: #f1f5f9; }
-    .media-preview video, .media-preview img { width: 100%; display: block; border-radius: 12px; }
-    .media-preview-banner { max-width: 280px; margin: 0 auto; }
-    .media-preview-banner img { width: 100%; display: block; border-radius: 12px; }
-    .upload-zone {
-        border: 2px dashed var(--border); border-radius: 12px; padding: 32px;
-        text-align: center; cursor: pointer; transition: all 0.2s;
-        background: #f8fafc; position: relative;
-    }
-    .upload-zone:hover { border-color: var(--primary); background: #eff6ff; }
-    .upload-zone input[type="file"] {
-        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        opacity: 0; cursor: pointer;
-    }
-    .upload-zone i { font-size: 2.4rem; color: var(--text-muted); margin-bottom: 12px; }
-    .upload-zone p { font-size: 1.1rem; color: var(--text-muted); }
-    .upload-zone .file-info { font-size: 0.95rem; color: var(--primary); margin-top: 8px; font-weight: 500; }
-    .btn-upload {
-        display: inline-flex; align-items: center; gap: 8px;
-        padding: 12px 28px; background: var(--primary); color: #fff;
-        border: none; border-radius: 8px; font-weight: 600;
-        cursor: pointer; font-family: inherit; transition: all 0.2s;
-        font-size: 1.1rem; margin-top: 16px;
-    }
-    .btn-upload:hover { background: #1d4ed8; transform: translateY(-1px); }
-    .btn-delete-media {
-        display: inline-flex; align-items: center; gap: 8px;
-        padding: 10px 20px; background: #fef2f2; color: #dc2626;
-        border: 1px solid #fecaca; border-radius: 8px; font-weight: 600;
-        cursor: pointer; font-family: inherit; transition: all 0.2s;
-        font-size: 1.0rem; margin-top: 10px;
-    }
-    .btn-delete-media:hover { background: #fee2e2; }
-    .status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; font-size: 0.95rem; font-weight: 600; }
-    .status-active { background: #dcfce7; color: #166534; }
-    .status-empty { background: #f1f5f9; color: #64748b; }
+    .media-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; align-items: start; }
+    .media-card { min-height: 100%; overflow: hidden; background: #fff; border: 1px solid var(--border); border-radius: 18px; box-shadow: 0 12px 28px -22px rgba(15, 23, 42, 0.45); }
+    .media-card-header { display: flex; gap: 14px; align-items: flex-start; padding: 24px 24px 20px; border-bottom: 1px solid #eef2f7; }
+    .media-icon { width: 44px; height: 44px; flex: 0 0 44px; display: grid; place-items: center; color: var(--primary); background: #eff6ff; border-radius: 12px; font-size: 1.25rem; }
+    .media-card h3 { margin: 1px 0 5px; color: var(--text-main); font-size: 1.28rem; font-weight: 600; line-height: 1.25; }
+    .media-card .desc { margin: 0; color: var(--text-muted); font-size: 0.98rem; line-height: 1.5; }
+    .media-card-body { padding: 20px 24px 24px; }
+    .empty-state { display: flex; gap: 12px; align-items: center; min-height: 82px; margin-bottom: 18px; padding: 14px 16px; color: #475569; background: linear-gradient(135deg, #f8fafc, #f1f5f9); border: 1px solid #e2e8f0; border-radius: 12px; }
+    .empty-state-icon { width: 38px; height: 38px; flex: 0 0 38px; display: grid; place-items: center; color: #64748b; background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 1rem; }
+    .empty-state strong { display: block; color: #334155; font-size: 1rem; font-weight: 600; }
+    .empty-state span { display: block; margin-top: 2px; color: #64748b; font-size: 0.88rem; line-height: 1.35; }
+    .status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; font-size: 0.84rem; font-weight: 600; }
+    .status-active { color: #166534; background: #dcfce7; }
+    .status-active i { color: #22c55e; font-size: 0.48rem; }
+    .media-preview { width: 100%; overflow: hidden; margin: 14px 0 18px; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 12px; }
+    .media-preview video, .media-preview img { display: block; width: 100%; border-radius: 11px; }
+    .media-preview-banner { max-width: 255px; margin-right: auto; margin-left: auto; }
+    .upload-zone { position: relative; display: grid; min-height: 176px; place-content: center; padding: 22px; overflow: hidden; text-align: center; cursor: pointer; color: var(--text-muted); background: #fbfdff; border: 2px dashed #cbd5e1; border-radius: 14px; transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease; }
+    .upload-zone:hover, .upload-zone:focus-within { color: var(--primary); background: #f4f8ff; border-color: var(--primary); }
+    .upload-zone:hover .upload-icon, .upload-zone:focus-within .upload-icon { transform: translateY(-3px); }
+    .upload-zone input[type="file"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+    .upload-icon { width: 48px; height: 48px; display: grid; place-items: center; margin: 0 auto 10px; color: var(--primary); background: #e8f0ff; border-radius: 50%; font-size: 1.25rem; transition: transform 0.2s ease; }
+    .upload-zone p { margin: 0; font-size: 0.98rem; line-height: 1.45; }
+    .upload-zone strong { color: #334155; }
+    .upload-hint { margin-top: 5px !important; color: #94a3b8; font-size: 0.8rem !important; }
+    .upload-zone .file-info { min-height: 19px; margin-top: 8px; color: var(--primary); font-size: 0.86rem; font-weight: 600; overflow-wrap: anywhere; }
+    .media-actions { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
+    .btn-upload, .btn-delete-media { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; border-radius: 9px; font-family: inherit; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease; }
+    .btn-upload { padding: 10px 18px; color: #fff; background: var(--primary); border: 1px solid var(--primary); }
+    .btn-upload:hover { background: #1d4ed8; box-shadow: 0 8px 15px -8px #2563eb; transform: translateY(-1px); }
+    .btn-delete-media { padding: 10px 14px; color: #b91c1c; background: #fff; border: 1px solid #fecaca; }
+    .btn-delete-media:hover { background: #fef2f2; }
+    .delete-form { margin: 14px 0 0; }
 
-    @media (max-width: 900px) {
-        .media-grid { grid-template-columns: 1fr; }
-    }
+    @media (max-width: 900px) { .media-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 480px) { .media-card-header, .media-card-body { padding-right: 18px; padding-left: 18px; } .media-card-header { gap: 11px; } }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="header">
-    <h1>Homepage Media</h1>
-</div>
+<div class="header"><h1>Homepage Media</h1></div>
 
 <div class="media-grid">
-    <!-- HOMEPAGE MULTIMEDIA -->
-    <div class="media-card">
-        <h3><i class="fa-solid fa-photo-film" style="color: var(--primary); margin-right: 8px;"></i>Homepage Multimedia</h3>
-        <p class="desc">Landscape video or image shown in the main multimedia section. Uploading a new file replaces the existing one.</p>
-        
-        {% if media_url %}
-        <span class="status-badge status-active"><i class="fa-solid fa-circle" style="font-size: 0.5rem;"></i> Active ({{ media_type | capitalize }})</span>
-        <div class="media-preview" style="margin-top: 16px;">
-            {% if media_type == 'video' %}
-            <video autoplay muted loop playsinline style="max-height: 300px; object-fit: cover;">
-                <source src="{{ media_url }}" type="video/mp4">
-            </video>
+    <section class="media-card">
+        <div class="media-card-header">
+            <div class="media-icon"><i class="fa-solid fa-photo-film"></i></div>
+            <div><h3>Homepage Multimedia</h3><p class="desc">Landscape image or video shown in the homepage feature section.</p></div>
+        </div>
+        <div class="media-card-body">
+            {% if media_url %}
+            <span class="status-badge status-active"><i class="fa-solid fa-circle"></i> Live · {{ media_type | capitalize }}</span>
+            <div class="media-preview">
+                {% if media_type == 'video' %}
+                <video autoplay muted loop playsinline style="max-height: 300px; object-fit: cover;"><source src="{{ media_url }}" type="video/mp4"></video>
+                {% else %}
+                <img src="{{ media_url }}" alt="Homepage multimedia preview" style="max-height: 300px; object-fit: cover;">
+                {% endif %}
+            </div>
+            <form method="POST" class="delete-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="delete_media">
+                <button type="submit" class="btn-delete-media" onclick="return confirm('Remove this {{ media_type }}?')"><i class="fa-solid fa-trash"></i> Remove {{ media_type | capitalize }}</button>
+            </form>
             {% else %}
-            <img src="{{ media_url }}" alt="Homepage Highlight" style="max-height: 300px; object-fit: cover;">
+            <div class="empty-state">
+                <div class="empty-state-icon"><i class="fa-solid fa-photo-film"></i></div>
+                <div><strong>No multimedia selected</strong><span>Add a landscape image or video to make this feature live.</span></div>
+            </div>
             {% endif %}
-        </div>
-        <form method="POST" style="margin-bottom: 20px;">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" name="action" value="delete_media">
-            <button type="submit" class="btn-delete-media" onclick="return confirm('Remove this {{ media_type }}?')">
-                <i class="fa-solid fa-trash"></i> Remove {{ media_type | capitalize }}
-            </button>
-        </form>
-        {% else %}
-        <span class="status-badge status-empty"><i class="fa-solid fa-circle" style="font-size: 0.5rem;"></i> Not Set</span>
-        {% endif %}
-        
-        <form method="POST" enctype="multipart/form-data">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" name="action" value="upload_media">
-            <div class="upload-zone" id="mediaDropZone">
-                <i class="fa-solid fa-cloud-arrow-up"></i>
-                <p>Click or drag a <strong>Video</strong> or <strong>Image</strong> here</p>
-                <p class="file-info" id="mediaFileName"></p>
-                <input type="file" name="media" accept="video/*,image/*" onchange="document.getElementById('mediaFileName').textContent = this.files[0]?.name || ''">
-            </div>
-            <button type="submit" class="btn-upload"><i class="fa-solid fa-upload"></i> Upload Media</button>
-        </form>
-    </div>
 
-    <!-- BOTTOM BANNER (9:16 Portrait) -->
-    <div class="media-card">
-        <h3><i class="fa-solid fa-image" style="color: var(--primary); margin-right: 8px;"></i>Bottom Banner</h3>
-        <p class="desc">9:16 portrait banner displayed at the bottom of the homepage (replaces testimonials).</p>
-        
-        {% if banner_url %}
-        <span class="status-badge status-active"><i class="fa-solid fa-circle" style="font-size: 0.5rem;"></i> Active</span>
-        <div class="media-preview media-preview-banner" style="margin-top: 16px;">
-            <img src="{{ banner_url }}" alt="Bottom Banner">
+            <form method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="upload_media">
+                <div class="upload-zone" id="mediaDropZone">
+                    <div class="upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                    <p>Drop a <strong>video</strong> or <strong>image</strong> here</p>
+                    <p class="upload-hint">or click to browse · PNG, JPG, WEBP, MP4, WEBM, MOV</p>
+                    <p class="file-info" id="mediaFileName" aria-live="polite"></p>
+                    <input type="file" name="media" accept="video/*,image/*" onchange="document.getElementById('mediaFileName').textContent = this.files[0]?.name || ''">
+                </div>
+                <div class="media-actions"><button type="submit" class="btn-upload"><i class="fa-solid fa-upload"></i> Upload Multimedia</button></div>
+            </form>
         </div>
-        <form method="POST">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" name="action" value="delete_banner">
-            <button type="submit" class="btn-delete-media" onclick="return confirm('Remove this banner?')">
-                <i class="fa-solid fa-trash"></i> Remove Banner
-            </button>
-        </form>
-        {% else %}
-        <span class="status-badge status-empty"><i class="fa-solid fa-circle" style="font-size: 0.5rem;"></i> Not Set</span>
-        {% endif %}
-        
-        <form method="POST" enctype="multipart/form-data" style="margin-top: 20px;">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" name="action" value="upload_banner">
-            <div class="upload-zone" id="bannerDropZone">
-                <i class="fa-solid fa-cloud-arrow-up"></i>
-                <p>Click or drag a 9:16 portrait image here</p>
-                <p class="file-info" id="bannerFileName"></p>
-                <input type="file" name="banner" accept="image/png,image/jpeg,image/webp" onchange="document.getElementById('bannerFileName').textContent = this.files[0]?.name || ''">
+    </section>
+
+    <section class="media-card">
+        <div class="media-card-header">
+            <div class="media-icon"><i class="fa-solid fa-image"></i></div>
+            <div><h3>Bottom Banner</h3><p class="desc">A 9:16 portrait image displayed at the bottom of the homepage.</p></div>
+        </div>
+        <div class="media-card-body">
+            {% if banner_url %}
+            <span class="status-badge status-active"><i class="fa-solid fa-circle"></i> Live</span>
+            <div class="media-preview media-preview-banner"><img src="{{ banner_url }}" alt="Bottom banner preview"></div>
+            <form method="POST" class="delete-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="delete_banner">
+                <button type="submit" class="btn-delete-media" onclick="return confirm('Remove this banner?')"><i class="fa-solid fa-trash"></i> Remove Banner</button>
+            </form>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon"><i class="fa-solid fa-image"></i></div>
+                <div><strong>No banner selected</strong><span>Upload a portrait image to feature it at the bottom of your homepage.</span></div>
             </div>
-            <button type="submit" class="btn-upload"><i class="fa-solid fa-upload"></i> Upload Banner</button>
-        </form>
-    </div>
+            {% endif %}
+
+            <form method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="upload_banner">
+                <div class="upload-zone" id="bannerDropZone">
+                    <div class="upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                    <p>Drop a <strong>9:16 portrait image</strong> here</p>
+                    <p class="upload-hint">or click to browse · PNG, JPG, JPEG, WEBP</p>
+                    <p class="file-info" id="bannerFileName" aria-live="polite"></p>
+                    <input type="file" name="banner" accept="image/png,image/jpeg,image/webp" onchange="document.getElementById('bannerFileName').textContent = this.files[0]?.name || ''">
+                </div>
+                <div class="media-actions"><button type="submit" class="btn-upload"><i class="fa-solid fa-upload"></i> Upload Banner</button></div>
+            </form>
+        </div>
+    </section>
 </div>
 {% endblock %}

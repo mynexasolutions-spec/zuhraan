@@ -22,16 +22,12 @@
         <p class="left-note">Explore the art of fine fragrances</p>
         <div class="left-card">
             <!-- Warm amber perfume bottle on neutral background -->
-            <img src="{{ url_for('static', filename='images/banner/zuhran_1.webp') }}"
-                alt="Scandal Concentrated Perfume">
+            <img src="{{ url_for('static', filename='images/banner/zuhran_1.webp') }}" alt="About Zuhraan">
             <div class="left-card-body">
-                <h4>Scandal</h4>
-                <p>Concentrated Perfume</p>
-                <button class="btn-circle">
-                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                        <path d="M5 12h14M12 5l7 7-7 7" />
-                    </svg>
-                </button>
+                <a href="{{ url_for('main.about') }}" class="left-card-link">
+                    <h4>About Us</h4>
+                    <p>Discover Our Story</p>
+                </a>
             </div>
         </div>
     </div>
@@ -46,15 +42,16 @@
         <div class="oval-wrap">
             <div class="center-glow"></div>
             {% if offers %}
-                <div class="swiper hero-offers-slider" style="width:100%; height:100%; border-radius: inherit;">
-                    <div class="swiper-wrapper">
-                        {% for offer in offers %}
-                        <div class="swiper-slide">
-                            <img class="hero-main-img" src="{{ get_image_url(offer.image) }}" alt="Offer Banner" style="width:100%; height:100%; object-fit:cover; border-radius: inherit;">
-                        </div>
-                        {% endfor %}
+            <div class="swiper hero-offers-slider" style="width:100%; height:100%; border-radius: inherit;">
+                <div class="swiper-wrapper">
+                    {% for offer in offers %}
+                    <div class="swiper-slide">
+                        <img class="hero-main-img" src="{{ get_image_url(offer.image) }}" alt="Offer Banner"
+                            style="width:100%; height:100%; object-fit:cover; border-radius: inherit;">
                     </div>
+                    {% endfor %}
                 </div>
+            </div>
             {% else %}
             <!-- Dark floral perfume hero image -->
             <img class="hero-main-img" src="{{ url_for('static', filename='images/banner/zuhran_2.webp') }}"
@@ -68,29 +65,36 @@
         <div class="right-top-card" id="heroRightCard">
             <div class="rtc-head">
                 <div>
-                    <h4 id="heroProductTitle">{% if hero_products %}{{ hero_products[0].name }}{% else %}Scandal{% endif %}</h4>
+                    <h4 id="heroProductTitle">{% if hero_products %}{{ hero_products[0].name }}{% else %}Signature
+                        Scent{% endif %}</h4>
                 </div>
                 <button class="btn-circle">
-                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"
+                        viewBox="0 0 24 24">
                         <path d="M5 12h14M12 5l7 7-7 7" />
                     </svg>
                 </button>
             </div>
             <div class="hero-product-img-wrap">
                 {% if hero_products %}
-                    {% set hero_img_list = hero_products[0].images.split(',') if hero_products[0].images else [] %}
-                    <img id="heroProductImg" src="{% if hero_img_list %}{{ get_image_url(hero_img_list[0]) }}{% else %}{{ url_for('static', filename='images/banner/zuhran_3.jpg') }}{% endif %}" alt="{{ hero_products[0].name }}">
+                {% set hero_img_list = hero_products[0].images.split(',') if hero_products[0].images else [] %}
+                <img id="heroProductImg"
+                    src="{% if hero_img_list %}{{ get_image_url(hero_img_list[0]) }}{% else %}{{ url_for('static', filename='images/banner/zuhran_3.jpg') }}{% endif %}"
+                    alt="{{ hero_products[0].name }}">
                 {% else %}
-                    <img id="heroProductImg" src="{{ url_for('static', filename='images/banner/zuhran_3.jpg') }}" alt="Scandal Potent Perfume">
+                <img id="heroProductImg" src="{{ url_for('static', filename='images/banner/zuhran_3.jpg') }}"
+                    alt="Signature Scent">
                 {% endif %}
             </div>
         </div>
 
         <div class="promo-card">
-            <a href="{% if hero_products %}{{ url_for('main.product_detail', slug=hero_products[0].slug) }}{% else %}{{ url_for('main.shop') }}{% endif %}" class="shop-now-btn" id="heroShopBtn">
+            <a href="{% if hero_products %}{{ url_for('main.product_detail', slug=hero_products[0].slug) }}{% else %}{{ url_for('main.shop') }}{% endif %}"
+                class="shop-now-btn" id="heroShopBtn">
                 Shop Now
                 <span class="sc">
-                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"
+                        viewBox="0 0 24 24">
                         <path d="M5 12h14M12 5l7 7-7 7" />
                     </svg>
                 </span>
@@ -115,58 +119,59 @@
 ]
 </script>
 <script>
-(function() {
-    const heroData = JSON.parse(document.getElementById('heroProductData').textContent);
-    
-    let currentIdx = 0;
-    const titleEl = document.getElementById('heroProductTitle');
-    const imgEl = document.getElementById('heroProductImg');
-    const promoEl = document.getElementById('heroPromoText');
-    const btnEl = document.getElementById('heroShopBtn');
-    const cardEl = document.getElementById('heroRightCard');
-    
-    function transitionProduct() {
-        currentIdx = (currentIdx + 1) % heroData.length;
-        const product = heroData[currentIdx];
-        
-        // Slide out to the left
-        cardEl.style.transform = 'translateX(-100%)';
-        cardEl.style.opacity = '0';
-        
-        setTimeout(() => {
-            titleEl.textContent = product.name;
-            imgEl.src = product.img;
-            imgEl.alt = product.name;
-            btnEl.href = '/product/' + product.slug;
-            
-            // Position off-screen right, then slide in
-            cardEl.style.transition = 'none';
-            cardEl.style.transform = 'translateX(100%)';
+    (function () {
+        const heroData = JSON.parse(document.getElementById('heroProductData').textContent);
+
+        let currentIdx = 0;
+        const titleEl = document.getElementById('heroProductTitle');
+        const imgEl = document.getElementById('heroProductImg');
+        const promoEl = document.getElementById('heroPromoText');
+        const btnEl = document.getElementById('heroShopBtn');
+        const cardEl = document.getElementById('heroRightCard');
+
+        function transitionProduct() {
+            currentIdx = (currentIdx + 1) % heroData.length;
+            const product = heroData[currentIdx];
+
+            // Slide out to the left
+            cardEl.style.transform = 'translateX(-100%)';
             cardEl.style.opacity = '0';
-            
-            // Force reflow
-            cardEl.offsetHeight;
-            
-            cardEl.style.transition = 'transform 0.5s ease, opacity 0.5s ease';
-            cardEl.style.transform = 'translateX(0)';
-            cardEl.style.opacity = '1';
-        }, 500);
-    }
-    
-    setInterval(transitionProduct, 3000);
-})();
+
+            setTimeout(() => {
+                titleEl.textContent = product.name;
+                imgEl.src = product.img;
+                imgEl.alt = product.name;
+                btnEl.href = '/product/' + product.slug;
+
+                // Position off-screen right, then slide in
+                cardEl.style.transition = 'none';
+                cardEl.style.transform = 'translateX(100%)';
+                cardEl.style.opacity = '0';
+
+                // Force reflow
+                cardEl.offsetHeight;
+
+                cardEl.style.transition = 'transform 0.5s ease, opacity 0.5s ease';
+                cardEl.style.transform = 'translateX(0)';
+                cardEl.style.opacity = '1';
+            }, 500);
+        }
+
+        setInterval(transitionProduct, 3000);
+    })();
 </script>
 {% endif %}
 
 <!-- CATEGORIES SECTION -->
 <div class="section-bg-white">
-<section class="categories-section">
-    <h2 class="section-title">Discover By Category</h2>
-    
-    <div class="categories-grid">
-        {% if not categories %}
-            <div style="text-align: center; color: #888; grid-column: 1/-1; padding: 40px;">No categories configured yet.</div>
-        {% else %}
+    <section class="categories-section">
+        <h2 class="section-title">Discover By Category</h2>
+
+        <div class="categories-grid">
+            {% if not categories %}
+            <div style="text-align: center; color: #888; grid-column: 1/-1; padding: 40px;">No categories configured
+                yet.</div>
+            {% else %}
             {% for cat in categories %}
             <a href="{{ url_for('main.shop', cat=cat.slug) }}" class="category-card">
                 <img src="{{ get_image_url(cat.image) }}" alt="{{ cat.name }}">
@@ -181,15 +186,15 @@
                 </div>
             </a>
             {% endfor %}
-        {% endif %}
-    </div>
-</section>
+            {% endif %}
+        </div>
+    </section>
 </div>
 
 <div class="section-bg-white">
-<section class="full-width-banner">
-    <img src="{{ get_image_url('images/banner/element_4.png') }}" alt="Promotional Banner">
-</section>
+    <section class="full-width-banner">
+        <img src="{{ get_image_url('images/banner/element_4.png') }}" alt="Promotional Banner">
+    </section>
 </div>
 
 <!-- VIDEO / ABOUT SECTION -->
@@ -206,60 +211,70 @@
 {% else %}
 <!-- ABOUT SECTION (Fallback) -->
 <div class="section-bg-gold">
-<section class="about-section">
-    <div class="about-left">
-        <img src="https://images.unsplash.com/photo-1594035910387-fea47794261f?w=800&h=800&fit=crop&q=80" alt="Perfume reflection" class="about-img">
-        <div class="carousel-dots">
-            <span class="dot active"></span>
-            <span class="dot"></span>
-            <span class="dot"></span>
-        </div>
-    </div>
-    <div class="about-right">
-        <h2 class="about-heading">At Zuhraan, we believe a fragrance is more than just a scent</h2>
-        <hr class="about-divider">
-        <div class="about-features">
-            <div class="feature-box">
-                <div class="feature-icon">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="#e96b1b"><path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z"/></svg>
-                </div>
-                <p>Born from a passion for refined fragrances, each fragrance is carefully crafted to offer a distinctive experience with thoughtfully selected notes.</p>
-            </div>
-            <div class="feature-box">
-                <div class="feature-icon">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#e96b1b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="5"></circle>
-                        <line x1="12" y1="1" x2="12" y2="3"></line>
-                        <line x1="12" y1="21" x2="12" y2="23"></line>
-                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                        <line x1="1" y1="12" x2="3" y2="12"></line>
-                        <line x1="21" y1="12" x2="23" y2="12"></line>
-                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-                    </svg>
-                </div>
-                <p>From rich oud and warm woods to sweet, fresh, and modern accords, our collection suits different personalities and moments. Zuhraan — Where fragrance leaves a legacy.</p>
+    <section class="about-section">
+        <div class="about-left">
+            <img src="https://images.unsplash.com/photo-1594035910387-fea47794261f?w=800&h=800&fit=crop&q=80"
+                alt="Perfume reflection" class="about-img">
+            <div class="carousel-dots">
+                <span class="dot active"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
             </div>
         </div>
-    </div>
-</section>
+        <div class="about-right">
+            <h2 class="about-heading">At Zuhraan, we believe a fragrance is more than just a scent</h2>
+            <hr class="about-divider">
+            <div class="about-features">
+                <div class="feature-box">
+                    <div class="feature-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="#e96b1b">
+                            <path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z" />
+                        </svg>
+                    </div>
+                    <p>Born from a passion for refined fragrances, each fragrance is carefully crafted to offer a
+                        distinctive experience with thoughtfully selected notes.</p>
+                </div>
+                <div class="feature-box">
+                    <div class="feature-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#e96b1b" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="5"></circle>
+                            <line x1="12" y1="1" x2="12" y2="3"></line>
+                            <line x1="12" y1="21" x2="12" y2="23"></line>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                            <line x1="1" y1="12" x2="3" y2="12"></line>
+                            <line x1="21" y1="12" x2="23" y2="12"></line>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                        </svg>
+                    </div>
+                    <p>From rich oud and warm woods to sweet, fresh, and modern accords, our collection suits different
+                        personalities and moments. Zuhraan — Where fragrance leaves a legacy.</p>
+                </div>
+            </div>
+        </div>
+    </section>
 </div>
 {% endif %}
 
 <!-- FAVORITES SECTION -->
 <section class="favorites-section">
     <h2 class="favorites-heading">Pick Your Favorite One</h2>
-    
+
     <div class="slider-container">
         <!-- Swiper Navigation Arrows -->
         <button class="slider-arrow left-arrow fav-prev">
-            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M15 18l-6-6 6-6" />
+            </svg>
         </button>
         <button class="slider-arrow right-arrow fav-next">
-            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M9 18l6-6-6-6" />
+            </svg>
         </button>
-        
+
         <div class="swiper favorites-slider" id="fav-swiper">
             <div class="swiper-wrapper">
                 <div class="swiper-slide">
@@ -291,7 +306,7 @@
                         </div>
                     </a>
                 </div>
-                
+
                 <div class="swiper-slide">
                     <a href="{{ url_for('main.product_detail', slug='amethyst-glow') }}" class="product-card-link">
                         <div class="product-card">
@@ -306,7 +321,7 @@
                         </div>
                     </a>
                 </div>
-                
+
                 <div class="swiper-slide">
                     <a href="{{ url_for('main.product_detail', slug='wild-orchid') }}" class="product-card-link">
                         <div class="product-card">
@@ -321,7 +336,7 @@
                         </div>
                     </a>
                 </div>
-                
+
                 <div class="swiper-slide">
                     <a href="{{ url_for('main.product_detail', slug='midnight-ember') }}" class="product-card-link">
                         <div class="product-card">
@@ -373,50 +388,57 @@
 
 <!-- BEST SELLER SECTION -->
 <div class="section-bg-white">
-<section class="bestseller-section">
-    <h2 class="section-title text-center">The Crown Jewels</h2>
-    <p class="section-subtitle">Our top 4 masterpieces, beloved by connoisseurs worldwide.</p>
-    
-    <div class="bestseller-grid">
-        {% if not best_sellers %}
-            <div class="no-products" style="grid-column: span 4; text-align: center; padding: 40px; color: var(--muted);">Updating our top-tier collection soon...</div>
-        {% endif %}
-        
-        {% for product in best_sellers %}
-        {% set first_variant = product.variants[0] if product.variants else None %}
-        {% set isOnSale = first_variant and first_variant.original_price and (first_variant.original_price > first_variant.price) %}
-        <a href="{{ url_for('main.product_detail', slug=product.slug) }}" class="product-card-link">
-            <div class="product-card">
-                <span class="bs-rank-badge">
-                    {% if loop.index == 1 %}#1 Best Seller
-                    {% elif loop.index == 2 %}#2 Top Rated
-                    {% elif loop.index == 3 %}#3 Trending
-                    {% else %}#4 Most Gifted{% endif %}
-                </span>
-                {% if isOnSale %}
-                <span class="bs-rank-badge sale-tag" style="top: 60px; background: linear-gradient(135deg, #ffd700, #ffa500); font-weight: 800; color: #000;">SALE</span>
-                {% endif %}
-                <div class="product-img-box">
-                    {% set img_list = product.images.split(',') if product.images else [] %}
-                    <img src="{% if img_list %}{{ get_image_url(img_list[0]) }}{% else %}/static/images/banner/zuhran_2.webp{% endif %}" alt="{{ product.name }}">
-                </div>
-                <div class="product-card-body">
-                    <h4>{{ product.name }}</h4>
-                    <p class="price">
-                        {% if first_variant %}
-                            {% if isOnSale %}<span class="old-price" style="text-decoration: line-through; opacity: 0.6; margin-right: 8px;">₹{{ "{:,.2f}".format(first_variant.original_price) }}</span>{% endif %}
+    <section class="bestseller-section">
+        <h2 class="section-title text-center">Our Best Sellers</h2>
+        <p class="section-subtitle">Our top 4 masterpieces, beloved by connoisseurs worldwide.</p>
+
+        <div class="bestseller-grid">
+            {% if not best_sellers %}
+            <div class="no-products"
+                style="grid-column: span 4; text-align: center; padding: 40px; color: var(--muted);">Updating our
+                top-tier collection soon...</div>
+            {% endif %}
+
+            {% for product in best_sellers %}
+            {% set first_variant = product.variants[0] if product.variants else None %}
+            {% set isOnSale = first_variant and first_variant.original_price and (first_variant.original_price >
+            first_variant.price) %}
+            <a href="{{ url_for('main.product_detail', slug=product.slug) }}" class="product-card-link">
+                <div class="product-card">
+                    <span class="bs-rank-badge">
+                        {% if loop.index == 1 %}#1 Best Seller
+                        {% elif loop.index == 2 %}#2 Top Rated
+                        {% elif loop.index == 3 %}#3 Trending
+                        {% else %}#4 Most Gifted{% endif %}
+                    </span>
+                    {% if isOnSale %}
+                    <span class="bs-rank-badge sale-tag"
+                        style="top: 60px; background: linear-gradient(135deg, #ffd700, #ffa500); font-weight: 800; color: #000;">SALE</span>
+                    {% endif %}
+                    <div class="product-img-box">
+                        {% set img_list = product.images.split(',') if product.images else [] %}
+                        <img src="{% if img_list %}{{ get_image_url(img_list[0]) }}{% else %}/static/images/banner/zuhran_2.webp{% endif %}"
+                            alt="{{ product.name }}">
+                    </div>
+                    <div class="product-card-body">
+                        <h4>{{ product.name }}</h4>
+                        <p class="price">
+                            {% if first_variant %}
+                            {% if isOnSale %}<span class="old-price"
+                                style="text-decoration: line-through; opacity: 0.6; margin-right: 8px;">₹{{
+                                "{:,.2f}".format(first_variant.original_price) }}</span>{% endif %}
                             <span class="current-price">₹{{ "{:,.2f}".format(first_variant.price) }}</span>
-                        {% else %}
+                            {% else %}
                             Price TBD
-                        {% endif %}
-                    </p>
-                    <span class="btn-buy-now">Buy Now</span>
+                            {% endif %}
+                        </p>
+                        <span class="btn-buy-now">Buy Now</span>
+                    </div>
                 </div>
-            </div>
-        </a>
-        {% endfor %}
-    </div>
-</section>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
 </div>
 
 <!-- BOTTOM BANNER (replaces testimonials) -->
@@ -431,7 +453,7 @@
 <!-- Include Swiper JS & Initialize -->
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
+    document.addEventListener("DOMContentLoaded", function () {
         const favSwiper = new Swiper('.favorites-slider', {
             loop: true,
             grabCursor: true,
@@ -460,16 +482,16 @@
 
         const offerSlider = document.querySelector('.hero-offers-slider');
         if (offerSlider) {
-        const offerSwiper = new Swiper(offerSlider, {
-            loop: true,
-            effect: 'fade',
-            autoplay: {
-                delay: 4000,
-                disableOnInteraction: false,
-            },
-            speed: 1000,
-            allowTouchMove: false
-        });
+            const offerSwiper = new Swiper(offerSlider, {
+                loop: true,
+                effect: 'fade',
+                autoplay: {
+                    delay: 4000,
+                    disableOnInteraction: false,
+                },
+                speed: 1000,
+                allowTouchMove: false
+            });
         }
     });
 </script>

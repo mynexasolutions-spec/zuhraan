@@ -1,4 +1,4 @@
-from flask import Blueprint, current_app, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, current_app, jsonify, render_template, request, redirect, url_for, flash, session
 from models import db, Product, Category, ProductVariant, Review, User, Order, OrderItem, Setting, Coupon, OfferBanner
 from flask_login import current_user, login_user, logout_user, login_required
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -7,6 +7,7 @@ import json
 import secrets
 import time
 import requests
+from decimal import Decimal, InvalidOperation
 
 from datetime import datetime
 
@@ -33,6 +34,26 @@ def _validate_coupon(code, order_total):
     return {'valid': True, 'discount': discount, 'final_total': final,
             'message': f'{coupon.discount_value}% off applied!' if coupon.discount_type == 'percent' else f'₹{coupon.discount_value:.2f} off applied!',
             'coupon_id': coupon.id}
+
+def _get_non_negative_setting_amount(value):
+    try:
+        amount = Decimal(str(value))
+    except (InvalidOperation, TypeError):
+        return Decimal('0.00')
+
+    if not amount.is_finite() or amount < 0:
+        return Decimal('0.00')
+    return amount.quantize(Decimal('0.01'))
+
+
+def calculate_shipping(subtotal, settings):
+    shipping_charge = _get_non_negative_setting_amount(settings.get('shipping_charge'))
+    free_shipping_threshold = _get_non_negative_setting_amount(settings.get('free_shipping_threshold'))
+    order_subtotal = _get_non_negative_setting_amount(subtotal)
+
+    if free_shipping_threshold > 0 and order_subtotal >= free_shipping_threshold:
+        return 0.0
+    return float(shipping_charge)
 
 
 @main_bp.route('/')
@@ -150,13 +171,25 @@ def shop():
 def add_to_cart():
     variant_id = request.form.get('variant_id', type=int)
     quantity = request.form.get('quantity', 1, type=int)
+    wants_json = request.accept_mimetypes.best == 'application/json'
+
+    if not variant_id or not quantity or quantity < 1:
+        message = 'Please select a valid product quantity.'
+        if wants_json:
+            return jsonify({'message': message}), 400
+        flash(message, 'error')
+        return redirect(request.referrer or url_for('main.shop'))
+
     variant = ProductVariant.query.get_or_404(variant_id)
     cart = session.get('cart', {})
     v_id_str = str(variant_id)
     if v_id_str in cart: cart[v_id_str] += quantity
     else: cart[v_id_str] = quantity
     session['cart'] = cart
-    flash(f'{variant.product.name} added to cart!', 'success')
+    message = f'{variant.product.name} added to cart!'
+    if wants_json:
+        return jsonify({'message': message, 'cart_count': sum(cart.values())})
+    flash(message, 'success')
     return redirect(request.referrer or url_for('main.shop'))
 
 @main_bp.route('/cart')
@@ -481,6 +514,8 @@ def checkout():
     cod_enabled    = settings.get('payment_cod_enabled', '1') == '1'
     online_enabled = settings.get('payment_online_enabled', '1') == '1'
 
+    actual_shipping = calculate_shipping(total, settings)
+
     if request.method == 'POST':
         name = request.form.get('name')
         email = request.form.get('email')
@@ -504,7 +539,7 @@ def checkout():
             current_user.country = country
             db.session.commit()
 
-        final_total = total
+        final_total = total + actual_shipping
         discount = 0.0
 
         applied_coupon_id = None
@@ -513,7 +548,7 @@ def checkout():
             result = _validate_coupon(coupon_code, total)
             if result['valid']:
                 discount = result['discount']
-                final_total = result['final_total']
+                final_total = result['final_total'] + actual_shipping
                 applied_coupon_id = result.get('coupon_id')
                 # Increment early only if COD
                 if payment_method == 'cod' and applied_coupon_id:
@@ -539,6 +574,7 @@ def checkout():
             pincode=pincode,
             country=country,
             total_amount=final_total,
+            shipping_charges=actual_shipping,
             status='pending',
             payment_status='unpaid',
             coupon_id=applied_coupon_id
@@ -582,7 +618,8 @@ def checkout():
             return redirect(url_for('main.index'))
 
     return render_template('main/checkout.html', total=total, items=items,
-                           cod_enabled=cod_enabled, online_enabled=online_enabled)
+                           cod_enabled=cod_enabled, online_enabled=online_enabled,
+                           actual_shipping=actual_shipping)
 
 @main_bp.route('/payment/verify', methods=['POST'])
 def verify_payment():

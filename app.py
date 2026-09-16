@@ -37,7 +37,9 @@ cloudinary.config(
 @app.context_processor
 def utility_processor():
     def get_image_url(image_path):
-        if not image_path: return "/static/images/banner/zuhran_2.webp"
+        image_path = image_path.strip() if isinstance(image_path, str) else ''
+        if not image_path:
+            return "/static/images/banner/zuhran_2.webp"
         if image_path.startswith('http'): return image_path
         # For legacy relative paths we attach /static/ manually or via url_for
         if not image_path.startswith('/'):
@@ -106,7 +108,8 @@ def seed_db():
         
     # Seed Settings
     settings = {
-        'shipping_charge': '0', 
+        'shipping_charge': '0',
+        'free_shipping_threshold': '0',
         'razorpay_key': 'rzp_test_RbJeXJAhskSAHd', 
         'razorpay_secret': '0Z7vD3Oy3QliqQqW82jw1yML',
         'payment_cod_enabled': '0',
@@ -115,10 +118,6 @@ def seed_db():
     for k, v in settings.items():
         if not Setting.query.filter_by(key=k).first():
             db.session.add(Setting(key=k, value=v))
-        else:
-            # Update existing if needed
-            s = Setting.query.filter_by(key=k).first()
-            s.value = v
             
     db.session.commit()
     print('Database initialized with default categories and admin user (admin@zuhraan.com / admin123)')

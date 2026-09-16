@@ -8,6 +8,7 @@
     margin: 0 auto;
     align-items: center;
     min-height: calc(100vh - 98px);
+    overflow: hidden;
 }
 
 /* ── LEFT ── */
@@ -61,19 +62,32 @@
     position: relative;
 }
 
-.left-card-body h4 {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 1.45rem;
-    /* Increased from 1.25rem */
-    font-weight: 700;
-    color: var(--dark);
+.left-card-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    text-decoration: none;
+    color: inherit;
+    transition: color 0.2s ease;
 }
 
-.left-card-body p {
+.left-card-link h4 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: var(--dark);
+    margin: 0;
+}
+
+.left-card-link p {
     font-size: 0.95rem;
-    /* Increased from 0.8rem */
     color: var(--muted);
     margin-top: 4px;
+}
+
+.left-card-link:hover h4 {
+    color: var(--amber);
 }
 
 .left-card-body .btn-circle {
@@ -120,7 +134,7 @@
     width: 100%;
     max-width: 550px;
     top: -46px;
-    bottom: -50px;
+    bottom: -120px;
     left: 50%;
     transform: translateX(-50%);
     border: 1px solid rgba(0, 0, 0, 0.35);
@@ -160,7 +174,7 @@
     max-width: 480px;
     height: 480px;
     object-fit: cover;
-    border-radius: 24px;
+    border-radius: 60px 60px 60px 60px;
     position: relative;
     z-index: 1;
     box-shadow: 0 30px 90px rgba(0, 0, 0, 0.35);
@@ -347,11 +361,11 @@
         border-radius: 0 0 100px 100px;
     }
 
-    .left-card-body h4 {
+    .left-card-link h4 {
         font-size: 0.85rem;
     }
 
-    .left-card-body p {
+    .left-card-link p {
         font-size: 0.6rem;
     }
 
@@ -374,13 +388,13 @@
 
     .hero-main-img {
         height: 240px;
-        border-radius: 12px;
+        border-radius: 30px 30px 30px 30px;
     }
 
     .arch-ring {
         max-width: 100%;
         top: -10px;
-        bottom: -12px;
+        bottom: -40px;
         border-radius: 200px;
     }
 
@@ -536,15 +550,16 @@
 
 .cat-title {
     font-family: 'Jost', sans-serif;
-    font-size: 1.15rem;
-    color: var(--dark);
-    background: #fff;
-    padding: 8px 18px;
-    border-radius: 30px;
-    font-weight: 500;
-    line-height: 1.1;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #fff;
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
     align-self: flex-start;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    white-space: nowrap;
 }
 
 .cat-bottom {
@@ -552,6 +567,7 @@
     align-items: flex-end;
     justify-content: flex-end;
     width: 100%;
+    margin: -8px -8px 0 0;
 }
 
 .cat-shop {
@@ -561,24 +577,27 @@
 }
 
 .btn-pill-white {
-    background: #fff;
-    color: var(--dark);
-    border: none;
-    padding: 10px 24px;
-    border-radius: 30px;
+    background: transparent;
+    color: #fff;
+    border: 1.5px solid #d97706;
+    padding: 6px 16px;
+    border-radius: 20px;
     font-family: 'Jost', sans-serif;
-    font-size: 0.95rem;
-    font-weight: 500;
+    font-size: 0.8rem;
+    font-weight: 600;
     cursor: pointer;
-    transition: transform 0.2s;
+    transition: background 0.2s, color 0.2s;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    box-shadow: none;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
 }
 
-.category-card:hover .btn-pill-white {
-    transform: scale(1.05);
+.btn-pill-white:hover {
+    background: #d97706;
+    color: #fff;
+    transform: none;
 }
 
 @media (max-width: 1024px) {
@@ -589,6 +608,45 @@
 
     .categories-section {
         padding: 0 40px;
+    }
+
+    .cat-content {
+        padding: 16px;
+    }
+
+    .cat-title {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #fff;
+        background: transparent;
+        padding: 0;
+        border-radius: 0;
+        box-shadow: none;
+        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+        align-self: flex-start;
+        white-space: nowrap;
+    }
+
+    .cat-bottom {
+        justify-content: flex-end;
+        margin: -12px -12px 0 0;
+    }
+
+    .btn-pill-white {
+        background: transparent;
+        color: #fff;
+        padding: 5px 12px;
+        border-radius: 18px;
+        border: 1px solid #d97706;
+        box-shadow: none;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+    }
+
+    .btn-pill-white:hover {
+        background: #d97706;
+        transform: none;
     }
 }
 
@@ -610,14 +668,38 @@
     }
 
     .cat-title {
-        font-size: 0.85rem;
-        padding: 6px 14px;
-        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: #fff;
+        background: transparent;
+        padding: 0;
+        border-radius: 0;
+        box-shadow: none;
+        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+        align-self: flex-start;
+        white-space: nowrap;
+    }
+
+    .cat-bottom {
+        justify-content: flex-end;
+        margin: -16px -16px 0 0;
     }
 
     .btn-pill-white {
-        padding: 8px 18px;
-        font-size: 0.85rem;
+        background: transparent;
+        color: #fff;
+        padding: 4px 10px;
+        border-radius: 16px;
+        border: 1px solid #d97706;
+        box-shadow: none;
+        font-size: 0.65rem;
+        font-weight: 600;
+        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+    }
+
+    .btn-pill-white:hover {
+        background: #d97706;
+        transform: none;
     }
 
     .section-title {
@@ -907,13 +989,14 @@
         max-width: 100%;
         height: auto;
         aspect-ratio: 1;
+        border-radius: 60px 60px 60px 60px;
     }
 
     .arch-ring {
         width: 110%;
         max-width: none;
         top: -30px;
-        bottom: -30px;
+        bottom: -60px;
     }
 }
 
@@ -973,12 +1056,14 @@
     }
 
     .left-card-body h4,
+    .left-card-link h4,
     .rtc-head h4 {
         font-size: 0.9rem;
         margin-bottom: 0;
     }
 
     .left-card-body p,
+    .left-card-link p,
     .rtc-head p {
         font-size: 0.6rem;
     }
@@ -994,12 +1079,12 @@
     }
 
     .hero-main-img {
-        border-radius: 12px;
+        border-radius: 30px 30px 30px 30px;
     }
 
     .arch-ring {
         top: -18px;
-        bottom: -18px;
+        bottom: -40px;
         border-radius: 200px;
         border-width: 1px;
     }

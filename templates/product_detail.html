@@ -6,10 +6,11 @@
 <section class="product-page">
     <div class="product-container">
         <!-- PRODUCT GALLERY -->
-        <div class="product-gallery">
-            {% set img_list = product.images.split(',') if product.images else [] %}
+        {% set raw_img_list = product.images.split(',') if product.images else [] %}
+        {% set img_list = raw_img_list | map('trim') | reject('equalto', '') | list %}
+        <div class="product-gallery{% if img_list|length > 1 %} product-gallery--with-thumbnails{% endif %}">
             <div class="main-image-display">
-                <img src="{% if img_list %}{{ get_image_url(img_list[0]) }}{% else %}/static/images/products/default.webp{% endif %}" id="mainProductImage" alt="{{ product.name }}">
+                <img src="{{ get_image_url(img_list[0] if img_list else '') }}" id="mainProductImage" alt="{{ product.name }}">
             </div>
             {% if img_list|length > 1 %}
             <div class="thumbnail-strip">
@@ -102,7 +103,7 @@
 
     <!-- FULL DESCRIPTION -->
     <div class="product-long-description">
-        <h2 class="section-heading">Detailed Narrative</h2>
+        <h2 class="section-heading">Product Details</h2>
         <div class="description-content">
             {{ (product.full_description or "No detailed description available.") | clean_html | safe }}
         </div>
@@ -112,11 +113,13 @@
     <!-- RELATED PRODUCTS -->
     {% if related_products %}
     <div class="related-section">
-        <h2 class="section-heading">You May Also Exquisite</h2>
+        <h2 class="section-heading">You May Also Like</h2>
         <div class="related-grid">
             {% for rel in related_products %}
             {% set rel_variant = rel.variants[0] if rel.variants else None %}
-            {% set rel_img = rel.images.split(',')[0] if rel.images else 'images/products/default.webp' %}
+            {% set raw_rel_images = rel.images.split(',') if rel.images else [] %}
+            {% set rel_images = raw_rel_images | map('trim') | reject('equalto', '') | list %}
+            {% set rel_img = rel_images[0] if rel_images else '' %}
             <a href="{{ url_for('main.product_detail', slug=rel.slug) }}" class="product-card-link">
                 <div class="product-card">
                     {% if rel.tag == 'new_arrival' %}
@@ -153,7 +156,7 @@
     <!-- REVIEWS SECTION -->
     <div class="product-reviews-section">
         <div class="reviews-header">
-            <h2 class="section-heading">Customer Narratives</h2>
+            <h2 class="section-heading">Customer Reviews</h2>
         </div>
 
         {% if product.reviews %}
@@ -173,12 +176,12 @@
             {% endfor %}
         </div>
         {% else %}
-        <div class="no-reviews-msg">Be the first to register a narrative for this masterpiece.</div>
+        <div class="no-reviews-msg">Be the first to leave a review.</div>
         {% endif %}
 
         <!-- ADD REVIEW FORM -->
         <div class="add-review-box">
-            <h3 class="box-title">Share Your Experience</h3>
+            <h3 class="box-title">Write a Review</h3>
             <form action="{{ url_for('main.submit_review', slug=product.slug) }}" method="POST" class="review-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-row">
@@ -189,19 +192,19 @@
                     <div class="form-group">
                         <label>Rating</label>
                         <select name="rating" required>
-                            <option value="5">5 Stars - Perfection</option>
-                            <option value="4">4 Stars - Exquisite</option>
-                            <option value="3">3 Stars - Moderate</option>
-                            <option value="2">2 Stars - Weak</option>
-                            <option value="1">1 Star - Not Recommended</option>
+                            <option value="5">5 Stars</option>
+                            <option value="4">4 Stars</option>
+                            <option value="3">3 Stars</option>
+                            <option value="2">2 Stars</option>
+                            <option value="1">1 Star</option>
                         </select>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>Your Narrative</label>
-                    <textarea name="comment" rows="4" placeholder="Describe the soul of this fragrance..." required></textarea>
+                    <label>Your Review</label>
+                    <textarea name="comment" rows="4" placeholder="Tell us what you think..." required></textarea>
                 </div>
-                <button type="submit" class="btn-submit-review">Publish Narrative</button>
+                <button type="submit" class="btn-submit-review">Submit Review</button>
             </form>
         </div>
     </div>
@@ -223,23 +226,42 @@
     }
 
     /* GALLERY */
-    .product-gallery { position: sticky; top: 130px; }
+    .product-gallery { position: sticky; top: 110px; }
     .main-image-display {
         background: #fff;
         aspect-ratio: 1/1;
         border-radius: 20px;
         overflow: hidden;
-        margin-bottom: 20px;
+        width: min(100%, 480px, calc(100vh - 220px));
+        height: auto;
+        margin: 0 auto;
     }
     .main-image-display img { width: 100%; height: 100%; object-fit: cover; }
-    
+
+    .product-gallery--with-thumbnails {
+        display: grid;
+        grid-template-columns: 72px minmax(0, 1fr);
+        gap: 16px;
+        align-items: start;
+    }
+    .product-gallery--with-thumbnails .main-image-display {
+        grid-column: 2;
+        grid-row: 1;
+        width: min(100%, 480px, calc(100vh - 220px));
+        margin: 0;
+    }
     .thumbnail-strip {
         display: flex;
-        gap: 12px;
+        flex-direction: column;
+        gap: 10px;
+        grid-column: 1;
+        grid-row: 1;
+        overflow: visible;
     }
     .thumb {
-        width: 80px;
-        height: 80px;
+        width: 72px;
+        height: 72px;
+        flex: 0 0 auto;
         border-radius: 10px;
         overflow: hidden;
         cursor: pointer;
@@ -321,8 +343,9 @@
 
     /* SPECS TABLE */
     .specs-title {
-        font-family: 'Cormorant Garamond', serif;
+        font-family: 'Jost', sans-serif;
         font-size: 1.8rem;
+        font-weight: 600;
         margin-bottom: 20px;
         border-bottom: 1px solid #eee;
         padding-bottom: 15px;
@@ -360,10 +383,10 @@
     .review-comment { font-style: italic; line-height: 1.6; color: #555; margin-bottom: 20px; font-size: 0.95rem; }
     .review-date { font-size: 0.75rem; color: #999; text-transform: uppercase; letter-spacing: 0.1em; }
 
-    .no-reviews-msg { text-align: center; color: var(--dark); font-weight: 500; font-style: italic; padding: 10px 0; margin-bottom: 30px; font-size: 1rem; }
+    .no-reviews-msg { text-align: center; color: var(--dark); font-weight: 500; font-style: normal; padding: 10px 0; margin-bottom: 30px; font-size: 1rem; }
 
     .add-review-box { max-width: 700px; margin: 0 auto; background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.03); }
-    .box-title { font-family: 'Cormorant Garamond', serif; font-size: 1.8rem; text-align: center; margin-bottom: 30px; }
+    .box-title { font-family: 'Jost', sans-serif; font-size: 1.8rem; font-weight: 600; text-align: center; margin-bottom: 30px; }
     
     .review-form .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
     .form-group label { display: block; font-size: 0.8rem; text-transform: uppercase; font-weight: 600; color: #888; margin-bottom: 8px; }
@@ -381,8 +404,9 @@
 
     /* LONG DESC */
     .section-heading {
-        font-family: 'Cormorant Garamond', serif;
+        font-family: 'Jost', sans-serif;
         font-size: 2.2rem;
+        font-weight: 600;
         text-align: center;
         margin-bottom: 40px;
         position: relative;
@@ -421,6 +445,19 @@
     @media (max-width: 1024px) {
         .product-container { grid-template-columns: 1fr; gap: 40px; }
         .product-gallery { position: static; }
+        .product-gallery--with-thumbnails { display: flex; flex-direction: column; }
+        .main-image-display,
+        .product-gallery--with-thumbnails .main-image-display {
+            width: 100%;
+            height: auto;
+            aspect-ratio: 1 / 1;
+            margin: 0;
+        }
+        .thumbnail-strip {
+            flex-direction: row;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
         .related-grid { grid-template-columns: repeat(2, 1fr); gap: 80px 24px; }
     }
 
@@ -491,28 +528,36 @@ document.getElementById('addToCartForm').addEventListener('submit', function(e) 
 
     fetch(form.getAttribute('data-action'), {
         method: 'POST',
+        headers: { 'Accept': 'application/json' },
         body: formData
     })
-    .then(response => {
+    .then(async response => {
+        const data = await response.json().catch(() => ({}));
         if (response.ok) {
             btn.innerText = "Added to Bag";
             btn.style.background = "#22c55e"; // Green check
-            
+
+            window.showToast(data.message, 'success');
+            const cartCount = document.getElementById('cartCount');
+            if (cartCount) {
+                cartCount.textContent = data.cart_count;
+                cartCount.hidden = false;
+            }
+
             setTimeout(() => {
                 // Change to Go to Cart button
                 const cartUrl = "{{ url_for('main.cart') }}";
                 container.innerHTML = `<a href="${cartUrl}" class="btn-add-to-cart" style="background: var(--amber); display: flex; align-items: center; justify-content: center; text-decoration: none;">Go to Cart</a>`;
             }, 800);
-
-            // Optional: Update navbar cart count if available
-            // This would require returning the new count from the server
         } else {
-            btn.innerText = "Error";
+            window.showToast(data.message || 'Unable to add this product to your bag.', 'error');
+            btn.innerText = "Add to Bag";
             btn.disabled = false;
         }
     })
     .catch(error => {
         console.error('Error:', error);
+        window.showToast('Unable to add this product to your bag. Please try again.', 'error');
         btn.innerText = "Error";
         btn.disabled = false;
     });

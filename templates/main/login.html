@@ -10,7 +10,7 @@
     .login-label { display: block; margin-bottom: 12px; color: var(--dark); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
     .login-input { width: 100%; box-sizing: border-box; padding: 18px; border: 1px solid #ddd; border-radius: 12px; color: var(--dark); font: 1rem 'Jost', sans-serif; outline: none; }
     .login-field { margin-bottom: 24px; }
-    .login-button { width: 100%; padding: 19px; border: 0; border-radius: 40px; background: var(--dark); color: #fff; font: 700 0.95rem 'Jost', sans-serif; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; }
+    .login-button { width: 100%; padding: 19px; border: 0; border-radius: 40px; background: var(--dark); color: #fff; font-size: 1rem; font-family: sans-serif; cursor: pointer; }
     .login-button.secondary { border: 1px solid var(--dark); background: transparent; color: var(--dark); }
     .forgot-link { display: block; margin: -6px 0 28px; color: var(--muted); font-size: 0.9rem; text-align: right; text-decoration: none; }
     .forgot-link:hover { color: var(--amber); }
@@ -44,7 +44,7 @@
                 <input class="login-input" type="password" name="password" placeholder="Enter your password" required>
             </div>
             <a class="forgot-link" href="{{ url_for('main.login', mode='forgot') }}">Forgot password?</a>
-            <button class="login-button" type="submit">Sign In to House</button>
+            <button class="login-button" type="submit">Sign In</button>
         </form>
     </div>
 

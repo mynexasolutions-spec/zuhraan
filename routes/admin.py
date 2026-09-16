@@ -6,6 +6,7 @@ from functools import wraps
 from models import db, Product, Category, ProductVariant, Order, User, Setting, Review, Coupon, OfferBanner
 import cloudinary.uploader
 from datetime import datetime, timedelta
+from decimal import Decimal, InvalidOperation
 import re
 
 def slugify(text):
@@ -213,40 +214,47 @@ def edit_product(product_id):
         product.image_pub_ids = ','.join(image_pubs) if image_pubs else ''
         
         # Variants update
-        # 50ml
-        var50 = ProductVariant.query.filter_by(product_id=product.id, size='50ml').first()
-        p50 = request.form.get('price_50ml')
-        op50 = request.form.get('orig_price_50ml')
-        s50 = request.form.get('stock_50ml')
-        if p50:
-            if var50:
-                var50.price = float(p50)
-                var50.original_price = float(op50) if op50 else None
-                var50.stock_quantity = int(s50 or 0)
+        variants = ProductVariant.query.filter_by(product_id=product.id).order_by(ProductVariant.id).all()
+        var1 = variants[0] if len(variants) > 0 else None
+        var2 = variants[1] if len(variants) > 1 else None
+
+        # Variant 1
+        p1 = request.form.get('price_1') or request.form.get('price_50ml')
+        op1 = request.form.get('orig_price_1') or request.form.get('orig_price_50ml')
+        s1 = request.form.get('stock_1') or request.form.get('stock_50ml')
+        size1 = request.form.get('size_1', '50ml')
+        if p1:
+            if var1:
+                var1.size = size1
+                var1.price = float(p1)
+                var1.original_price = float(op1) if op1 else None
+                var1.stock_quantity = int(s1 or 0)
             else:
-                db.session.add(ProductVariant(product_id=product.id, size='50ml', price=float(p50), original_price=float(op50) if op50 else None, stock_quantity=int(s50 or 0)))
+                db.session.add(ProductVariant(product_id=product.id, size=size1, price=float(p1), original_price=float(op1) if op1 else None, stock_quantity=int(s1 or 0)))
         
-        # 100ml
-        var100 = ProductVariant.query.filter_by(product_id=product.id, size='100ml').first()
-        p100 = request.form.get('price_100ml')
-        op100 = request.form.get('orig_price_100ml')
-        s100 = request.form.get('stock_100ml')
-        if p100:
-            if var100:
-                var100.price = float(p100)
-                var100.original_price = float(op100) if op100 else None
-                var100.stock_quantity = int(s100 or 0)
+        # Variant 2
+        p2 = request.form.get('price_2') or request.form.get('price_100ml')
+        op2 = request.form.get('orig_price_2') or request.form.get('orig_price_100ml')
+        s2 = request.form.get('stock_2') or request.form.get('stock_100ml')
+        size2 = request.form.get('size_2', '100ml')
+        if p2:
+            if var2:
+                var2.size = size2
+                var2.price = float(p2)
+                var2.original_price = float(op2) if op2 else None
+                var2.stock_quantity = int(s2 or 0)
             else:
-                db.session.add(ProductVariant(product_id=product.id, size='100ml', price=float(p100), original_price=float(op100) if op100 else None, stock_quantity=int(s100 or 0)))
+                db.session.add(ProductVariant(product_id=product.id, size=size2, price=float(p2), original_price=float(op2) if op2 else None, stock_quantity=int(s2 or 0)))
 
         db.session.commit()
         flash('Product updated successfully', 'success')
         return redirect(url_for('admin.manage_products'))
 
     categories = Category.query.all()
-    var50 = ProductVariant.query.filter_by(product_id=product.id, size='50ml').first()
-    var100 = ProductVariant.query.filter_by(product_id=product.id, size='100ml').first()
-    return render_template('admin/edit_product.html', product=product, categories=categories, var50=var50, var100=var100)
+    variants = ProductVariant.query.filter_by(product_id=product.id).order_by(ProductVariant.id).all()
+    var1 = variants[0] if len(variants) > 0 else None
+    var2 = variants[1] if len(variants) > 1 else None
+    return render_template('admin/edit_product.html', product=product, categories=categories, var1=var1, var2=var2)
 
 @admin_bp.route('/product/<int:product_id>/image/<int:image_index>/delete', methods=['POST'])
 @admin_required
@@ -405,12 +413,38 @@ def update_order_status(order_id):
     return redirect(url_for('admin.manage_orders'))
 
 # SETTINGS (Shipping, etc)
+def _parse_shipping_amount(value, label):
+    try:
+        amount = Decimal(value)
+    except (InvalidOperation, TypeError):
+        raise ValueError(f'{label} must be a valid amount.')
+
+    if not amount.is_finite() or amount < 0:
+        raise ValueError(f'{label} must be zero or a positive amount.')
+
+    return format(amount.quantize(Decimal('0.01')), 'f')
+
+
 @admin_bp.route('/settings', methods=['GET', 'POST'])
 @admin_required
 def manage_settings():
-    ALLOWED_SETTINGS = {'shipping_charge', 'payment_cod_enabled', 'payment_online_enabled'}
+    ALLOWED_SETTINGS = {'shipping_charge', 'free_shipping_threshold', 'payment_cod_enabled', 'payment_online_enabled'}
     if request.method == 'POST':
-        for key, value in request.form.items():
+        try:
+            shipping_settings = {
+                'shipping_charge': _parse_shipping_amount(request.form.get('shipping_charge'), 'Standard shipping charge'),
+                'free_shipping_threshold': _parse_shipping_amount(request.form.get('free_shipping_threshold'), 'Free shipping threshold'),
+            }
+        except ValueError as error:
+            flash(str(error), 'error')
+            return redirect(url_for('admin.manage_settings'))
+
+        submitted_settings = {
+            **shipping_settings,
+            'payment_cod_enabled': '1' if request.form.get('payment_cod_enabled') == '1' else '0',
+            'payment_online_enabled': '1' if request.form.get('payment_online_enabled') == '1' else '0',
+        }
+        for key, value in submitted_settings.items():
             if key in ALLOWED_SETTINGS:
                 setting = Setting.query.filter_by(key=key).first()
                 if setting:

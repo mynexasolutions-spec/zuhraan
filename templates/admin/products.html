@@ -3,11 +3,11 @@
 {% block content %}
 <div class="header">
     <h1>Manage Products</h1>
-    <a href="{{ url_for('admin.add_product') }}" class="btn-save" style="text-decoration: none; display: inline-flex; width: auto; padding: 12px 24px;"><i class="fa-solid fa-plus" style="margin-right: 8px;"></i> Add Product</a>
+    <a href="{{ url_for('admin.add_product') }}" class="btn-save" style="width: auto; padding: 12px 24px;"><i class="fa-solid fa-plus"></i> Add Product</a>
 </div>
 
 <style>
-    .card { background: var(--white); border-radius: 12px; box-shadow: var(--card-shadow); padding: 24px; }
+    .card { overflow-x: auto; background: var(--white); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 12px 28px -22px rgba(15, 23, 42, 0.45); padding: 24px; }
     .table { width: 100%; border-collapse: collapse; }
     .table th { text-align: left; padding: 16px; font-size: 1.1rem; color: var(--text-muted); border-bottom: 1px solid var(--border); text-transform: uppercase; }
     .table td { padding: 16px; border-bottom: 1px solid var(--border); font-size: 1.2rem; }
@@ -15,9 +15,17 @@
     .product-cell { display: flex; align-items: center; gap: 16px; }
     .product-img { width: 44px; height: 44px; border-radius: 8px; background: #f1f5f9; object-fit: cover; }
     
-    .action-btn { background: none; border: 1px solid var(--border); color: var(--text-muted); padding: 6px 10px; border-radius: 6px; cursor: pointer; text-decoration: none; font-size: 1.0rem; margin-right: 6px; transition: all 0.2s; }
-    .action-btn:hover { color: var(--primary); border-color: var(--primary); background: rgba(37, 99, 235, 0.05); }
-    .action-delete:hover { color: #ef4444; border-color: #ef4444; background: rgba(239, 68, 68, 0.05); }
+    .stock-list { display: flex; flex-wrap: wrap; gap: 7px; }
+    .stock-pill { display: inline-flex; min-height: 32px; align-items: center; gap: 6px; padding: 5px 9px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; }
+    .stock-size { color: #64748b; font-size: 0.82rem; font-weight: 600; }
+    .stock-value { color: #0f172a; font-size: 0.88rem; font-weight: 700; }
+    .stock-value.low { color: #dc2626; }
+    .product-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .product-action { display: inline-flex; min-height: 34px; align-items: center; justify-content: center; gap: 6px; padding: 7px 10px; color: #2563eb; background: #eff6ff; border: 1px solid #dbeafe; border-radius: 7px; font-size: 0.84rem; font-weight: 600; text-decoration: none; transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease; }
+    .product-action:hover { background: #dbeafe; border-color: #bfdbfe; transform: translateY(-1px); }
+    .product-action--delete { color: #b91c1c; background: #fff; border-color: #fecaca; }
+    .product-action--delete:hover { background: #fef2f2; border-color: #fca5a5; }
+    @media (max-width: 900px) { .table { min-width: 860px; } }
 </style>
 
 <div class="card">
@@ -55,16 +63,22 @@
                     {% else %}
                         <span style="color: var(--text-muted); font-size: 1.0rem;">—</span>
                     {% endif %}
-                <td>
-                    {% for var in product.variants %}
-                        <span style="font-size: 1.15rem; margin-right: 14px; display: inline-block; padding: 4px 8px; background: #f8fafc; border-radius: 6px; border: 1px solid var(--border); color: {% if var.stock_quantity < 5 %}#ef4444{% else %}var(--text-main){% endif %};">
-                            <strong>{{ var.size }}:</strong> {{ var.stock_quantity }}
-                        </span>
-                    {% endfor %}
                 </td>
-                <td>
-                    <a href="{{ url_for('admin.edit_product', product_id=product.id) }}" class="action-btn">Edit</a>
-                    <a href="javascript:void(0)" class="action-btn action-delete" onclick="openDeleteModal(`{{ product.name }}`, `{{ url_for('admin.delete_product', product_id=product.id) }}`)">Delete</a>
+                <td style="vertical-align: middle;">
+                    <div class="stock-list">
+                        {% for var in product.variants %}
+                            <div class="stock-pill">
+                                <span class="stock-size">{{ var.size }}</span>
+                                <span class="stock-value {% if var.stock_quantity < 5 %}low{% endif %}">{{ var.stock_quantity }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </td>
+                <td style="vertical-align: middle;">
+                    <div class="product-actions">
+                        <a href="{{ url_for('admin.edit_product', product_id=product.id) }}" class="product-action"><i class="fa-solid fa-pen"></i> Edit</a>
+                        <a href="javascript:void(0)" class="product-action product-action--delete" onclick="openDeleteModal(`{{ product.name }}`, `{{ url_for('admin.delete_product', product_id=product.id) }}`)"><i class="fa-solid fa-trash"></i> Delete</a>
+                    </div>
                 </td>
             </tr>
             {% endfor %}

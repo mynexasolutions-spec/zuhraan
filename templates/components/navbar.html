@@ -18,13 +18,13 @@
     </ul>
     <div class="nav-icons">
         <form action="{{ url_for('main.shop') }}" method="GET" class="search-form">
-            <div class="search-box">
+            <label class="search-box">
                 <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <circle cx="11" cy="11" r="8" />
                     <path d="m21 21-4.35-4.35" />
                 </svg>
-                <input type="text" name="search" placeholder="Search..." value="{{ request.args.get('search', '') }}">
-            </div>
+                <input type="text" name="search" placeholder="Search..." aria-label="Search products" value="{{ request.args.get('search', '') }}">
+            </label>
         </form>
 
         <a href="{{ url_for('main.cart') }}" class="account-link" style="position: relative;">
@@ -33,9 +33,7 @@
                 <line x1="3" y1="6" x2="21" y2="6" />
                 <path d="M16 10a4 4 0 0 1-8 0" />
             </svg>
-            {% if cart_count and cart_count > 0 %}
-            <span style="position: absolute; top: -8px; right: -8px; background: var(--amber); color: #fff; font-size: 0.65rem; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700;">{{ cart_count }}</span>
-            {% endif %}
+            <span id="cartCount" class="cart-count" {% if not cart_count %}hidden{% endif %}>{{ cart_count }}</span>
         </a>
         <a href="{{ url_for('main.account') }}" class="account-link">
             <svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">

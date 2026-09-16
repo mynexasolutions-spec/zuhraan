@@ -3,26 +3,122 @@
 {% block content %}
 <div class="header">
     <h1>Edit Product: {{ product.name }}</h1>
-    <a href="{{ url_for('admin.manage_products') }}" style="color: var(--primary); text-decoration: none; font-size: 1.075rem;"><i class="fa-solid fa-arrow-left"></i> Back to Products</a>
+    <a href="{{ url_for('admin.manage_products') }}"
+        style="color: var(--primary); text-decoration: none; font-size: 1.075rem;"><i
+            class="fa-solid fa-arrow-left"></i> Back to Products</a>
 </div>
 
 <style>
-    .form-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 32px; }
-    .card { background: var(--white); padding: 32px; border-radius: 12px; box-shadow: var(--card-shadow); margin-bottom: 32px; }
-    .card h3 { font-size: 1.3rem; color: #1e293b; margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+    .form-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 32px;
+    }
 
-    .group { margin-bottom: 24px; }
-    .group label { display: block; font-size: 1.075rem; font-weight: 500; color: #475569; margin-bottom: 8px; }
-    .group input, .group textarea, .group select { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 1.15rem; color: #1e293b; }
-    .group input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+    .card {
+        background: var(--white);
+        padding: 32px;
+        border-radius: 12px;
+        box-shadow: var(--card-shadow);
+        margin-bottom: 32px;
+    }
 
-    .variants-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 20px; background: #f8fafc; border-radius: 10px; border: 1px dashed var(--border); }
-    .btn-save { background: var(--primary); color: #fff; border: none; padding: 12px 32px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; width: 100%; }
-    .btn-save:hover { background: #1d4ed8; transform: translateY(-1px); }
-    .image-preview { position: relative; width: 96px; height: 96px; }
-    .image-preview img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; border: 1px solid #ccc; }
-    .image-delete { position: absolute; top: 4px; right: 4px; width: 28px; height: 28px; border: 0; border-radius: 50%; background: #dc2626; color: #fff; cursor: pointer; font-size: 0.9rem; }
-    .image-delete:hover { background: #b91c1c; }
+    .card h3 {
+        font-size: 1.3rem;
+        color: #1e293b;
+        margin-bottom: 24px;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 12px;
+    }
+
+    .group {
+        margin-bottom: 24px;
+    }
+
+    .group label {
+        display: block;
+        font-size: 1.075rem;
+        font-weight: 500;
+        color: #475569;
+        margin-bottom: 8px;
+    }
+
+    .group input,
+    .group textarea,
+    .group select {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-family: inherit;
+        font-size: 1.15rem;
+        color: #1e293b;
+    }
+
+    .group input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .variants-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        padding: 20px;
+        background: #f8fafc;
+        border-radius: 10px;
+        border: 1px dashed var(--border);
+    }
+
+    .btn-save {
+        background: var(--primary);
+        color: #fff;
+        border: none;
+        padding: 12px 32px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        width: 100%;
+    }
+
+    .btn-save:hover {
+        background: #1d4ed8;
+        transform: translateY(-1px);
+    }
+
+    .image-preview {
+        position: relative;
+        width: 96px;
+        height: 96px;
+    }
+
+    .image-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+    }
+
+    .image-delete {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 28px;
+        height: 28px;
+        border: 0;
+        border-radius: 50%;
+        background: #dc2626;
+        color: #fff;
+        cursor: pointer;
+        font-size: 0.9rem;
+    }
+
+    .image-delete:hover {
+        background: #b91c1c;
+    }
 </style>
 
 <form action="{{ url_for('admin.edit_product', product_id=product.id) }}" method="POST" enctype="multipart/form-data">
@@ -65,17 +161,17 @@
                     <div class="group">
                         <label>Longevity</label>
                         <select name="longevity">
-                            <option {% if product.longevity == 'Moderate' %}selected{% endif %}>Moderate</option>
-                            <option {% if product.longevity == 'Long Lasting' %}selected{% endif %}>Long Lasting</option>
-                            <option {% if product.longevity == 'Eternal' %}selected{% endif %}>Eternal</option>
+                            <option {% if product.longevity=='Moderate' %}selected{% endif %}>Moderate</option>
+                            <option {% if product.longevity=='Long Lasting' %}selected{% endif %}>Long Lasting</option>
+                            <option {% if product.longevity=='Eternal' %}selected{% endif %}>Eternal</option>
                         </select>
                     </div>
                     <div class="group">
                         <label>Projection</label>
                         <select name="projection">
-                            <option {% if product.projection == 'Intimate' %}selected{% endif %}>Intimate</option>
-                            <option {% if product.projection == 'Moderate' %}selected{% endif %}>Moderate</option>
-                            <option {% if product.projection == 'Strong' %}selected{% endif %}>Strong</option>
+                            <option {% if product.projection=='Intimate' %}selected{% endif %}>Intimate</option>
+                            <option {% if product.projection=='Moderate' %}selected{% endif %}>Moderate</option>
+                            <option {% if product.projection=='Strong' %}selected{% endif %}>Strong</option>
                         </select>
                     </div>
                 </div>
@@ -85,37 +181,49 @@
                 <h3>Pricing & Inventory (Variants)</h3>
                 <div style="display: flex; flex-direction: column; gap: 24px;">
                     <div class="variants-row">
-                        <h4 style="font-size: 1.1rem; margin-bottom: 12px; color: var(--text-muted);">50ml Variation</h4>
+                        <div style="display:flex; align-items:center; gap: 8px; margin-bottom: 12px;">
+                            <input type="text" name="size_1" value="{{ var1.size if var1 else '50ml' }}" style="font-size: 1.1rem; font-weight: 600; color: var(--text-main); border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 12px; width: 180px;" required placeholder="e.g. 50ml">
+                            <input type="hidden" name="var1_id" value="{{ var1.id if var1 else '' }}">
+                        </div>
                         <div class="variants-grid" style="grid-template-columns: repeat(3, 1fr);">
                             <div class="group" style="margin-bottom: 0;">
                                 <label>Original Price (₹)</label>
-                                <input type="number" step="0.01" name="orig_price_50ml" value="{{ var50.original_price if var50 and var50.original_price else '' }}">
+                                <input type="number" step="0.01" name="orig_price_1"
+                                    value="{{ var1.original_price if var1 and var1.original_price else '' }}">
                             </div>
                             <div class="group" style="margin-bottom: 0;">
                                 <label>Sale Price (₹)</label>
-                                <input type="number" step="0.01" name="price_50ml" value="{{ var50.price if var50 else '' }}">
+                                <input type="number" step="0.01" name="price_1"
+                                    value="{{ var1.price if var1 else '' }}">
                             </div>
                             <div class="group" style="margin-bottom: 0;">
                                 <label>Stock Qty</label>
-                                <input type="number" name="stock_50ml" value="{{ var50.stock_quantity if var50 else 0 }}">
+                                <input type="number" name="stock_1"
+                                    value="{{ var1.stock_quantity if var1 else 0 }}">
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="variants-row">
-                        <h4 style="font-size: 1.1rem; margin-bottom: 12px; color: var(--text-muted);">100ml Variation</h4>
+                        <div style="display:flex; align-items:center; gap: 8px; margin-bottom: 12px;">
+                            <input type="text" name="size_2" value="{{ var2.size if var2 else '100ml' }}" style="font-size: 1.1rem; font-weight: 600; color: var(--text-main); border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 12px; width: 180px;" placeholder="e.g. 100ml">
+                            <input type="hidden" name="var2_id" value="{{ var2.id if var2 else '' }}">
+                        </div>
                         <div class="variants-grid" style="grid-template-columns: repeat(3, 1fr);">
                             <div class="group" style="margin-bottom: 0;">
                                 <label>Original Price (₹)</label>
-                                <input type="number" step="0.01" name="orig_price_100ml" value="{{ var100.original_price if var100 and var100.original_price else '' }}">
+                                <input type="number" step="0.01" name="orig_price_2"
+                                    value="{{ var2.original_price if var2 and var2.original_price else '' }}">
                             </div>
                             <div class="group" style="margin-bottom: 0;">
                                 <label>Sale Price (₹)</label>
-                                <input type="number" step="0.01" name="price_100ml" value="{{ var100.price if var100 else '' }}">
+                                <input type="number" step="0.01" name="price_2"
+                                    value="{{ var2.price if var2 else '' }}">
                             </div>
                             <div class="group" style="margin-bottom: 0;">
                                 <label>Stock Qty</label>
-                                <input type="number" name="stock_100ml" value="{{ var100.stock_quantity if var100 else 0 }}">
+                                <input type="number" name="stock_2"
+                                    value="{{ var2.stock_quantity if var2 else 0 }}">
                             </div>
                         </div>
                     </div>
@@ -130,7 +238,8 @@
                     <label>Category</label>
                     <select name="category" required>
                         {% for cat in categories %}
-                        <option value="{{ cat.id }}" {% if product.category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+                        <option value="{{ cat.id }}" {% if product.category_id==cat.id %}selected{% endif %}>{{ cat.name
+                            }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -138,22 +247,30 @@
                     <label>Special Tag</label>
                     <select name="tag">
                         <option value="" {% if not product.tag %}selected{% endif %}>— None —</option>
-                        <option value="best_seller" {% if product.tag == 'best_seller' %}selected{% endif %}>⭐ Best Seller</option>
-                        <option value="new_arrival" {% if product.tag == 'new_arrival' %}selected{% endif %}>🆕 New Arrival</option>
-                        <option value="featured" {% if product.tag == 'featured' %}selected{% endif %}>✨ Featured</option>
+                        <option value="best_seller" {% if product.tag=='best_seller' %}selected{% endif %}>⭐ Best Seller
+                        </option>
+                        <option value="new_arrival" {% if product.tag=='new_arrival' %}selected{% endif %}>🆕 New
+                            Arrival</option>
+                        <option value="featured" {% if product.tag=='featured' %}selected{% endif %}>✨ Featured</option>
                     </select>
-                    <small style="color: var(--text-muted); font-size: 0.98rem; margin-top: 6px; display: block;">Best Seller tag puts this product in the homepage Crown Jewels section.</small>
+                    <small style="color: var(--text-muted); font-size: 0.98rem; margin-top: 6px; display: block;">Best
+                        Seller tag puts this product in the homepage Crown Jewels section.</small>
                 </div>
                 <div class="group">
                     <label>Best Seller Rank (1–4)</label>
                     <select name="best_seller_rank">
-                        <option value="" {% if not product.best_seller_rank %}selected{% endif %}>— Not Ranked —</option>
-                        <option value="1" {% if product.best_seller_rank == 1 %}selected{% endif %}>#1 Best Seller</option>
-                        <option value="2" {% if product.best_seller_rank == 2 %}selected{% endif %}>#2 Top Rated</option>
-                        <option value="3" {% if product.best_seller_rank == 3 %}selected{% endif %}>#3 Trending</option>
-                        <option value="4" {% if product.best_seller_rank == 4 %}selected{% endif %}>#4 Most Gifted</option>
+                        <option value="" {% if not product.best_seller_rank %}selected{% endif %}>— Not Ranked —
+                        </option>
+                        <option value="1" {% if product.best_seller_rank==1 %}selected{% endif %}>#1 Best Seller
+                        </option>
+                        <option value="2" {% if product.best_seller_rank==2 %}selected{% endif %}>#2 Top Rated</option>
+                        <option value="3" {% if product.best_seller_rank==3 %}selected{% endif %}>#3 Trending</option>
+                        <option value="4" {% if product.best_seller_rank==4 %}selected{% endif %}>#4 Most Gifted
+                        </option>
                     </select>
-                    <small style="color: var(--text-muted); font-size: 0.98rem; margin-top: 6px; display: block;">Controls which slot this occupies in the Crown Jewels grid. Requires Best Seller tag above.</small>
+                    <small
+                        style="color: var(--text-muted); font-size: 0.98rem; margin-top: 6px; display: block;">Controls
+                        which slot this occupies in Our Best Sellers grid. Requires Best Seller tag above.</small>
                 </div>
                 <button type="submit" class="btn-save">Update Product</button>
             </div>
@@ -167,16 +284,12 @@
                         {% for img in product.images.split(',') %}
                         <div class="image-preview">
                             <img src="{{ get_image_url(img) }}" alt="{{ product.name }} image {{ loop.index }}">
-                            <button
-                                type="submit"
-                                class="image-delete"
+                            <button type="submit" class="image-delete"
                                 formaction="{{ url_for('admin.delete_product_image', product_id=product.id, image_index=loop.index0) }}"
-                                formmethod="post"
-                                formnovalidate
-                                aria-label="Delete image {{ loop.index }}"
+                                formmethod="post" formnovalidate aria-label="Delete image {{ loop.index }}"
                                 title="Delete this image"
-                                onclick="return confirm('Delete this product image permanently?');"
-                            ><i class="fa-solid fa-trash"></i></button>
+                                onclick="return confirm('Delete this product image permanently?');"><i
+                                    class="fa-solid fa-trash"></i></button>
                         </div>
                         {% endfor %}
                     </div>
@@ -185,7 +298,8 @@
                 <div class="group">
                     <label>Add Additional Images</label>
                     <input type="file" name="images" multiple accept="image/*">
-                    <p style="font-size: 0.95rem; color: #888; margin-top: 4px;">Leave blank to keep existing images.</p>
+                    <p style="font-size: 0.95rem; color: #888; margin-top: 4px;">Leave blank to keep existing images.
+                    </p>
                 </div>
             </div>
         </div>

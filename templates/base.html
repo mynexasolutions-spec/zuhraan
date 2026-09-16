@@ -21,7 +21,7 @@
 <body class="reveal-ready">
     {% include 'components/navbar.html' %}
 
-    <div class="flash-messages">
+    <div class="flash-messages" aria-live="polite" aria-atomic="true">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -39,6 +39,35 @@
     </main>
 
     {% include 'components/footer.html' %}
+
+    <!-- Floating Contact Buttons -->
+    <div class="floating-contact">
+        <a href="tel:+919315244025" class="float-btn call" aria-label="Call Us">
+            <img src="{{ url_for('static', filename='images/icons/phone.png') }}" alt="Call Us" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+        </a>
+        <a href="https://wa.me/919315244025" class="float-btn whatsapp" target="_blank" aria-label="WhatsApp Us">
+            <img src="{{ url_for('static', filename='images/icons/whatsapp.png') }}" alt="WhatsApp Us" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+        </a>
+    </div>
+    <script>
+        window.showToast = function(message, category) {
+            const container = document.querySelector('.flash-messages');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            toast.className = `flash-message ${category}`;
+            const text = document.createElement('span');
+            text.textContent = message;
+            const closeButton = document.createElement('button');
+            closeButton.type = 'button';
+            closeButton.setAttribute('aria-label', 'Dismiss notification');
+            closeButton.innerHTML = '&times;';
+            closeButton.addEventListener('click', () => toast.remove());
+            toast.append(text, closeButton);
+            container.appendChild(toast);
+            window.setTimeout(() => toast.remove(), 4000);
+        };
+    </script>
 </body>
 
 </html>
