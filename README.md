@@ -35,7 +35,7 @@ The administrative interface gives complete control over the store's operations.
 
 ## 💻 Tech Stack & Deployment Security
 
-- **Database:** Uses SQLite + SQLAlchemy ORM locally.
+- **Database:** Uses Supabase PostgreSQL through SQLAlchemy. Set `SUPABASE_DATABASE_URL` to the SQLAlchemy-formatted connection string from the Supabase Dashboard. URL-encode special characters in the database password and keep `?sslmode=require`.
 - **Security:** CSRF Validation globally. Sensitive tokens (`.env`) like Razorpay Key Secret/IDs strings are decoupled safely via environment variables and ignored from Git. NEVER commit your `.env` keys.
 - **Currency:** Fully localized format to `INR` (₹).
 

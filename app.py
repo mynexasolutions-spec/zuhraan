@@ -18,9 +18,32 @@ import cloudinary.api
 app = Flask(__name__)
 csrf = CSRFProtect(app)
 
+
+def get_supabase_database_url() -> str:
+    database_url = os.environ.get('SUPABASE_DATABASE_URL')
+    if not database_url:
+        raise RuntimeError(
+            'SUPABASE_DATABASE_URL is missing. In Supabase, open Connect, choose Session pooler, '
+            'and paste the complete PostgreSQL connection string into .env.'
+        )
+
+    placeholder_markers = ('<', '>', '[your-password]', 'copied-pooler-host', 'project-ref')
+    if any(marker in database_url.lower() for marker in placeholder_markers):
+        raise RuntimeError(
+            'SUPABASE_DATABASE_URL still contains a template placeholder. Copy the complete Session '
+            'pooler URL from Supabase Connect; do not type the pooler host manually.'
+        )
+
+    return database_url
+
+
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default_secret_key')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///zuhraan_v2.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = get_supabase_database_url()
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_pre_ping': True}
+app.config['SUPABASE_URL'] = os.environ.get('NEXT_PUBLIC_SUPABASE_URL')
+app.config['SUPABASE_ANON_KEY'] = os.environ.get('NEXT_PUBLIC_SUPABASE_ANON_KEY')
+app.config['SUPABASE_SERVICE_ROLE_KEY'] = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
 
 app.config['RAZORPAY_KEY_ID'] = os.environ.get('RAZORPAY_KEY_ID')
 app.config['RAZORPAY_KEY_SECRET'] = os.environ.get('RAZORPAY_KEY_SECRET')
