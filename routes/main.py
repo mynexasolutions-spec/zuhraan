@@ -183,8 +183,24 @@ def add_to_cart():
     variant = ProductVariant.query.get_or_404(variant_id)
     cart = session.get('cart', {})
     v_id_str = str(variant_id)
-    if v_id_str in cart: cart[v_id_str] += quantity
-    else: cart[v_id_str] = quantity
+    available_stock = variant.stock_quantity or 0
+    existing_quantity = cart.get(v_id_str, 0)
+
+    if available_stock <= 0:
+        message = f'{variant.product.name} is sold out.'
+        if wants_json:
+            return jsonify({'message': message}), 409
+        flash(message, 'error')
+        return redirect(request.referrer or url_for('main.shop'))
+
+    if existing_quantity + quantity > available_stock:
+        message = f'Only {available_stock} unit(s) of {variant.product.name} are available.'
+        if wants_json:
+            return jsonify({'message': message}), 409
+        flash(message, 'error')
+        return redirect(request.referrer or url_for('main.shop'))
+
+    cart[v_id_str] = existing_quantity + quantity
     session['cart'] = cart
     message = f'{variant.product.name} added to cart!'
     if wants_json:
@@ -221,7 +237,12 @@ def update_cart(variant_id):
     v_id_str = str(variant_id)
     if v_id_str in cart:
         if action == 'increase':
-            cart[v_id_str] += 1
+            variant = ProductVariant.query.get_or_404(variant_id)
+            available_stock = variant.stock_quantity or 0
+            if cart[v_id_str] < available_stock:
+                cart[v_id_str] += 1
+            else:
+                flash(f'Only {available_stock} unit(s) are available.', 'error')
         elif action == 'decrease':
             if cart[v_id_str] > 1:
                 cart[v_id_str] -= 1
