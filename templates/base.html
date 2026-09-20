@@ -38,13 +38,10 @@
         {% block content %}{% endblock %}
     </main>
 
-    {% include 'components/footer.html' %}
+{% include 'components/footer.html' %}
 
-    <!-- Floating Contact Buttons -->
+    <!-- Floating Contact Button -->
     <div class="floating-contact">
-        <a href="tel:+919315244025" class="float-btn call" aria-label="Call Us">
-            <img src="{{ url_for('static', filename='images/icons/phone.png') }}" alt="Call Us" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
-        </a>
         <a href="https://wa.me/919315244025" class="float-btn whatsapp" target="_blank" aria-label="WhatsApp Us">
             <img src="{{ url_for('static', filename='images/icons/whatsapp.png') }}" alt="WhatsApp Us" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
         </a>

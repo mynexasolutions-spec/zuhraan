@@ -2,33 +2,60 @@
 {% block title %}Register - Zuhraan{% endblock %}
 {% block content %}
 <section style="max-width: 650px; margin: 60px auto 140px; padding: 0 40px; text-align: center;">
-    <h1 style="font-family: 'Cormorant Garamond', serif; font-size: 3.8rem; margin-bottom: 10px;">Join the House</h1>
-    <p style="color: var(--muted); margin-bottom: 40px;">Begin your definitive olfactory narrative.</p>
+    <h1 style="font-family: 'Cormorant Garamond', serif; font-size: 3.8rem; margin-bottom: 10px;">Create Your Account</h1>
+    <p style="color: var(--muted); margin-bottom: 40px;">Create an account to get started.</p>
     
     <form method="POST" style="background: #fff; padding: 60px; border-radius: 40px; box-shadow: 0 25px 80px rgba(0,0,0,0.06); text-align: left;">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div style="margin-bottom: 25px;">
             <label style="display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 600; margin-bottom: 12px; color: var(--dark);">Full Name</label>
-            <input type="text" name="name" placeholder="e.g. Alexander Rose" required style="width: 100%; padding: 18px; border: 1px solid #ddd; border-radius: 12px; font-family: 'Jost', sans-serif; font-size: 1rem; color: var(--dark); outline: none;">
+            <input type="text" name="name" placeholder="Enter your full name" required style="width: 100%; padding: 18px; border: 1px solid #ddd; border-radius: 12px; font-family: 'Jost', sans-serif; font-size: 1rem; color: var(--dark); outline: none;">
         </div>
         <div style="margin-bottom: 25px;">
             <label style="display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 600; margin-bottom: 12px; color: var(--dark);">Email Address</label>
-            <input type="email" name="email" placeholder="e.g. curator@zuhraan.com" required style="width: 100%; padding: 18px; border: 1px solid #ddd; border-radius: 12px; font-family: 'Jost', sans-serif; font-size: 1rem; color: var(--dark); outline: none;">
+            <input type="email" name="email" placeholder="Enter your email" required style="width: 100%; padding: 18px; border: 1px solid #ddd; border-radius: 12px; font-family: 'Jost', sans-serif; font-size: 1rem; color: var(--dark); outline: none;">
         </div>
-        <div style="margin-bottom: 25px;">
-            <label style="display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 600; margin-bottom: 12px; color: var(--dark);">Choose Password</label>
-            <input type="password" name="password" placeholder="••••••••" required style="width: 100%; padding: 18px; border: 1px solid #ddd; border-radius: 12px; font-family: 'Jost', sans-serif; font-size: 1rem; color: var(--dark); outline: none;">
+        <div style="margin-bottom: 25px; position: relative;">
+            <label style="display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 600; margin-bottom: 12px; color: var(--dark);">Password</label>
+            <input type="password" name="password" id="password" placeholder="Enter your password" required style="width: 100%; padding: 18px 50px 18px 18px; border: 1px solid #ddd; border-radius: 12px; font-family: 'Jost', sans-serif; font-size: 1rem; color: var(--dark); outline: none;">
+            <button type="button" class="password-toggle" aria-label="Show password" onclick="togglePassword('password', this)" style="position: absolute; right: 16px; top: calc(100% - 46px); background: none; border: none; cursor: pointer; padding: 4px; color: var(--muted); display: flex; align-items: center; justify-content: center;">
+                <svg class="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                <svg class="eye-off-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+            </button>
         </div>
-        <div style="margin-bottom: 35px;">
+        <div style="margin-bottom: 35px; position: relative;">
             <label style="display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 600; margin-bottom: 12px; color: var(--dark);">Confirm Password</label>
-            <input type="password" name="confirm_password" placeholder="••••••••" required style="width: 100%; padding: 18px; border: 1px solid #ddd; border-radius: 12px; font-family: 'Jost', sans-serif; font-size: 1rem; color: var(--dark); outline: none;">
+            <input type="password" name="confirm_password" id="confirm_password" placeholder="Confirm your password" required style="width: 100%; padding: 18px 50px 18px 18px; border: 1px solid #ddd; border-radius: 12px; font-family: 'Jost', sans-serif; font-size: 1rem; color: var(--dark); outline: none;">
+            <button type="button" class="password-toggle" aria-label="Show password" onclick="togglePassword('confirm_password', this)" style="position: absolute; right: 16px; top: calc(100% - 46px); background: none; border: none; cursor: pointer; padding: 4px; color: var(--muted); display: flex; align-items: center; justify-content: center;">
+                <svg class="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                <svg class="eye-off-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+            </button>
         </div>
-        <button type="submit" style="width: 100%; padding: 20px; background: var(--dark); color: #fff; border: none; border-radius: 40px; font-weight: 700; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.1em; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">Establish Narrative Account</button>
+        <button type="submit" style="width: 100%; padding: 20px; background: var(--dark); color: #fff; border: none; border-radius: 40px; font-weight: 700; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.1em; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">Create Account</button>
         <style>
             button:hover { background: var(--amber) !important; transform: translateY(-3px); box-shadow: 0 15px 40px rgba(196, 100, 12, 0.2) !important; }
         </style>
     </form>
     
-    <p style="margin-top: 40px; font-size: 0.95rem; color: var(--muted);">Already an esteemed client? <a href="{{ url_for('main.login') }}" style="color: var(--dark); font-weight: 600; text-decoration: none; border-bottom: 1px solid var(--amber);">Sign In Here</a></p>
+    <p style="margin-top: 40px; font-size: 0.95rem; color: var(--muted);">Already have an account? <a href="{{ url_for('main.login') }}" style="color: var(--dark); font-weight: 600; text-decoration: none; border-bottom: 1px solid var(--amber);">Sign In</a></p>
 </section>
+<script>
+function togglePassword(inputId, button) {
+    const input = document.getElementById(inputId);
+    const eyeIcon = button.querySelector('.eye-icon');
+    const eyeOffIcon = button.querySelector('.eye-off-icon');
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        eyeIcon.style.display = 'none';
+        eyeOffIcon.style.display = 'block';
+        button.setAttribute('aria-label', 'Hide password');
+    } else {
+        input.type = 'password';
+        eyeIcon.style.display = 'block';
+        eyeOffIcon.style.display = 'none';
+        button.setAttribute('aria-label', 'Show password');
+    }
+}
+</script>
 {% endblock %}

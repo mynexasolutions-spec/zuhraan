@@ -3,7 +3,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from functools import wraps
-from models import db, Product, Category, ProductVariant, Order, User, Setting, Review, Coupon, OfferBanner
+from models import db, Product, Category, ProductVariant, Order, User, Setting, Review, Coupon, OfferBanner, OrderItem
 import cloudinary.uploader
 from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
@@ -298,6 +298,15 @@ def delete_product_image(product_id, image_index):
 @admin_required
 def delete_product(product_id):
     product = Product.query.get_or_404(product_id)
+    
+    # First, get all variant IDs for this product
+    variant_ids = [v.id for v in product.variants]
+    
+    # Delete order items that reference these variants
+    if variant_ids:
+        OrderItem.query.filter(OrderItem.variant_id.in_(variant_ids)).delete(synchronize_session=False)
+    
+    # Now delete the product (cascade will delete variants due to cascade="all, delete-orphan")
     db.session.delete(product)
     db.session.commit()
     flash(f'{product.name} deleted successfully.', 'success')
@@ -595,6 +604,21 @@ def homepage_media():
                 is_vid = ext in ALLOWED_VID
                 
                 if is_img or is_vid:
+                    # Check file size (10 MB limit for videos, 5 MB for images)
+                    media_file.seek(0, 2)  # Seek to end
+                    file_size = media_file.tell()
+                    media_file.seek(0)  # Reset to beginning
+                    
+                    MAX_VIDEO_SIZE = 10 * 1024 * 1024  # 10 MB
+                    MAX_IMAGE_SIZE = 5 * 1024 * 1024   # 5 MB
+                    
+                    if is_vid and file_size > MAX_VIDEO_SIZE:
+                        flash('Video file exceeds 10 MB limit. Please upload a smaller video.', 'error')
+                        return redirect(url_for('admin.homepage_media'))
+                    if is_img and file_size > MAX_IMAGE_SIZE:
+                        flash('Image file exceeds 5 MB limit. Please upload a smaller image.', 'error')
+                        return redirect(url_for('admin.homepage_media'))
+                    
                     try:
                         # 1. Clean up old media first
                         old_pub_id = Setting.query.filter_by(key='homepage_media_pub_id').first()
@@ -604,9 +628,19 @@ def homepage_media():
                             try: cloudinary.uploader.destroy(old_pub_id.value, resource_type=res_type)
                             except: pass
                         
-                        # 2. Upload new media
+                        # 2. Upload new media - preserve original quality
                         res_type = 'video' if is_vid else 'image'
-                        res = cloudinary.uploader.upload(media_file, folder='homepage', resource_type=res_type)
+                        upload_params = {
+                            'folder': 'homepage',
+                            'resource_type': res_type,
+                        }
+                        # For videos: disable transformation/compression to preserve quality
+                        if is_vid:
+                            upload_params.update({
+                                'quality': 'auto:best',
+                                'fetch_format': 'auto',
+                            })
+                        res = cloudinary.uploader.upload(media_file, **upload_params)
                         
                         # 3. Update settings
                         def set_val(k, v):
