@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}About Us - Zuhraan{% endblock %}
+{% block title %}{{ about.page_title if about else 'About Us - Zuhraan' }}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -65,45 +65,92 @@
         font-size: 1.4rem;
         line-height: 1.2;
     }
+    .about-image { width: 100%; max-width: 600px; border-radius: 12px; margin: 30px auto; display: block; }
 </style>
 {% endblock %}
 
 {% block content %}
+{% if about %}
+<section class="about-container">
+    {% if about.hero_image %}
+    <img src="{{ get_image_url(about.hero_image) }}" alt="{{ about.page_title }}" class="about-image">
+    {% endif %}
+    
+    <h1>{{ about.page_title }}</h1>
+    
+    {% if about.intro_text %}
+    <p>{{ about.intro_text }}</p>
+    {% endif %}
+    
+    {% if about.story_heading %}
+    <h3>{{ about.story_heading }}</h3>
+    {% endif %}
+    
+    {% if about.story_image %}
+    <img src="{{ get_image_url(about.story_image) }}" alt="{{ about.story_heading }}" class="about-image">
+    {% endif %}
+    
+    {% if about.story_content %}
+    <p>{{ about.story_content }}</p>
+    {% endif %}
+    
+    {% if about.collection_heading %}
+    <h3>{{ about.collection_heading }}</h3>
+    {% endif %}
+    
+    {% if about.collection_image %}
+    <img src="{{ get_image_url(about.collection_image) }}" alt="{{ about.collection_heading }}" class="about-image">
+    {% endif %}
+    
+    <div class="highlight-box">
+        {% if about.collection_subheading %}
+        <h4>{{ about.collection_subheading }}</h4>
+        {% endif %}
+        {% if about.collection_description %}
+        <p style="margin-bottom: 15px;">{{ about.collection_description }}</p>
+        {% endif %}
+        {% if collection_items %}
+        <ul>
+            {% for item in collection_items %}
+            <li>{{ item }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+    
+    {% if about.commitment_heading %}
+    <h3>{{ about.commitment_heading }}</h3>
+    {% endif %}
+    
+    {% if about.commitment_content %}
+    <p>{{ about.commitment_content }}</p>
+    {% endif %}
+    
+    <div class="highlight-box">
+        {% if about.values_heading %}
+        <h4>{{ about.values_heading }}</h4>
+        {% endif %}
+        {% if values_items %}
+        <ul>
+            {% for item in values_items %}
+            <li>{{ item }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+    
+    {% if about.legacy_heading %}
+    <h3>{{ about.legacy_heading }}</h3>
+    {% endif %}
+    
+    {% if about.legacy_content %}
+    <p>{{ about.legacy_content }}</p>
+    {% endif %}
+</section>
+{% else %}
 <section class="about-container">
     <h1>About Zuhraan</h1>
-    
-    <p>At Zuhraan, we believe a fragrance is more than just a scent — it is a part of your identity, your mood, and the memories you leave behind.</p>
-    
-    <h3>Our Story</h3>
-    <p>Born from a passion for refined fragrances, Zuhraan is created for those who appreciate depth, character, and individuality. Each fragrance is carefully crafted to offer a distinctive experience, bringing together thoughtfully selected notes to create scents that feel timeless and memorable.</p>
-    
-    <h3>Our Collection</h3>
-    <div class="highlight-box">
-        <h4>Diverse Fragrance Portfolio</h4>
-        <p style="margin-bottom: 15px;">From rich oud and warm woods to sweet, fresh, and modern accords, our collection is made to suit different personalities and moments:</p>
-        <ul>
-            <li>Eau De Parfum - Premium concentration for lasting elegance</li>
-            <li>Extrait De Parfum - Pure fragrance essence for discerning collectors</li>
-            <li>Premium Collection - Exclusive limited-edition scents</li>
-            <li>Room Freshener - Ambient luxury for your space</li>
-            <li>Best Sellers - Customer favorites and signature scents</li>
-        </ul>
-    </div>
-    
-    <h3>Our Commitment</h3>
-    <p>We focus on creating fragrances that are enjoyable to wear, beautifully presented, and made to leave an impression. Zuhraan was built on a simple vision - to prepare every product with care and deliver it with confidence.</p>
-    
-    <div class="highlight-box">
-        <h4>Our Values</h4>
-        <ul>
-            <li>Quality - Finest ingredients and masterful craftsmanship</li>
-            <li>Authenticity - Genuine fragrances that tell a story</li>
-            <li>Excellence - Premium presentation and customer experience</li>
-            <li>Integrity - Transparent practices and ethical sourcing</li>
-        </ul>
-    </div>
-    
-    <h3>Legacy</h3>
-    <p>Zuhraan — Where fragrance leaves a legacy. We invite you to discover the scent that embodies your essence and becomes part of your unique story.</p>
+    <p>Content not configured yet. Please set up the About page in the admin panel.</p>
 </section>
+{% endif %}
 {% endblock %}

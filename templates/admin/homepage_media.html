@@ -87,6 +87,40 @@
 
     <section class="media-card">
         <div class="media-card-header">
+            <div class="media-icon"><i class="fa-solid fa-user"></i></div>
+            <div><h3>Hero About Us Image</h3><p class="desc">Square/portrait image shown in the Hero left-card (About Us) on the homepage.</p></div>
+        </div>
+        <div class="media-card-body">
+            {% if hero_about_image_url %}
+            <span class="status-badge status-active"><i class="fa-solid fa-circle"></i> Live</span>
+            <div class="media-preview media-preview-banner"><img src="{{ hero_about_image_url }}" alt="Hero About Us Image preview"></div>
+            <form method="POST" class="delete-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="delete_hero_about_image">
+                <button type="submit" class="btn-delete-media" onclick="return confirm('Remove this image?')"><i class="fa-solid fa-trash"></i> Remove Image</button>
+            </form>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon"><i class="fa-solid fa-user"></i></div>
+                <div><strong>No image selected</strong><span>Upload an image for the Hero About Us card.</span></div>
+            </div>
+            {% endif %}
+
+            <form method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="upload_hero_about_image">
+                <div class="upload-zone" id="heroAboutImageDropZone">
+                    <div class="upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                    <p>Drop a <strong>square/portrait image</strong> here</p>
+                    <p class="upload-hint">or click to browse · PNG, JPG, JPEG, WEBP (max 5 MB)</p>
+                    <p class="file-info" id="heroAboutImageFileName" aria-live="polite"></p>
+                    <input type="file" name="hero_about_image" accept="image/png,image/jpeg,image/webp" onchange="document.getElementById('heroAboutImageFileName').textContent = this.files[0]?.name || ''">
+                </div>
+                <div class="media-actions"><button type="submit" class="btn-upload"><i class="fa-solid fa-upload"></i> Upload Image</button></div>
+            </form>
+        </div>
+    </section>
+
+    <section class="media-card">
+        <div class="media-card-header">
             <div class="media-icon"><i class="fa-solid fa-image"></i></div>
             <div><h3>Bottom Banner</h3><p class="desc">A 9:16 portrait image displayed at the bottom of the homepage.</p></div>
         </div>

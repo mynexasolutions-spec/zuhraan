@@ -3,7 +3,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from functools import wraps
-from models import db, Product, Category, ProductVariant, Order, User, Setting, Review, Coupon, OfferBanner, OrderItem
+from models import db, Product, Category, ProductVariant, Order, User, Setting, Review, Coupon, OfferBanner, OrderItem, AboutPage
 import cloudinary.uploader
 from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
@@ -350,16 +350,19 @@ def manage_categories():
     categories = Category.query.all()
     return render_template('admin/categories.html', categories=categories)
 
-@admin_bp.route('/category/<int:category_id>/delete')
+@admin_bp.route('/category/<int:category_id>/delete', methods=['POST'])
 @admin_required
 def delete_category(category_id):
     cat = Category.query.get_or_404(category_id)
-    if cat.products:
-        flash(f'Cannot delete "{cat.name}" because it contains products. Move or delete the products first.', 'error')
-    else:
-        db.session.delete(cat)
-        db.session.commit()
-        flash(f'Category "{cat.name}" deleted successfully.', 'success')
+    
+    # Safely handle related products: unassign them from this category
+    # This preserves product data while removing the category association
+    for product in cat.products:
+        product.category_id = None
+    
+    db.session.delete(cat)
+    db.session.commit()
+    flash(f'Category "{cat.name}" deleted successfully. Associated products are now uncategorized.', 'success')
     return redirect(url_for('admin.manage_categories'))
 
 @admin_bp.route('/category/<int:category_id>/edit', methods=['GET', 'POST'])
@@ -723,10 +726,110 @@ def homepage_media():
                     s.value = ''
             db.session.commit()
             flash('Bottom banner removed.', 'success')
+
+        # --- Hero About Us Image Upload ---
+        elif action == 'upload_hero_about_image':
+            image_file = request.files.get('hero_about_image')
+            if image_file and image_file.filename:
+                ALLOWED_IMG_EXT = {'png', 'jpg', 'jpeg', 'webp'}
+                ext = image_file.filename.rsplit('.', 1)[1].lower() if '.' in image_file.filename else ''
+                if ext in ALLOWED_IMG_EXT:
+                    try:
+                        # Delete old image from Cloudinary
+                        old_pub_id = Setting.query.filter_by(key='hero_about_image_pub_id').first()
+                        if old_pub_id and old_pub_id.value:
+                            try: cloudinary.uploader.destroy(old_pub_id.value)
+                            except: pass
+                        
+                        res = cloudinary.uploader.upload(image_file, folder='homepage')
+                        
+                        def set_val(k, v):
+                            s = Setting.query.filter_by(key=k).first()
+                            if not s:
+                                s = Setting(key=k, value=v)
+                                db.session.add(s)
+                            else:
+                                s.value = v
+                        
+                        set_val('hero_about_image_url', res.get('secure_url'))
+                        set_val('hero_about_image_pub_id', res.get('public_id'))
+                        
+                        db.session.commit()
+                        flash('Hero About Us image uploaded successfully.', 'success')
+                    except Exception as e:
+                        flash(f'Upload error: {str(e)}', 'error')
+                else:
+                    flash(f'Invalid image type. Allowed: png, jpg, jpeg, webp', 'error')
+
+        # --- Delete Hero About Us Image ---
+        elif action == 'delete_hero_about_image':
+            pub_id_setting = Setting.query.filter_by(key='hero_about_image_pub_id').first()
+            if pub_id_setting and pub_id_setting.value:
+                try: cloudinary.uploader.destroy(pub_id_setting.value)
+                except: pass
+            
+            for key in ['hero_about_image_url', 'hero_about_image_pub_id']:
+                s = Setting.query.filter_by(key=key).first()
+                if s:
+                    s.value = ''
+            db.session.commit()
+            flash('Hero About Us image removed.', 'success')
         
         return redirect(url_for('admin.homepage_media'))
     
     media_url = (Setting.query.filter_by(key='homepage_media_url').first() or Setting(value='')).value
     media_type = (Setting.query.filter_by(key='homepage_media_type').first() or Setting(value='')).value
     banner_url = (Setting.query.filter_by(key='bottom_banner_url').first() or Setting(value='')).value
-    return render_template('admin/homepage_media.html', media_url=media_url, media_type=media_type, banner_url=banner_url)
+    hero_about_image_url = (Setting.query.filter_by(key='hero_about_image_url').first() or Setting(value='')).value
+    return render_template('admin/homepage_media.html', media_url=media_url, media_type=media_type, banner_url=banner_url, hero_about_image_url=hero_about_image_url)
+
+# --- ABOUT PAGE MANAGEMENT ---
+@admin_bp.route('/about', methods=['GET', 'POST'])
+@admin_required
+def manage_about():
+    # Always do a fresh query to avoid session caching
+    db.session.expire_all()
+    about = AboutPage.query.first()
+    if not about:
+        about = AboutPage()
+        db.session.add(about)
+        db.session.commit()
+    
+    if request.method == 'POST':
+        action = request.form.get('action')
+        
+        # Update text content
+        if action == 'update_content':
+            about.page_title = request.form.get('page_title', 'About Zuhraan')
+            about.intro_text = request.form.get('intro_text', '')
+            about.story_heading = request.form.get('story_heading', 'Our Story')
+            about.story_content = request.form.get('story_content', '')
+            about.collection_heading = request.form.get('collection_heading', 'Our Collection')
+            about.collection_subheading = request.form.get('collection_subheading', 'Diverse Fragrance Portfolio')
+            about.collection_description = request.form.get('collection_description', '')
+            about.collection_items = request.form.get('collection_items', '')
+            about.commitment_heading = request.form.get('commitment_heading', 'Our Commitment')
+            about.commitment_content = request.form.get('commitment_content', '')
+            about.values_heading = request.form.get('values_heading', 'Our Values')
+            about.values_items = request.form.get('values_items', '')
+            about.legacy_heading = request.form.get('legacy_heading', 'Legacy')
+            about.legacy_content = request.form.get('legacy_content', '')
+            db.session.commit()
+            flash('About page content updated successfully.', 'success')
+            return redirect(url_for('admin.manage_about'))
+
+    # Prepare collection items for template
+    import json
+    collection_items = []
+    values_items = []
+    try:
+        if about.collection_items:
+            collection_items = json.loads(about.collection_items)
+        if about.values_items:
+            values_items = json.loads(about.values_items)
+    except:
+        pass
+
+    # Expire again before rendering to ensure fresh data
+    db.session.expire(about)
+    return render_template('admin/about.html', about=about, collection_items=collection_items, values_items=values_items)

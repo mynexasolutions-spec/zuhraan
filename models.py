@@ -34,7 +34,7 @@ class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(150), nullable=False)
     slug = db.Column(db.String(150), unique=True, nullable=True) # SEO Friendly URL
-    category_id = db.Column(db.Integer, db.ForeignKey('category.id'), nullable=False)
+    category_id = db.Column(db.Integer, db.ForeignKey('category.id'), nullable=True)
     
     short_description = db.Column(db.Text)
     full_description = db.Column(db.Text)
@@ -142,6 +142,34 @@ class OfferBanner(db.Model):
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class AboutPage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    page_title = db.Column(db.String(200), default='About Zuhraan')
+    intro_text = db.Column(db.Text)
+    story_heading = db.Column(db.String(200), default='Our Story')
+    story_content = db.Column(db.Text)
+    collection_heading = db.Column(db.String(200), default='Our Collection')
+    collection_subheading = db.Column(db.String(200), default='Diverse Fragrance Portfolio')
+    collection_description = db.Column(db.Text)
+    collection_items = db.Column(db.Text)  # JSON array of items
+    commitment_heading = db.Column(db.String(200), default='Our Commitment')
+    commitment_content = db.Column(db.Text)
+    values_heading = db.Column(db.String(200), default='Our Values')
+    values_items = db.Column(db.Text)  # JSON array of items
+    legacy_heading = db.Column(db.String(200), default='Legacy')
+    legacy_content = db.Column(db.Text)
+    # Images
+    home_about_image = db.Column(db.String(255), nullable=True)
+    home_about_image_pub_id = db.Column(db.String(255), nullable=True)
+    hero_image = db.Column(db.String(255), nullable=True)
+    hero_image_pub_id = db.Column(db.String(255), nullable=True)
+    story_image = db.Column(db.String(255), nullable=True)
+    story_image_pub_id = db.Column(db.String(255), nullable=True)
+    collection_image = db.Column(db.String(255), nullable=True)
+    collection_image_pub_id = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 import cloudinary.uploader
 from sqlalchemy import event
 
@@ -163,6 +191,14 @@ def auto_delete_offer_image(mapper, connection, target):
         try: cloudinary.uploader.destroy(target.image_pub_id)
         except: pass
 
+def auto_delete_about_image(mapper, connection, target):
+    for field in ['home_about_image_pub_id', 'hero_image_pub_id', 'story_image_pub_id', 'collection_image_pub_id']:
+        pub_id = getattr(target, field)
+        if pub_id:
+            try: cloudinary.uploader.destroy(pub_id)
+            except: pass
+
 event.listen(Category, 'after_delete', auto_delete_category_image)
 event.listen(Product, 'after_delete', auto_delete_product_images)
 event.listen(OfferBanner, 'after_delete', auto_delete_offer_image)
+event.listen(AboutPage, 'after_delete', auto_delete_about_image)

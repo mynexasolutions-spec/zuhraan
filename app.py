@@ -1,4 +1,5 @@
 import os
+import json
 from dotenv import load_dotenv
 load_dotenv() # Load variables from .env
 
@@ -6,7 +7,7 @@ from flask import Flask, session
 from flask_wtf.csrf import CSRFProtect
 import bleach
 
-from models import db, Category, User, Setting
+from models import db, Category, User, Setting, AboutPage
 from routes.main import main_bp
 from routes.admin import admin_bp
 from flask_login import LoginManager
@@ -60,11 +61,16 @@ cloudinary.config(
 
 @app.context_processor
 def utility_processor():
-    def get_image_url(image_path):
+    def get_image_url(image_path, cache_bust=None):
         image_path = image_path.strip() if isinstance(image_path, str) else ''
         if not image_path:
             return "/static/images/banner/zuhran_2.webp"
-        if image_path.startswith('http'): return image_path
+        if image_path.startswith('http'):
+            # Add cache-busting parameter for Cloudinary URLs
+            if cache_bust:
+                separator = '&' if '?' in image_path else '?'
+                return f"{image_path}{separator}v={cache_bust}"
+            return image_path
         # For legacy relative paths we attach /static/ manually or via url_for
         if not image_path.startswith('/'):
             return f"/static/{image_path}"
@@ -130,7 +136,7 @@ def seed_db():
         )
         db.session.add(new_admin)
         
-    # Seed Settings
+# Seed Settings
     settings = {
         'shipping_charge': '0',
         'free_shipping_threshold': '0',
@@ -142,6 +148,37 @@ def seed_db():
     for k, v in settings.items():
         if not Setting.query.filter_by(key=k).first():
             db.session.add(Setting(key=k, value=v))
+            
+    # Seed About Page
+    if not AboutPage.query.first():
+        default_about = AboutPage(
+            page_title='About Zuhraan',
+            intro_text='At Zuhraan, we believe a fragrance is more than just a scent — it is a part of your identity, your mood, and the memories you leave behind.',
+            story_heading='Our Story',
+            story_content='Born from a passion for refined fragrances, Zuhraan is created for those who appreciate depth, character, and individuality. Each fragrance is carefully crafted to offer a distinctive experience, bringing together thoughtfully selected notes to create scents that feel timeless and memorable.',
+            collection_heading='Our Collection',
+            collection_subheading='Diverse Fragrance Portfolio',
+            collection_description='From rich oud and warm woods to sweet, fresh, and modern accords, our collection is made to suit different personalities and moments:',
+            collection_items=json.dumps([
+                'Eau De Parfum - Premium concentration for lasting elegance',
+                'Extrait De Parfum - Pure fragrance essence for discerning collectors',
+                'Premium Collection - Exclusive limited-edition scents',
+                'Room Freshener - Ambient luxury for your space',
+                'Best Sellers - Customer favorites and signature scents'
+            ]),
+            commitment_heading='Our Commitment',
+            commitment_content='We focus on creating fragrances that are enjoyable to wear, beautifully presented, and made to leave an impression. Zuhraan was built on a simple vision - to prepare every product with care and deliver it with confidence.',
+            values_heading='Our Values',
+            values_items=json.dumps([
+                'Quality - Finest ingredients and masterful craftsmanship',
+                'Authenticity - Genuine fragrances that tell a story',
+                'Excellence - Premium presentation and customer experience',
+                'Integrity - Transparent practices and ethical sourcing'
+            ]),
+            legacy_heading='Legacy',
+            legacy_content='Zuhraan — Where fragrance leaves a legacy. We invite you to discover the scent that embodies your essence and becomes part of your unique story.'
+        )
+        db.session.add(default_about)
             
     db.session.commit()
     print('Database initialized with default categories and admin user (admin@zuhraan.com / admin123)')

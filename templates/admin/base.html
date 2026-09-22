@@ -272,6 +272,10 @@
                 <i class="fa-solid fa-film"></i>
                 <span>Homepage Media</span>
             </a>
+            <a href="{{ url_for('admin.manage_about') }}" class="{% if 'about' in request.endpoint %}active{% endif %}">
+                <i class="fa-solid fa-info-circle"></i>
+                <span>About Us</span>
+            </a>
             <a href="{{ url_for('admin.manage_settings') }}" class="{% if 'settings' in request.endpoint %}active{% endif %}">
                 <i class="fa-solid fa-gear"></i>
                 <span>Settings</span>
@@ -314,25 +318,46 @@
             <p class="modal-text" id="modalText">Are you sure you want to delete this item? This action is permanent and cannot be undone.</p>
             <div class="modal-actions">
                 <button class="modal-btn btn-cancel" onclick="closeModal()">Go Back</button>
-                <a href="#" class="modal-btn btn-confirm-delete" id="confirmDeleteBtn" style="text-decoration: none;">Delete Now</a>
+                <button class="modal-btn btn-confirm-delete" onclick="confirmDelete()">Delete Now</button>
             </div>
         </div>
     </div>
 
     <script>
-        function openDeleteModal(name, url) {
+        let deleteForm = null;
+        let deleteUrl = null;
+
+        function openDeleteModal(name, arg) {
             const modal = document.getElementById('deleteModal');
-            const confirmBtn = document.getElementById('confirmDeleteBtn');
             const text = document.getElementById('modalText');
             
+            // Handle both form element (new) and URL string (legacy)
+            if (arg instanceof HTMLFormElement) {
+                deleteForm = arg;
+                deleteUrl = null;
+            } else {
+                deleteUrl = arg;
+                deleteForm = null;
+            }
+            
             text.innerHTML = `Are you sure you want to delete <strong>${name}</strong>? This action is permanent and cannot be undone.`;
-            confirmBtn.href = url;
             
             modal.classList.add('active');
         }
 
         function closeModal() {
             document.getElementById('deleteModal').classList.remove('active');
+            deleteForm = null;
+            deleteUrl = null;
+        }
+
+        function confirmDelete() {
+            if (deleteForm) {
+                deleteForm.submit();
+            } else if (deleteUrl) {
+                window.location.href = deleteUrl;
+            }
+            closeModal();
         }
 
         // Close modal on click outside
@@ -350,6 +375,7 @@
                 document.getElementById('adminOverlay').classList.remove('active');
             });
         });
+    {% block scripts %}{% endblock %}
     </script>
 </body>
 </html>

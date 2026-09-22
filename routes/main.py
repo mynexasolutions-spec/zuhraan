@@ -1,5 +1,5 @@
 from flask import Blueprint, current_app, jsonify, render_template, request, redirect, url_for, flash, session
-from models import db, Product, Category, ProductVariant, Review, User, Order, OrderItem, Setting, Coupon, OfferBanner
+from models import db, Product, Category, ProductVariant, Review, User, Order, OrderItem, Setting, Coupon, OfferBanner, AboutPage
 from flask_login import current_user, login_user, logout_user, login_required
 from werkzeug.security import generate_password_hash, check_password_hash
 import hashlib
@@ -66,11 +66,17 @@ def index():
     offers = OfferBanner.query.filter_by(is_active=True).order_by(OfferBanner.created_at.desc()).all()
     # Products for the hero right-side card transition
     hero_products = Product.query.order_by(Product.created_at.desc()).limit(8).all()
+    # Featured products for "Pick Your Favorite One" section
+    favorite_products = Product.query.filter_by(tag='featured').limit(8).all()
     # Homepage media
     media_url = (Setting.query.filter_by(key='homepage_media_url').first() or Setting(value='')).value
     media_type = (Setting.query.filter_by(key='homepage_media_type').first() or Setting(value='')).value
     bottom_banner_url = (Setting.query.filter_by(key='bottom_banner_url').first() or Setting(value='')).value
-    return render_template('index.html', best_sellers=best_sellers, categories=categories, offers=offers, hero_products=hero_products, media_url=media_url, media_type=media_type, bottom_banner_url=bottom_banner_url)
+    hero_about_image_url = (Setting.query.filter_by(key='hero_about_image_url').first() or Setting(value='')).value
+    # About page data for home page About Us image - force fresh query from DB
+    db.session.expire_all()
+    about_page = db.session.query(AboutPage).populate_existing().first()
+    return render_template('index.html', best_sellers=best_sellers, categories=categories, offers=offers, hero_products=hero_products, favorite_products=favorite_products, media_url=media_url, media_type=media_type, bottom_banner_url=bottom_banner_url, hero_about_image_url=hero_about_image_url, about_page=about_page)
 
 @main_bp.route('/privacy-policy')
 def privacy():
@@ -90,7 +96,19 @@ def cancellation():
 
 @main_bp.route('/about')
 def about():
-    return render_template('main/about.html')
+    about = AboutPage.query.first()
+    import json
+    collection_items = []
+    values_items = []
+    if about:
+        try:
+            if about.collection_items:
+                collection_items = json.loads(about.collection_items)
+            if about.values_items:
+                values_items = json.loads(about.values_items)
+        except:
+            pass
+    return render_template('main/about.html', about=about, collection_items=collection_items, values_items=values_items)
 
 @main_bp.route('/contact')
 def contact():

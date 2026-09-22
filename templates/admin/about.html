@@ -1,0 +1,187 @@
+{% extends 'admin/base.html' %}
+
+{% block head %}
+<style>
+    .about-admin-layout { display: grid; grid-template-columns: 1fr; gap: 28px; align-items: start; }
+    .about-panel { background: #fff; border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 12px 28px -22px rgba(15, 23, 42, 0.45); }
+    .about-panel-header { display: flex; align-items: center; gap: 11px; padding: 21px 24px 17px; border-bottom: 1px solid #eef2f7; }
+    .about-panel-icon { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 10px; color: var(--primary); background: #eff6ff; }
+    .about-panel h3 { margin: 0; color: #1e293b; font-size: 1.18rem; font-weight: 600; }
+    .about-form { padding: 22px 24px 24px; max-height: 85vh; overflow-y: auto; }
+    .form-field { margin-bottom: 18px; }
+    .form-field label { display: block; margin-bottom: 8px; color: #475569; font-size: 0.94rem; font-weight: 600; }
+    .form-field input, .form-field textarea { width: 100%; min-height: 43px; padding: 10px 12px; color: #1e293b; border: 1px solid #dbe3ee; border-radius: 9px; background: #fff; font: inherit; font-size: 0.97rem; transition: border-color 0.2s ease, box-shadow 0.2s ease; box-sizing: border-box; }
+    .form-field textarea { min-height: 100px; resize: vertical; }
+    .form-field input:focus, .form-field textarea:focus { outline: 0; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+    .field-hint { margin: 7px 0 0; color: #94a3b8; font-size: 0.82rem; line-height: 1.4; }
+    .form-submit { width: 100%; margin-top: 2px; }
+    .section-divider { border-top: 1px solid #eef2f7; margin: 24px 0; padding-top: 16px; }
+    .section-title { font-size: 1.1rem; font-weight: 600; color: #1e293b; margin-bottom: 16px; }
+    .list-field { display: flex; flex-direction: column; gap: 8px; }
+    .list-item { display: flex; gap: 8px; align-items: center; }
+    .list-item input { flex: 1; }
+    .list-item .btn-remove { background: none; border: 1px solid #fecaca; color: #b91c1c; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; }
+    .list-item .btn-remove:hover { background: #fef2f2; }
+    .btn-add-item { background: #eff6ff; border: 1px solid #dbeafe; color: #2563eb; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500; }
+    .btn-add-item:hover { background: #dbeafe; }
+
+    @media (max-width: 560px) { .about-panel-header, .about-form { padding-right: 18px; padding-left: 18px; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="header"><h1>Manage About Page</h1></div>
+
+<div class="about-admin-layout">
+    <section class="about-panel">
+        <div class="about-panel-header">
+            <div class="about-panel-icon"><i class="fa-solid fa-pen-to-square"></i></div>
+            <h3>Content</h3>
+        </div>
+        <div class="about-form">
+            <form action="{{ url_for('admin.manage_about') }}" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="update_content">
+
+                <div class="form-field">
+                    <label>Page Title</label>
+                    <input type="text" name="page_title" value="{{ about.page_title }}" required>
+                </div>
+
+                <div class="form-field">
+                    <label>Intro Text</label>
+                    <textarea name="intro_text" rows="3">{{ about.intro_text }}</textarea>
+                    <p class="field-hint">Opening paragraph below the page title</p>
+                </div>
+
+                <div class="section-divider"></div>
+                <div class="section-title">Our Story</div>
+
+                <div class="form-field">
+                    <label>Story Heading</label>
+                    <input type="text" name="story_heading" value="{{ about.story_heading }}">
+                </div>
+
+                <div class="form-field">
+                    <label>Story Content</label>
+                    <textarea name="story_content" rows="4">{{ about.story_content }}</textarea>
+                </div>
+
+                <div class="section-divider"></div>
+                <div class="section-title">Our Collection</div>
+
+                <div class="form-field">
+                    <label>Collection Heading</label>
+                    <input type="text" name="collection_heading" value="{{ about.collection_heading }}">
+                </div>
+
+                <div class="form-field">
+                    <label>Collection Subheading</label>
+                    <input type="text" name="collection_subheading" value="{{ about.collection_subheading }}">
+                </div>
+
+                <div class="form-field">
+                    <label>Collection Description</label>
+                    <textarea name="collection_description" rows="3">{{ about.collection_description }}</textarea>
+                </div>
+
+                <div class="form-field">
+                    <label>Collection Items (one per line)</label>
+                    <div class="list-field" id="collection-items-field">
+                        {% for item in collection_items %}
+                        <div class="list-item">
+                            <input type="text" name="collection_items_list" value="{{ item }}">
+                            <button type="button" class="btn-remove" onclick="removeItem(this)">Remove</button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <button type="button" class="btn-add-item" onclick="addItem('collection-items-field')">+ Add Item</button>
+                    <input type="hidden" name="collection_items" id="collection-items-json">
+                    <p class="field-hint">Each item will appear as a bullet point in the collection section</p>
+                </div>
+
+                <div class="section-divider"></div>
+                <div class="section-title">Our Commitment</div>
+
+                <div class="form-field">
+                    <label>Commitment Heading</label>
+                    <input type="text" name="commitment_heading" value="{{ about.commitment_heading }}">
+                </div>
+
+                <div class="form-field">
+                    <label>Commitment Content</label>
+                    <textarea name="commitment_content" rows="3">{{ about.commitment_content }}</textarea>
+                </div>
+
+                <div class="section-divider"></div>
+                <div class="section-title">Our Values</div>
+
+                <div class="form-field">
+                    <label>Values Heading</label>
+                    <input type="text" name="values_heading" value="{{ about.values_heading }}">
+                </div>
+
+                <div class="form-field">
+                    <label>Values Items (one per line)</label>
+                    <div class="list-field" id="values-items-field">
+                        {% for item in values_items %}
+                        <div class="list-item">
+                            <input type="text" name="values_items_list" value="{{ item }}">
+                            <button type="button" class="btn-remove" onclick="removeItem(this)">Remove</button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <button type="button" class="btn-add-item" onclick="addItem('values-items-field')">+ Add Item</button>
+                    <input type="hidden" name="values_items" id="values-items-json">
+                    <p class="field-hint">Each value will appear as a bullet point in the values section</p>
+                </div>
+
+                <div class="section-divider"></div>
+                <div class="section-title">Legacy</div>
+
+                <div class="form-field">
+                    <label>Legacy Heading</label>
+                    <input type="text" name="legacy_heading" value="{{ about.legacy_heading }}">
+                </div>
+
+                <div class="form-field">
+                    <label>Legacy Content</label>
+                    <textarea name="legacy_content" rows="3">{{ about.legacy_content }}</textarea>
+                </div>
+
+                <button type="submit" class="btn-save form-submit"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+            </form>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function addItem(fieldId) {
+        const field = document.getElementById(fieldId);
+        const div = document.createElement('div');
+        div.className = 'list-item';
+        div.innerHTML = '<input type="text" name="' + fieldId.replace('-field', '_list') + '" value="">' +
+            '<button type="button" class="btn-remove" onclick="removeItem(this)">Remove</button>';
+        field.appendChild(div);
+    }
+
+    function removeItem(btn) {
+        btn.parentElement.remove();
+    }
+
+    // Collect list items into JSON before form submit
+    document.querySelector('form[action*="manage_about"]').addEventListener('submit', function(e) {
+        // Collection items
+        const collectionInputs = document.querySelectorAll('#collection-items-field input[name="collection_items_list"]');
+        const collectionItems = Array.from(collectionInputs).map(i => i.value.trim()).filter(v => v);
+        document.getElementById('collection-items-json').value = JSON.stringify(collectionItems);
+
+        // Values items
+        const valuesInputs = document.querySelectorAll('#values-items-field input[name="values_items_list"]');
+        const valuesItems = Array.from(valuesInputs).map(i => i.value.trim()).filter(v => v);
+        document.getElementById('values-items-json').value = JSON.stringify(valuesItems);
+    });
+</script>
+{% endblock %}
