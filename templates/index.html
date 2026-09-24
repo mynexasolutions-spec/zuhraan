@@ -119,7 +119,7 @@
         "name": {{ p.name|tojson }},
         "slug": {{ p.slug|tojson }},
         "img": {{ (get_image_url(p.images.split(',')[0]) if p.images else url_for('static', filename='images/banner/zuhran_3.jpg'))|tojson }},
-        "desc": {{ ("Discover the exquisite allure of " ~ p.name ~ " — a masterpiece from Zuhraan.")|tojson }}
+        "desc": {{ ("Discover the beautiful scent of " ~ p.name ~ " — a signature creation from Zuhraan.")|tojson }}
     }{% if not loop.last %},{% endif %}
     {% endfor %}
 ]
@@ -269,7 +269,7 @@
                         </svg>
                     </div>
                     <p>From rich oud and warm woods to sweet, fresh, and modern accords, our collection suits different
-                        personalities and moments. Zuhraan — Where fragrance leaves a legacy.</p>
+                        personalities and moments. Zuhraan — Where fragrance makes a lasting impression.</p>
                 </div>
             </div>
         </div>

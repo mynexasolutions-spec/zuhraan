@@ -141,7 +141,7 @@ def submit_review(slug):
     )
     db.session.add(new_review)
     db.session.commit()
-    flash('Thank you for your exquisite review!', 'success')
+    flash('Thank you for your wonderful review!', 'success')
     return redirect(url_for('main.product_detail', slug=slug))
 
 @main_bp.route('/shop')

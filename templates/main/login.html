@@ -28,7 +28,7 @@
 <section class="login-card">
 <div style="text-align: center; margin-bottom: 32px;">
             <h1 style="font-family: sans-serif; font-size: 3.2rem; margin: 0 0 8px;">Welcome Back</h1>
-            <p style="color: var(--muted); margin: 0; font-family: sans-serif;">Access your personal olfactory narrative.</p>
+            <p style="color: var(--muted); margin: 0; font-family: sans-serif;">Access your personal scent story.</p>
         </div>
 
     <div class="login-toggle" role="tablist" aria-label="Login method">
@@ -42,7 +42,7 @@
             <input type="hidden" name="next" value="{{ next_url }}">
             <div class="login-field">
                 <label class="login-label">Email Address</label>
-                <input class="login-input" type="email" name="email" placeholder="e.g. curator@zuhraan.com" required>
+                <input class="login-input" type="email" name="email" placeholder="e.g. you@email.com" required>
             </div>
             <div class="login-field">
                 <label class="login-label">Password</label>
@@ -105,7 +105,7 @@
     </div>
     {% endif %}
 
-    <p class="login-note">New connoisseur? <a href="{{ url_for('main.register') }}" style="color: var(--dark); font-weight: 600; text-decoration: none; border-bottom: 1px solid var(--amber); font-family: sans-serif;">Create New Account</a></p>
+    <p class="login-note">New here? <a href="{{ url_for('main.register') }}" style="color: var(--dark); font-weight: 600; text-decoration: none; border-bottom: 1px solid var(--amber); font-family: sans-serif;">Create New Account</a></p>
 </section>
 <script>
     document.querySelectorAll('.login-toggle button').forEach(function (button) {

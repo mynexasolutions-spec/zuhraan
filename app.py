@@ -161,10 +161,10 @@ def seed_db():
             collection_description='From rich oud and warm woods to sweet, fresh, and modern accords, our collection is made to suit different personalities and moments:',
             collection_items=json.dumps([
                 'Eau De Parfum - Premium concentration for lasting elegance',
-                'Extrait De Parfum - Pure fragrance essence for discerning collectors',
+                'Extrait De Parfum - Pure fragrance essence for fragrance lovers',
                 'Premium Collection - Exclusive limited-edition scents',
                 'Room Freshener - Ambient luxury for your space',
-                'Best Sellers - Customer favorites and signature scents'
+                'Best Sellers - Customer favorites and popular scents'
             ]),
             commitment_heading='Our Commitment',
             commitment_content='We focus on creating fragrances that are enjoyable to wear, beautifully presented, and made to leave an impression. Zuhraan was built on a simple vision - to prepare every product with care and deliver it with confidence.',
@@ -176,7 +176,7 @@ def seed_db():
                 'Integrity - Transparent practices and ethical sourcing'
             ]),
             legacy_heading='Legacy',
-            legacy_content='Zuhraan — Where fragrance leaves a legacy. We invite you to discover the scent that embodies your essence and becomes part of your unique story.'
+            legacy_content='Zuhraan — Where fragrance makes a lasting impression. We invite you to discover the scent that matches your style and becomes part of your story.'
         )
         db.session.add(default_about)
             
