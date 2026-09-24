@@ -170,7 +170,7 @@
     position: relative;
     z-index: 1;
     overflow: hidden;
-    border-radius: 32% 32% 26% 26% / 22% 22% 18% 18%;
+    border-radius: 14% 14% 12% 12% / 12% 12% 10% 10%;
     box-shadow: 0 30px 90px rgba(0, 0, 0, 0.35);
 }
 
