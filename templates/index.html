@@ -46,22 +46,23 @@
         </h1>
         <div class="oval-wrap">
             <div class="center-glow"></div>
-            {% if offers %}
-            <div class="swiper hero-offers-slider" style="width:100%; height:100%; border-radius: inherit;">
-                <div class="swiper-wrapper">
-                    {% for offer in offers %}
-                    <div class="swiper-slide">
-                        <img class="hero-main-img" src="{{ get_image_url(offer.image) }}" alt="Offer Banner"
-                            style="width:100%; height:100%; object-fit:cover; border-radius: inherit;">
+            <div class="hero-media-clip">
+                {% if offers %}
+                <div class="swiper hero-offers-slider">
+                    <div class="swiper-wrapper">
+                        {% for offer in offers %}
+                        <div class="swiper-slide">
+                            <img class="hero-main-img" src="{{ get_image_url(offer.image) }}" alt="Offer Banner">
+                        </div>
+                        {% endfor %}
                     </div>
-                    {% endfor %}
                 </div>
+                {% else %}
+                <!-- Dark floral perfume hero image -->
+                <img class="hero-main-img" src="{{ url_for('static', filename='images/banner/zuhran_2.webp') }}"
+                    alt="Hero Fragrance">
+                {% endif %}
             </div>
-            {% else %}
-            <!-- Dark floral perfume hero image -->
-            <img class="hero-main-img" src="{{ url_for('static', filename='images/banner/zuhran_2.webp') }}"
-                alt="Hero Fragrance">
-            {% endif %}
         </div>
     </div>
 
@@ -336,7 +337,7 @@
 <div class="section-bg-white">
     <section class="bestseller-section">
         <h2 class="section-title text-center">Our Best Sellers</h2>
-        <p class="section-subtitle">Our top 4 masterpieces, beloved by connoisseurs worldwide.</p>
+      
 
         <div class="bestseller-grid">
             {% if not best_sellers %}

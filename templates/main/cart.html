@@ -18,7 +18,7 @@
         border-bottom: 2px solid #d4cfc6;
     }
     .cart-pg-header h1 {
-        font-family: 'Cormorant Garamond', serif;
+        font-family: sans-serif;
         font-size: 2.8rem;
         font-weight: 700;
         color: #111;
@@ -83,7 +83,7 @@
         border: 1px solid #e8e3da;
     }
     .ci-name {
-        font-family: 'Cormorant Garamond', serif;
+        font-family: sans-serif;
         font-size: 1.5rem;
         font-weight: 700;
         color: #111;
@@ -190,7 +190,7 @@
         top: 115px;
     }
     .sum-title {
-        font-family: 'Cormorant Garamond', serif;
+        font-family: sans-serif;
         font-size: 1.5rem;
         font-weight: 700;
         color: #111;
@@ -229,7 +229,7 @@
         align-items: center;
     }
     .sum-total-box .t-lbl {
-        font-family: 'Cormorant Garamond', serif;
+        font-family: sans-serif;
         font-size: 1.2rem;
         font-weight: 700;
         color: #111;
@@ -251,7 +251,7 @@
         background: #111;
         color: #fff;
         border-radius: 50px;
-        font-family: 'Jost', sans-serif;
+        font-family: sans-serif;
         font-size: 0.82rem;
         font-weight: 700;
         letter-spacing: 0.12em;
@@ -306,7 +306,7 @@
         border-radius: 20px;
     }
     .cart-empty p {
-        font-family: 'Cormorant Garamond', serif;
+        font-family: sans-serif;
         font-size: 1.6rem;
         color: #888;
         margin: 16px 0 28px;
@@ -317,18 +317,18 @@
         .cart-wrap { margin: 20px 16px 60px; }
         .cart-grid { grid-template-columns: 1fr; }
         .sum-sidebar { position: static; }
-        .cart-pg-header h1 { font-size: 2rem; }
+        .cart-pg-header h1 { font-size: 2rem; font-family: sans-serif; }
     }
     @media (max-width: 640px) {
         .cart-wrap { margin: 16px 12px 60px; }
-        .cart-pg-header h1 { font-size: 1.7rem; }
+        .cart-pg-header h1 { font-size: 1.7rem; font-family: sans-serif; }
 
         /* Hide price col on mobile — show only qty + total */
         .cart-tbl thead th:nth-child(2),
         .cart-tbl tbody td:nth-child(2) { display: none; }
 
         .ci-img { width: 68px; height: 68px; }
-        .ci-name { font-size: 1rem; }
+        .ci-name { font-size: 1rem; font-family: sans-serif; }
         .cart-tbl tbody td { padding: 16px 10px; }
         .cart-tbl thead th { padding: 12px 10px; font-size: 0.7rem; }
 
@@ -336,7 +336,7 @@
         .qty-num { min-width: 32px; font-size: 0.85rem; line-height: 30px; }
 
         .sum-sidebar { padding: 20px; }
-        .sum-title { font-size: 1.2rem; }
+        .sum-title { font-size: 1.2rem; font-family: sans-serif; }
     }
 </style>
 
@@ -344,7 +344,7 @@
 
     <!-- HEADER -->
     <div class="cart-pg-header">
-        <h1>Your Bag</h1>
+        <h1 style="font-family: sans-serif;">Your Bag</h1>
         <span class="item-badge">{{ cart_items|length }} item{% if cart_items|length != 1 %}s{% endif %}</span>
     </div>
 

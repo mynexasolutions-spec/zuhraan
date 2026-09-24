@@ -2,34 +2,34 @@
 {% block title %}Identify - Zuhraan{% endblock %}
 {% block extra_css %}
 <style>
-    .login-card { max-width: 560px; margin: 20px auto 120px; padding: 36px 44px 44px; background: #fff; border-radius: 32px; box-shadow: 0 25px 80px rgba(0,0,0,0.06); text-align: left; }
-    .login-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 5px; margin-bottom: 34px; background: #f3f1eb; border-radius: 40px; }
-    .login-toggle button { padding: 13px 10px; border: 0; border-radius: 35px; background: transparent; color: var(--muted); font: 600 0.75rem 'Jost', sans-serif; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; }
-    .login-toggle button.active { background: var(--dark); color: #fff; }
-    .login-panel[hidden] { display: none; }
-    .login-label { display: block; margin-bottom: 12px; color: var(--dark); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
-    .login-input { width: 100%; box-sizing: border-box; padding: 18px; border: 1px solid #ddd; border-radius: 12px; color: var(--dark); font: 1rem 'Jost', sans-serif; outline: none; }
-    .login-input-with-toggle { padding-right: 50px; }
-    .login-field { margin-bottom: 24px; position: relative; }
-    .password-toggle { position: absolute; right: 16px; top: calc(100% - 46px); background: none; border: none; cursor: pointer; padding: 4px; color: var(--muted); display: flex; align-items: center; justify-content: center; line-height: 1; }
-    .password-toggle:hover { color: var(--dark); }
-    .password-toggle:focus { outline: none; color: var(--dark); }
-    .password-toggle svg { width: 20px; height: 20px; stroke-width: 2; }
-    .login-button { width: 100%; padding: 19px; border: 0; border-radius: 40px; background: var(--dark); color: #fff; font-size: 1rem; font-family: sans-serif; cursor: pointer; }
-    .login-button.secondary { border: 1px solid var(--dark); background: transparent; color: var(--dark); }
-    .forgot-link { display: block; margin: -6px 0 28px; color: var(--muted); font-size: 0.9rem; text-align: right; text-decoration: none; }
-    .forgot-link:hover { color: var(--amber); }
-    .login-note { margin: 25px 0 0; color: var(--muted); font-size: 0.9rem; text-align: center; }
-    @media (max-width: 600px) { .login-card { margin: 40px 20px 100px; padding: 32px 24px 38px; } }
-</style>
+        .login-card { max-width: 560px; margin: 20px auto 120px; padding: 36px 44px 44px; background: #fff; border-radius: 32px; box-shadow: 0 25px 80px rgba(0,0,0,0.06); text-align: left; font-family: sans-serif; }
+        .login-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 5px; margin-bottom: 34px; background: #f3f1eb; border-radius: 40px; }
+        .login-toggle button { padding: 13px 10px; border: 0; border-radius: 35px; background: transparent; color: var(--muted); font: 600 0.75rem sans-serif; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; }
+        .login-toggle button.active { background: var(--dark); color: #fff; }
+        .login-panel[hidden] { display: none; }
+        .login-label { display: block; margin-bottom: 12px; color: var(--dark); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; font-family: sans-serif; }
+        .login-input { width: 100%; box-sizing: border-box; padding: 18px; border: 1px solid #ddd; border-radius: 12px; color: var(--dark); font: 1rem sans-serif; outline: none; }
+        .login-input-with-toggle { padding-right: 50px; }
+        .login-field { margin-bottom: 24px; position: relative; }
+        .password-toggle { position: absolute; right: 16px; top: calc(100% - 46px); background: none; border: none; cursor: pointer; padding: 4px; color: var(--muted); display: flex; align-items: center; justify-content: center; line-height: 1; }
+        .password-toggle:hover { color: var(--dark); }
+        .password-toggle:focus { outline: none; color: var(--dark); }
+        .password-toggle svg { width: 20px; height: 20px; stroke-width: 2; }
+        .login-button { width: 100%; padding: 19px; border: 0; border-radius: 40px; background: var(--dark); color: #fff; font-size: 1rem; font-family: sans-serif; cursor: pointer; }
+        .login-button.secondary { border: 1px solid var(--dark); background: transparent; color: var(--dark); }
+        .forgot-link { display: block; margin: -6px 0 28px; color: var(--muted); font-size: 0.9rem; text-align: right; text-decoration: none; font-family: sans-serif; }
+        .forgot-link:hover { color: var(--amber); }
+        .login-note { margin: 25px 0 0; color: var(--muted); font-size: 0.9rem; text-align: center; font-family: sans-serif; }
+        @media (max-width: 600px) { .login-card { margin: 40px 20px 100px; padding: 32px 24px 38px; } }
+    </style>
 {% endblock %}
 
 {% block content %}
 <section class="login-card">
-    <div style="text-align: center; margin-bottom: 32px;">
-        <h1 style="font-family: 'Cormorant Garamond', serif; font-size: 3.2rem; margin: 0 0 8px;">Welcome Back</h1>
-        <p style="color: var(--muted); margin: 0;">Access your personal olfactory narrative.</p>
-    </div>
+<div style="text-align: center; margin-bottom: 32px;">
+            <h1 style="font-family: sans-serif; font-size: 3.2rem; margin: 0 0 8px;">Welcome Back</h1>
+            <p style="color: var(--muted); margin: 0; font-family: sans-serif;">Access your personal olfactory narrative.</p>
+        </div>
 
     <div class="login-toggle" role="tablist" aria-label="Login method">
         <button type="button" class="active" data-panel="password-panel">Password</button>
@@ -85,8 +85,8 @@
     </div>
 
     {% if request.args.get('mode') == 'forgot' %}
-    <div id="forgot-panel" class="login-panel" style="margin-top: 28px; padding-top: 28px; border-top: 1px solid #eee;">
-        <p class="login-label" style="text-align: center;">Reset Password</p>
+<div id="forgot-panel" class="login-panel" style="margin-top: 28px; padding-top: 28px; border-top: 1px solid #eee;">
+            <p class="login-label" style="text-align: center; font-family: sans-serif;">Reset Password</p>
         {% if request.args.get('reset_sent') %}
         <form method="POST" action="{{ url_for('main.reset_password') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -105,7 +105,7 @@
     </div>
     {% endif %}
 
-    <p class="login-note">New connoisseur? <a href="{{ url_for('main.register') }}" style="color: var(--dark); font-weight: 600; text-decoration: none; border-bottom: 1px solid var(--amber);">Create New Account</a></p>
+    <p class="login-note">New connoisseur? <a href="{{ url_for('main.register') }}" style="color: var(--dark); font-weight: 600; text-decoration: none; border-bottom: 1px solid var(--amber); font-family: sans-serif;">Create New Account</a></p>
 </section>
 <script>
     document.querySelectorAll('.login-toggle button').forEach(function (button) {
