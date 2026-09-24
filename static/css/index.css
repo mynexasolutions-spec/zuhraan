@@ -209,7 +209,7 @@
     max-width: 480px;
     height: 480px;
     object-fit: cover;
-    border-radius: 50% / 200px;
+    border-radius: 50% / 80px;
     position: relative;
     z-index: 1;
     box-shadow: 0 30px 90px rgba(0, 0, 0, 0.35);
@@ -429,7 +429,7 @@
 
     .hero-main-img {
         height: 240px;
-        border-radius: 50% / 100px;
+        border-radius: 50% / 60px;
     }
 
     .arch-ring {
@@ -1026,11 +1026,11 @@
         height: 200px;
     }
 
-    .hero-main-img {
+.hero-main-img {
         max-width: 100%;
         height: auto;
         aspect-ratio: 1;
-        border-radius: 50% / 200px;
+        border-radius: 50% / 60px;
     }
 
     .hero-media-clip {
@@ -1130,7 +1130,7 @@
     }
 
     .hero-main-img {
-        border-radius: 50% / 100px;
+        border-radius: 50% / 50px;
     }
 
     .arch-ring {
