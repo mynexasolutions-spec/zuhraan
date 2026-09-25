@@ -2,155 +2,151 @@
 
 {% block head %}
 <style>
-    .about-admin-layout { display: grid; grid-template-columns: 1fr; gap: 28px; align-items: start; }
-    .about-panel { background: #fff; border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 12px 28px -22px rgba(15, 23, 42, 0.45); }
-    .about-panel-header { display: flex; align-items: center; gap: 11px; padding: 21px 24px 17px; border-bottom: 1px solid #eef2f7; }
-    .about-panel-icon { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 10px; color: var(--primary); background: #eff6ff; }
-    .about-panel h3 { margin: 0; color: #1e293b; font-size: 1.18rem; font-weight: 600; }
-    .about-form { padding: 22px 24px 24px; max-height: 85vh; overflow-y: auto; }
-    .form-field { margin-bottom: 18px; }
-    .form-field label { display: block; margin-bottom: 8px; color: #475569; font-size: 0.94rem; font-weight: 600; }
-    .form-field input, .form-field textarea { width: 100%; min-height: 43px; padding: 10px 12px; color: #1e293b; border: 1px solid #dbe3ee; border-radius: 9px; background: #fff; font: inherit; font-size: 0.97rem; transition: border-color 0.2s ease, box-shadow 0.2s ease; box-sizing: border-box; }
-    .form-field textarea { min-height: 100px; resize: vertical; }
-    .form-field input:focus, .form-field textarea:focus { outline: 0; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
-    .field-hint { margin: 7px 0 0; color: #94a3b8; font-size: 0.82rem; line-height: 1.4; }
-    .form-submit { width: 100%; margin-top: 2px; }
-    .section-divider { border-top: 1px solid #eef2f7; margin: 24px 0; padding-top: 16px; }
-    .section-title { font-size: 1.1rem; font-weight: 600; color: #1e293b; margin-bottom: 16px; }
-    .list-field { display: flex; flex-direction: column; gap: 8px; }
-    .list-item { display: flex; gap: 8px; align-items: center; }
-    .list-item input { flex: 1; }
-    .list-item .btn-remove { background: none; border: 1px solid #fecaca; color: #b91c1c; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; }
-    .list-item .btn-remove:hover { background: #fef2f2; }
-    .btn-add-item { background: #eff6ff; border: 1px solid #dbeafe; color: #2563eb; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 500; }
-    .btn-add-item:hover { background: #dbeafe; }
-
-    @media (max-width: 560px) { .about-panel-header, .about-form { padding-right: 18px; padding-left: 18px; } }
+    .about-editor { max-width: 1280px; margin: 0 auto; }
+    .about-editor__hero { display: flex; justify-content: space-between; gap: 24px; align-items: center; margin-bottom: 26px; padding: 28px 32px; border-radius: 18px; color: #fff; background: linear-gradient(115deg, #172554, #1d4ed8); }
+    .about-editor__eyebrow { margin: 0 0 8px; color: #bfdbfe; font-size: .78rem; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; }
+    .about-editor__hero h1 { margin: 0; font-size: 2rem; font-weight: 600; }
+    .about-editor__hero p:last-child { max-width: 650px; margin: 7px 0 0; color: #dbeafe; font-size: .98rem; line-height: 1.45; }
+    .about-preview-link { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 8px; padding: 11px 15px; border: 1px solid rgba(255,255,255,.42); border-radius: 9px; color: #fff; font-size: .9rem; font-weight: 600; text-decoration: none; }
+    .about-preview-link:hover { color: #fff; background: rgba(255,255,255,.12); }
+    .about-layout { display: grid; grid-template-columns: 245px minmax(0,1fr); gap: 24px; align-items: start; }
+    .about-nav, .about-card { border: 1px solid var(--border); border-radius: 16px; background: #fff; box-shadow: 0 12px 28px -22px rgba(15,23,42,.45); }
+    .about-nav { position: sticky; top: 24px; padding: 12px; }
+    .about-nav__title { padding: 8px 11px 12px; color: #94a3b8; font-size: .74rem; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; }
+    .about-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 11px; border-radius: 8px; color: #475569; font-size: .9rem; font-weight: 500; text-decoration: none; }
+    .about-nav a:hover { color: var(--primary); background: #eff6ff; }
+    .about-nav i { width: 18px; color: var(--primary); text-align: center; }
+    .about-card__header { display: flex; align-items: flex-start; gap: 12px; padding: 22px 28px 18px; border-bottom: 1px solid #eef2f7; }
+    .about-card__icon { display: grid; flex: 0 0 auto; width: 38px; height: 38px; place-items: center; border-radius: 10px; color: var(--primary); background: #eff6ff; }
+    .about-card__header h2 { margin: 0; color: #1e293b; font-size: 1.15rem; font-weight: 600; }
+    .about-card__header p { margin: 3px 0 0; color: #94a3b8; font-size: .82rem; line-height: 1.35; }
+    .upload-guidelines { display: inline-flex; align-items: center; gap: 7px; margin-left: auto; padding: 10px 13px; border-radius: 9px; color: #93621a; background: #fbf4e6; font-size: .75rem; font-weight: 600; white-space: nowrap; }
+    .about-form { padding: 0 28px 28px; }
+    .editor-section { padding: 28px 0; border-bottom: 1px solid #eef2f7; scroll-margin-top: 24px; }
+    .editor-section:last-of-type { border-bottom: 0; }
+    .editor-section__title { display: flex; align-items: center; gap: 9px; margin: 0 0 18px; color: #1e293b; font-size: 1.08rem; font-weight: 600; }
+    .editor-section__title i { color: var(--primary); font-size: .94rem; }
+    .field-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; }
+    .form-field { margin-bottom: 16px; }
+    .form-field label { display: block; margin-bottom: 7px; color: #475569; font-size: .86rem; font-weight: 600; }
+    .form-field input, .form-field textarea { width: 100%; min-height: 42px; padding: 10px 12px; border: 1px solid #dbe3ee; border-radius: 8px; color: #1e293b; background: #fff; font: inherit; font-size: .92rem; box-sizing: border-box; }
+    .form-field textarea { min-height: 94px; resize: vertical; }
+    .form-field input:focus, .form-field textarea:focus { outline: 0; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+    .field-hint { margin: 6px 0 0; color: #94a3b8; font-size: .75rem; line-height: 1.35; }
+    .repeater-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
+    .repeater-item { padding: 16px; border: 1px solid #e8edf4; border-radius: 10px; background: #fbfdff; }
+    .repeater-item__title { margin: 0 0 13px; color: #64748b; font-size: .74rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+    .locked-field { display: flex; align-items: center; gap: 9px; margin-top: 12px; padding: 10px 12px; border: 1px dashed #cbd5e1; border-radius: 8px; color: #64748b; background: #f8fafc; font-size: .78rem; }
+    .locked-field i { color: #94a3b8; }
+    .locked-icon { display: inline-grid; width: 34px; height: 34px; place-items: center; margin-bottom: 12px; border-radius: 8px; color: var(--about-gold, #b88b42); background: #f8f4eb; font-size: 1rem; }
+    .save-bar { position: sticky; bottom: 16px; display: flex; justify-content: flex-end; margin: 0 -4px; padding: 16px 4px 0; }
+    .save-bar .btn-save { min-width: 190px; box-shadow: 0 8px 18px rgba(37,99,235,.24); }
+    .asset-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); grid-auto-rows: min-content; align-items: start; gap: 14px; padding: 18px; }
+    .asset-card { align-self: start; height: fit-content; overflow: hidden; border: 1px solid #edf0f4; border-radius: 12px; background: #fff; box-shadow: 0 7px 16px rgba(15,23,42,.06); transition: box-shadow .2s ease, transform .2s ease; }
+    .asset-card:hover { box-shadow: 0 12px 22px rgba(15,23,42,.11); transform: translateY(-2px); }
+    .asset-preview { position: relative; display: grid; aspect-ratio: 8 / 3; place-items: center; overflow: hidden; padding: 0; color: #94a3b8; background: #f6f0e6; }
+    .asset-preview img { width: 100%; height: 100%; object-fit: contain; border-radius: 7px; }
+    .asset-card[data-slot="story_image"] .asset-preview { aspect-ratio: 1 / 1; }
+    .asset-card[data-slot="founder_portrait"] .asset-preview { aspect-ratio: 2 / 3; max-height: 410px; background-color: #f3ede2; background-image: none; }
+    .asset-preview i { font-size: 1.8rem; }
+    .asset-status { position: absolute; top: 12px; left: 12px; display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border-radius: 999px; color: #166534; background: rgba(240,253,244,.94); font-size: .65rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+    .asset-status--empty { color: #64748b; background: rgba(255,255,255,.9); }
+    .asset-body { padding: 10px; }
+    .asset-title { margin: 0; color: #26394d; font-family: 'Cormorant Garamond', serif; font-size: 1.08rem; font-weight: 700; }
+    .asset-guidance { min-height: 20px; margin: 2px 0 9px; color: #8290a2; font-size: .66rem; line-height: 1.35; }
+    .asset-upload { display: flex; gap: 8px; align-items: stretch; }
+    .asset-upload > input[type="file"] { width: 100%; min-width: 0; padding: 8px; border: 1px dashed #d9dfe7; border-radius: 8px; color: #64748b; background: #fcfcfd; font-size: .7rem; }
+    .asset-file-input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+    .asset-dropzone { display: flex; flex: 1; align-items: center; justify-content: center; gap: 10px; min-height: 50px; padding: 8px; border: 1px dashed #d9dfe7; border-radius: 9px; color: #9b681a; background: #fcfcfd; cursor: pointer; transition: border-color .2s ease, background .2s ease; }
+    .asset-dropzone:hover, .asset-dropzone:focus-within { border-color: #c79546; background: #fffaf1; }
+    .asset-dropzone > i { font-size: 1.15rem; }
+    .asset-dropzone strong, .asset-dropzone small { display: block; }
+    .asset-dropzone strong { color: #334155; font-size: .72rem; line-height: 1.15; }
+    .asset-dropzone small { margin-top: 2px; color: #94a3b8; font-size: .58rem; line-height: 1.1; }
+    .asset-file-label { display: flex; flex: 1; min-width: 0; align-items: center; gap: 7px; padding: 9px 10px; border: 1px solid #d9e2ef; border-radius: 8px; color: #64748b; background: #fbfdff; font-size: .76rem; font-weight: 500; cursor: pointer; }
+    .asset-file-label:hover { border-color: #93c5fd; color: var(--primary); }
+    .asset-file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .asset-actions { display: flex; gap: 8px; margin-top: 9px; }
+    .asset-submit, .asset-remove { min-height: 38px; padding: 8px 11px; border-radius: 8px; font: inherit; font-size: .72rem; font-weight: 700; cursor: pointer; transition: background .2s ease, border-color .2s ease, transform .2s ease; }
+    .asset-submit { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 102px; border: 0; color: #fff; background: #a97220; }
+    .asset-submit:hover { background: #8d5e18; transform: translateY(-1px); }
+    .asset-remove { width: 100%; border: 1px solid #fecaca; color: #dc2626; background: #fff; }
+    .asset-remove:hover { border-color: #fca5a5; background: #fef2f2; }
+    .asset-ratio { position: absolute; right: 8px; bottom: 8px; padding: 4px 7px; border-radius: 999px; color: #93621a; background: rgba(251,244,230,.95); font-size: .62rem; font-weight: 700; }
+    .asset-empty-copy { font-size: .72rem; font-weight: 600; }
+    .asset-submit:disabled, .asset-remove:disabled, .btn-save:disabled { cursor: wait; opacity: .65; }
+    @media (max-width: 950px) { .about-layout { grid-template-columns: 1fr; } .about-nav { position: static; display: grid; grid-template-columns: repeat(3,1fr); } .about-nav__title { grid-column: 1 / -1; } .asset-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+    @media (max-width: 680px) { .about-editor__hero { display: block; padding: 24px; } .about-preview-link { margin-top: 18px; } .about-nav { grid-template-columns: 1fr 1fr; } .about-form { padding-right: 18px; padding-left: 18px; } .about-card__header { padding-right: 18px; padding-left: 18px; } .upload-guidelines { display: none; } .field-grid, .repeater-grid, .asset-grid { grid-template-columns: 1fr; } .save-bar { position: static; } .save-bar .btn-save { width: 100%; } }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="header"><h1>Manage About Page</h1></div>
+<div class="about-editor">
+    <section class="about-editor__hero">
+        <div><p class="about-editor__eyebrow">Content management</p><h1>About page editor</h1><p>All public About-page copy and imagery is stored in Supabase. Uploaded images are optimized and served from Cloudinary.</p></div>
+        <a class="about-preview-link" href="{{ url_for('main.about') }}" target="_blank" rel="noopener"><i class="fa-solid fa-arrow-up-right-from-square"></i> Preview page</a>
+    </section>
 
-<div class="about-admin-layout">
-    <section class="about-panel">
-        <div class="about-panel-header">
-            <div class="about-panel-icon"><i class="fa-solid fa-pen-to-square"></i></div>
-            <h3>Content</h3>
-        </div>
-        <div class="about-form">
-            <form action="{{ url_for('admin.manage_about') }}" method="POST" enctype="multipart/form-data">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input type="hidden" name="action" value="update_content">
+    <div class="about-layout">
+        <nav class="about-nav" aria-label="About editor sections">
+            <p class="about-nav__title">Jump to section</p>
+            <a href="#hero"><i class="fa-solid fa-wand-magic-sparkles"></i> Hero</a><a href="#story"><i class="fa-solid fa-book-open"></i> Our Story</a><a href="#founder"><i class="fa-solid fa-user"></i> Founder</a><a href="#values"><i class="fa-solid fa-gem"></i> Values</a><a href="#purpose"><i class="fa-solid fa-bullseye"></i> Purpose / CTA</a><a href="#images"><i class="fa-solid fa-images"></i> Images</a>
+        </nav>
 
-                <div class="form-field">
-                    <label>Page Title</label>
-                    <input type="text" name="page_title" value="{{ about.page_title }}" required>
-                </div>
+        <section class="about-card">
+            <header class="about-card__header"><div class="about-card__icon"><i class="fa-solid fa-pen-to-square"></i></div><div><h2>Page content</h2><p>Required fields are validated before changes are saved.</p></div></header>
+            <form class="about-form" method="POST" data-loading="Saving changes…">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="save_about_content">
 
-                <div class="form-field">
-                    <label>Intro Text</label>
-                    <textarea name="intro_text" rows="3">{{ about.intro_text }}</textarea>
-                    <p class="field-hint">Opening paragraph below the page title</p>
-                </div>
+                <section class="editor-section" id="hero"><h3 class="editor-section__title"><i class="fa-solid fa-wand-magic-sparkles"></i> Hero</h3>
+                    <div class="form-field"><label for="seo_title">Browser title</label><input id="seo_title" name="seo_title" value="{{ content.seo_title }}" required maxlength="200"></div>
+                    <div class="form-field"><label for="hero_eyebrow">Label</label><input id="hero_eyebrow" name="hero_eyebrow" value="{{ content.hero.eyebrow }}" required maxlength="80"></div>
+                    <div class="form-field"><label for="hero_heading">Heading</label><input id="hero_heading" name="hero_heading" value="{{ content.hero.heading }}" required maxlength="160"><p class="field-hint">Use a new line for the visual line break.</p></div>
+                    <div class="form-field"><label for="hero_description">Description</label><textarea id="hero_description" name="hero_description" required maxlength="700">{{ content.hero.description }}</textarea></div>
+                    <div class="locked-field"><i class="fa-solid fa-lock"></i> “{{ content.hero.button_label }}” and its link are fixed for this page.</div>
+                </section>
 
-                <div class="section-divider"></div>
-                <div class="section-title">Our Story</div>
+                <section class="editor-section" id="story"><h3 class="editor-section__title"><i class="fa-solid fa-book-open"></i> Our Story</h3>
+                    <div class="field-grid"><div class="form-field"><label for="story_eyebrow">Label</label><input id="story_eyebrow" name="story_eyebrow" value="{{ content.story.eyebrow }}" required maxlength="80"></div><div class="form-field"><label for="story_heading">Heading</label><input id="story_heading" name="story_heading" value="{{ content.story.heading }}" required maxlength="200"></div></div>
+                    <div class="form-field"><label for="story_description">Description</label><textarea id="story_description" name="story_description" required maxlength="1200">{{ content.story.description }}</textarea></div>
+                    <div class="repeater-grid">{% for pillar in content.story.pillars %}<div class="repeater-item"><p class="repeater-item__title">Pillar {{ loop.index }}</p><span class="locked-icon" title="Icon is fixed">{{ pillar.icon }}</span><div class="form-field"><label for="story_pillar_{{ loop.index }}_label">Label</label><input id="story_pillar_{{ loop.index }}_label" name="story_pillar_{{ loop.index }}_label" value="{{ pillar.label }}" required maxlength="80"></div></div>{% endfor %}</div>
+                </section>
 
-                <div class="form-field">
-                    <label>Story Heading</label>
-                    <input type="text" name="story_heading" value="{{ about.story_heading }}">
-                </div>
+                <section class="editor-section" id="founder"><h3 class="editor-section__title"><i class="fa-solid fa-user"></i> Founder</h3>
+                    <div class="field-grid"><div class="form-field"><label for="founder_eyebrow">Label</label><input id="founder_eyebrow" name="founder_eyebrow" value="{{ content.founder.eyebrow }}" required maxlength="80"></div><div class="form-field"><label for="founder_heading">Heading</label><input id="founder_heading" name="founder_heading" value="{{ content.founder.heading }}" required maxlength="200"></div></div>
+                    <div class="form-field"><label for="founder_description">Description</label><textarea id="founder_description" name="founder_description" required maxlength="900">{{ content.founder.description }}</textarea></div>
+                    <div class="form-field"><label for="founder_quote">Quote</label><textarea id="founder_quote" name="founder_quote" required maxlength="350">{{ content.founder.quote }}</textarea></div>
+                    <div class="field-grid"><div class="form-field"><label for="founder_attribution">Quote attribution</label><input id="founder_attribution" name="founder_attribution" value="{{ content.founder.attribution }}" required maxlength="100"></div><div class="form-field"><label for="founder_portrait_alt">Portrait alt text</label><input id="founder_portrait_alt" name="founder_portrait_alt" value="{{ content.founder.portrait_alt }}" required maxlength="160"></div></div>
+                    <div class="form-field"><label for="founder_script">Decorative side text</label><textarea id="founder_script" name="founder_script" required maxlength="120">{{ content.founder.script }}</textarea></div>
+                </section>
 
-                <div class="form-field">
-                    <label>Story Content</label>
-                    <textarea name="story_content" rows="4">{{ about.story_content }}</textarea>
-                </div>
+                <section class="editor-section" id="values"><h3 class="editor-section__title"><i class="fa-solid fa-gem"></i> Values</h3>
+                    <div class="field-grid"><div class="form-field"><label for="values_eyebrow">Label</label><input id="values_eyebrow" name="values_eyebrow" value="{{ content['values'].eyebrow }}" required maxlength="80"></div><div class="form-field"><label for="values_heading">Heading</label><input id="values_heading" name="values_heading" value="{{ content['values'].heading }}" required maxlength="160"></div></div>
+                    <div class="form-field"><label for="values_description">Description</label><textarea id="values_description" name="values_description" required maxlength="700">{{ content['values'].description }}</textarea></div>
+                    <div class="repeater-grid">{% for item in content['values']['items'] %}<div class="repeater-item"><p class="repeater-item__title">Value {{ loop.index }}</p><span class="locked-icon" title="Icon is fixed">{{ item.icon }}</span><div class="form-field"><label for="value_{{ loop.index }}_title">Title</label><input id="value_{{ loop.index }}_title" name="value_{{ loop.index }}_title" value="{{ item.title }}" required maxlength="100"></div><div class="form-field"><label for="value_{{ loop.index }}_description">Description</label><textarea id="value_{{ loop.index }}_description" name="value_{{ loop.index }}_description" required maxlength="220">{{ item.description }}</textarea></div></div>{% endfor %}</div>
+                </section>
 
-                <div class="section-divider"></div>
-                <div class="section-title">Our Collection</div>
-
-                <div class="form-field">
-                    <label>Collection Heading</label>
-                    <input type="text" name="collection_heading" value="{{ about.collection_heading }}">
-                </div>
-
-                <div class="form-field">
-                    <label>Collection Subheading</label>
-                    <input type="text" name="collection_subheading" value="{{ about.collection_subheading }}">
-                </div>
-
-                <div class="form-field">
-                    <label>Collection Description</label>
-                    <textarea name="collection_description" rows="3">{{ about.collection_description }}</textarea>
-                </div>
-
-                <div class="form-field">
-                    <label>Collection Items (one per line)</label>
-                    <div class="list-field" id="collection-items-field">
-                        {% for item in collection_items %}
-                        <div class="list-item">
-                            <input type="text" name="collection_items_list" value="{{ item }}">
-                            <button type="button" class="btn-remove" onclick="removeItem(this)">Remove</button>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    <button type="button" class="btn-add-item" onclick="addItem('collection-items-field')">+ Add Item</button>
-                    <input type="hidden" name="collection_items" id="collection-items-json">
-                    <p class="field-hint">Each item will appear as a bullet point in the collection section</p>
-                </div>
-
-                <div class="section-divider"></div>
-                <div class="section-title">Our Commitment</div>
-
-                <div class="form-field">
-                    <label>Commitment Heading</label>
-                    <input type="text" name="commitment_heading" value="{{ about.commitment_heading }}">
-                </div>
-
-                <div class="form-field">
-                    <label>Commitment Content</label>
-                    <textarea name="commitment_content" rows="3">{{ about.commitment_content }}</textarea>
-                </div>
-
-                <div class="section-divider"></div>
-                <div class="section-title">Our Values</div>
-
-                <div class="form-field">
-                    <label>Values Heading</label>
-                    <input type="text" name="values_heading" value="{{ about.values_heading }}">
-                </div>
-
-                <div class="form-field">
-                    <label>Values Items (one per line)</label>
-                    <div class="list-field" id="values-items-field">
-                        {% for item in values_items %}
-                        <div class="list-item">
-                            <input type="text" name="values_items_list" value="{{ item }}">
-                            <button type="button" class="btn-remove" onclick="removeItem(this)">Remove</button>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    <button type="button" class="btn-add-item" onclick="addItem('values-items-field')">+ Add Item</button>
-                    <input type="hidden" name="values_items" id="values-items-json">
-                    <p class="field-hint">Each value will appear as a bullet point in the values section</p>
-                </div>
-
-                <div class="section-divider"></div>
-                <div class="section-title">Legacy</div>
-
-                <div class="form-field">
-                    <label>Legacy Heading</label>
-                    <input type="text" name="legacy_heading" value="{{ about.legacy_heading }}">
-                </div>
-
-                <div class="form-field">
-                    <label>Legacy Content</label>
-                    <textarea name="legacy_content" rows="3">{{ about.legacy_content }}</textarea>
-                </div>
-
-                <button type="submit" class="btn-save form-submit"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+                <section class="editor-section" id="purpose"><h3 class="editor-section__title"><i class="fa-solid fa-bullseye"></i> Purpose / CTA</h3>
+                    <div class="field-grid"><div class="form-field"><label for="purpose_eyebrow">Label</label><input id="purpose_eyebrow" name="purpose_eyebrow" value="{{ content.purpose.eyebrow }}" required maxlength="80"></div><div class="form-field"><label for="purpose_heading">Heading</label><input id="purpose_heading" name="purpose_heading" value="{{ content.purpose.heading }}" required maxlength="160"></div></div>
+                    <div class="form-field"><label for="purpose_description">Description</label><textarea id="purpose_description" name="purpose_description" required maxlength="700">{{ content.purpose.description }}</textarea></div>
+                    <div class="locked-field"><i class="fa-solid fa-lock"></i> “{{ content.purpose.button_label }}” and its link are fixed for this page.</div>
+                </section>
+                <div class="save-bar"><button class="btn-save" type="submit"><i class="fa-solid fa-floppy-disk"></i> Save all content</button></div>
             </form>
+        </section>
+    </div>
+
+    <section class="about-card" id="images" style="margin-top:24px"><header class="about-card__header"><div class="about-card__icon"><i class="fa-solid fa-images"></i></div><div><h2>Image library</h2><p>JPG, PNG, and WebP only, up to 10 MB. Images are optimized and uploaded to Cloudinary.</p></div><span class="upload-guidelines"><i class="fa-solid fa-cloud-arrow-up"></i> Upload Guidelines</span></header>
+        <div class="asset-grid" style="padding:24px">{% for slot, specification in asset_specs.items() %}{% set asset = assets.get(slot, {}) %}
+            <article class="asset-card" data-slot="{{ slot }}">
+                <div class="asset-preview">
+                    {% if asset.get('url') %}<img src="{{ asset.get('url') }}" alt="{{ specification.label }} preview">{% else %}<i class="fa-regular fa-image"></i><span class="asset-empty-copy">No image uploaded</span>{% endif %}
+                    <span class="asset-ratio">{{ specification.ratio }}</span>
+                </div>
+                <div class="asset-body"><h3 class="asset-title">{{ specification.label }}</h3><p class="asset-guidance">{{ specification.guidance }} ({{ specification.ratio }})</p>
+                <form method="POST" enctype="multipart/form-data" data-loading="Uploading..."><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="upload_about_asset"><input type="hidden" name="slot" value="{{ slot }}"><div class="asset-upload"><label class="asset-dropzone"><i class="fa-solid fa-cloud-arrow-up"></i><span><strong>{% if asset.get('url') %}Choose replacement{% else %}Choose image{% endif %}</strong><small>JPG, PNG, WebP - Maximum {{ max_image_mb }} MB</small></span><input class="asset-file-input" type="file" name="image" accept="image/jpeg,image/png,image/webp" required></label><button class="asset-submit" type="submit"><i class="fa-solid fa-arrow-up"></i>{% if asset.get('url') %}Replace{% else %}Upload{% endif %}</button></div></form>
+                {% if asset.get('url') %}<form method="POST" class="asset-actions" data-loading="Removing..."><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="delete_about_asset"><input type="hidden" name="slot" value="{{ slot }}"><button class="asset-remove" type="submit"><i class="fa-solid fa-trash-can"></i> Remove image</button></form>{% endif %}
+            </div></article>{% endfor %}
         </div>
     </section>
 </div>
@@ -158,30 +154,22 @@
 
 {% block scripts %}
 <script>
-    function addItem(fieldId) {
-        const field = document.getElementById(fieldId);
-        const div = document.createElement('div');
-        div.className = 'list-item';
-        div.innerHTML = '<input type="text" name="' + fieldId.replace('-field', '_list') + '" value="">' +
-            '<button type="button" class="btn-remove" onclick="removeItem(this)">Remove</button>';
-        field.appendChild(div);
-    }
-
-    function removeItem(btn) {
-        btn.parentElement.remove();
-    }
-
-    // Collect list items into JSON before form submit
-    document.querySelector('form[action*="manage_about"]').addEventListener('submit', function(e) {
-        // Collection items
-        const collectionInputs = document.querySelectorAll('#collection-items-field input[name="collection_items_list"]');
-        const collectionItems = Array.from(collectionInputs).map(i => i.value.trim()).filter(v => v);
-        document.getElementById('collection-items-json').value = JSON.stringify(collectionItems);
-
-        // Values items
-        const valuesInputs = document.querySelectorAll('#values-items-field input[name="values_items_list"]');
-        const valuesItems = Array.from(valuesInputs).map(i => i.value.trim()).filter(v => v);
-        document.getElementById('values-items-json').value = JSON.stringify(valuesItems);
+    document.querySelectorAll('form[data-loading]').forEach(function (form) {
+        form.addEventListener('submit', function () {
+            if (!form.checkValidity()) return;
+            const button = form.querySelector('button[type="submit"]');
+            if (!button) return;
+            button.disabled = true;
+            button.dataset.originalText = button.innerHTML;
+            button.textContent = form.dataset.loading;
+        });
+    });
+    document.querySelectorAll('.asset-file-input').forEach(function (input) {
+        input.addEventListener('change', function () {
+            const label = input.closest('.asset-dropzone');
+            const title = label.querySelector('strong');
+            title.textContent = input.files[0] ? input.files[0].name : 'Change image';
+        });
     });
 </script>
 {% endblock %}

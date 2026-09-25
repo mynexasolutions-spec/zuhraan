@@ -10,6 +10,7 @@ import requests
 from decimal import Decimal, InvalidOperation
 
 from datetime import datetime
+from about_cms import get_assets, get_content
 
 main_bp = Blueprint('main', __name__)
 
@@ -96,19 +97,7 @@ def cancellation():
 
 @main_bp.route('/about')
 def about():
-    about = AboutPage.query.first()
-    import json
-    collection_items = []
-    values_items = []
-    if about:
-        try:
-            if about.collection_items:
-                collection_items = json.loads(about.collection_items)
-            if about.values_items:
-                values_items = json.loads(about.values_items)
-        except:
-            pass
-    return render_template('main/about.html', about=about, collection_items=collection_items, values_items=values_items)
+    return render_template('main/about.html', content=get_content(), assets=get_assets())
 
 @main_bp.route('/contact')
 def contact():

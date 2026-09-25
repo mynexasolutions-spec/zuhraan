@@ -1,156 +1,124 @@
 {% extends 'base.html' %}
-{% block title %}{{ about.page_title if about else 'About Us - Zuhraan' }}{% endblock %}
+{% block title %}{{ content.seo_title }}{% endblock %}
 
 {% block extra_css %}
 <style>
-    .about-container {
-        max-width: 1000px;
-        margin: 100px auto 140px;
-        padding: 0 40px;
-        color: #334155;
-        font-size: 1.25rem;
-        line-height: 2;
-        font-family: 'Jost', sans-serif;
-    }
-    .about-container h1 {
-        font-family: 'Cormorant Garamond', serif;
-        font-size: 4rem;
-        color: #0f172a;
-        margin-bottom: 20px;
-        border-bottom: 2px solid #e2e8f0;
-        padding-bottom: 30px;
-        text-align: center;
-    }
-    .about-container h3 {
-        font-family: 'Cormorant Garamond', serif;
-        font-size: 2.4rem;
-        color: #0f172a;
-        margin: 60px 0 25px;
-    }
-    .about-container p {
-        margin-bottom: 24px;
-        letter-spacing: 0.02em;
-    }
-    .about-container .highlight-box {
-        background: #f8fafc;
-        border-left: 4px solid var(--amber, #d97706);
-        padding: 30px 40px;
-        margin: 40px 0;
-        border-radius: 0 12px 12px 0;
-    }
-    .about-container .highlight-box h4 {
-        font-family: 'Jost', sans-serif;
-        font-size: 1.3rem;
-        font-weight: 600;
-        margin-bottom: 15px;
-        color: #1e293b;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-    .about-container ul {
-        margin: 0;
-        padding: 0;
-        list-style: none;
-    }
-    .about-container ul li {
-        margin-bottom: 16px;
-        position: relative;
-        padding-left: 36px;
-    }
-    .about-container ul li::before {
-        content: '✧';
-        color: var(--amber, #d97706);
-        position: absolute;
-        left: 0;
-        font-size: 1.4rem;
-        line-height: 1.2;
-    }
-    .about-image { width: 100%; max-width: 600px; border-radius: 12px; margin: 30px auto; display: block; }
+    :root { --about-ink: #1d3140; --about-gold: #b88b42; --about-cream: #f7f1e5; --about-paper: #fffdf8; }
+    .about-page { overflow: hidden; color: var(--about-ink); background: var(--about-paper); font-family: 'Jost', sans-serif; }
+    .about-page * { box-sizing: border-box; }
+    .about-eyebrow { margin: 0 0 9px; color: var(--about-gold); font-size: .66rem; font-weight: 600; letter-spacing: .19em; text-transform: uppercase; }
+    .about-page h1, .about-page h2, .about-page h3 { font-family: 'Cormorant Garamond', serif; font-weight: 700; line-height: .9; }
+    .about-page p { color: #53616a; font-size: .88rem; line-height: 1.52; }
+    .about-section { width: min(1120px, calc(100% - 48px)); margin: 0 auto; }
+    .about-hero { position: relative; min-height: 445px; display: flex; align-items: center; background: #eadfce center / cover no-repeat; {% if assets.get('hero_background', {}).get('url') %}background-image: url("{{ assets.get('hero_background', {}).get('url') }}");{% endif %} }
+    .about-hero__content { position: relative; z-index: 1; width: min(1050px, calc(100% - 48px)); margin: 0 auto; padding: 50px 0; }
+    .about-hero__copy { width: min(100%, 535px); }
+    .about-hero h1 { max-width: 520px; margin: 0 0 18px; font-size: clamp(3.1rem, 4.5vw, 3.7rem); letter-spacing: -.04em; line-height: 1.02; white-space: pre-line; }
+    .about-hero p { max-width: 515px; margin: 0 0 19px; color: #58636b; font-size: 1.05rem; line-height: 1.62; }
+    .about-hero .about-eyebrow { margin-bottom: 17px; font-size: .79rem; letter-spacing: .16em; }
+    .about-hero .about-button { min-width: 180px; justify-content: center; padding: 15px 24px; font-size: .88rem; }
+    .about-hero .about-button::after { content: none; }
+    .about-button { display: inline-flex; align-items: center; gap: 10px; padding: 11px 19px; border-radius: 999px; color: #fff; background: var(--about-gold); font-size: .74rem; font-weight: 600; text-decoration: none; transition: transform .2s ease, background .2s ease; }
+    .about-button::after { content: '→'; font-size: 1rem; line-height: .6; }
+    .about-button:hover { color: #fff; background: #967032; transform: translateY(-2px); }
+    .about-story { width: min(1070px, calc(100% - 48px)); display: grid; grid-template-columns: minmax(390px,490px) minmax(390px,1fr); gap: clamp(46px,5vw,64px); align-items: center; padding: 64px 0 76px; }
+    .about-story__image { width: 100%; height: 443px; border-radius: 13px; object-fit: cover; box-shadow: 0 17px 34px rgba(58,42,19,.12); }
+    .about-story h2, .about-founder h2, .about-philosophy h2, .about-closing h2 { margin: 0 0 14px; font-size: clamp(2.1rem,3vw,3.3rem); letter-spacing: -.035em; }
+    .about-story h2 { max-width: 510px; margin-bottom: 22px; font-size: clamp(2.65rem,3.55vw,3.45rem); line-height: .93; }
+    .about-story .about-eyebrow { margin-bottom: 14px; font-size: .78rem; }
+    .about-story__text > p { max-width: 530px; margin: 0; color: #65707a; font-size: 1rem; line-height: 1.58; }
+    .about-principles { position: relative; display: grid; grid-template-columns: repeat(4,1fr); gap: 20px; margin: 27px 0 0; padding: 42px 0 0; }
+    .about-principles::before { content: ''; position: absolute; top: 0; left: 0; width: 48px; height: 3px; border-radius: 999px; background: var(--about-gold); }
+    .about-principle { text-align: center; }
+    .about-principle__mark { display: grid; width: 64px; height: 64px; place-items: center; margin: 0 auto 10px; border-radius: 50%; color: var(--about-gold); background: #f7f3eb; font-size: 1.65rem; }
+    .about-principle span { display: block; color: #5e6770; font-size: .62rem; font-weight: 600; line-height: 1.3; letter-spacing: .045em; text-transform: uppercase; white-space: pre-line; }
+    .about-founder-wrap { background: #f3eddf; }
+    .about-founder { position: relative; min-height: 335px; display: grid; grid-template-columns: .92fr 1.08fr; align-items: center; overflow: hidden; background-color: #f3eddf; background-position: center; background-size: cover; {% if assets.get('founder_background', {}).get('url') %}background-image: linear-gradient(90deg, rgba(243,237,223,.92), rgba(243,237,223,.42)), url("{{ assets.get('founder_background', {}).get('url') }}");{% endif %} }
+    .about-founder__copy { position: relative; z-index: 2; padding: 58px 0; }
+    .about-founder .about-eyebrow { margin-bottom: 13px; font-size: .8rem; }
+    .about-founder h2 { max-width: 580px; margin-bottom: 20px; font-size: clamp(2.8rem,3.5vw,3.65rem); }
+    .about-founder__copy p { max-width: 505px; margin: 0; font-size: 1.04rem; line-height: 1.58; }
+    .about-quote { position: relative; max-width: 430px; margin: 22px 0 0; padding: 17px 22px 17px 46px; border-radius: 8px; background: rgba(255,253,248,.62); color: #43515a; font-family: 'Cormorant Garamond', serif; font-size: 1.18rem; font-weight: 700; line-height: 1.22; }
+    .about-quote::before { content: '“'; position: absolute; top: 9px; left: 18px; color: var(--about-gold); font-size: 2rem; line-height: 1; }
+    .about-quote span { display: block; margin-top: 7px; font-family: 'Jost', sans-serif; font-size: .68rem; font-weight: 500; }
+    .about-founder__portrait { position: relative; align-self: end; height: 335px; }
+    .about-founder__portrait::before { content: ''; position: absolute; bottom: 0; left: 50%; width: 286px; height: 286px; border-radius: 50% 50% 0 0; background: #e6d8bd; transform: translateX(-50%); }
+    .about-founder__portrait img { position: absolute; z-index: 1; bottom: 0; left: 50%; width: min(100%,320px); max-height: 335px; object-fit: contain; object-position: bottom; transform: translateX(-50%); }
+    .about-founder__script { position: absolute; z-index: 2; top: 50%; right: 1.5%; width: 102px; color: #8b795d; font-family: 'Cormorant Garamond', serif; font-size: 1.45rem; font-style: italic; font-weight: 700; line-height: .94; white-space: pre-line; transform: translateY(-50%) rotate(-10deg); }
+    .about-philosophy { width: min(1280px, calc(100% - 48px)); padding: 86px 0 72px; text-align: center; }
+    .about-philosophy__copy { max-width: 760px; margin: 0 auto; }
+    .about-philosophy .about-eyebrow { margin-bottom: 14px; font-size: .78rem; }
+    .about-philosophy h2 { margin-bottom: 17px; font-size: clamp(2.8rem,3.7vw,3.8rem); }
+    .about-philosophy__copy p { margin: 0 auto; color: #67727b; font-size: 1.03rem; line-height: 1.6; }
+    .about-values { display: grid; grid-template-columns: repeat(4,1fr); margin-top: 39px; overflow: hidden; border: 1px solid #eadfce; border-radius: 16px; background: #fff; box-shadow: 0 18px 40px rgba(73,54,28,.06); counter-reset: value-pillars; }
+    .about-value { position: relative; min-height: 215px; padding: 31px 30px 27px; border: 0; border-right: 1px solid #eee5d7; background: transparent; text-align: left; counter-increment: value-pillars; transition: background .2s ease; }
+    .about-value:last-child { border-right: 0; }
+    .about-value:hover { background: #fcfaf5; }
+    .about-value::after { content: '0' counter(value-pillars); position: absolute; top: 22px; right: 24px; color: #e1d3bd; font-size: .68rem; font-weight: 600; letter-spacing: .1em; }
+    .about-value__icon { display: grid; width: 38px; height: 38px; place-items: center; margin-bottom: 22px; border-radius: 10px; color: var(--about-gold); background: #faf5eb; font-size: 1.15rem; }
+    .about-value h3 { max-width: 230px; margin: 0 0 11px; color: var(--about-ink); font-size: 1.42rem; line-height: 1; }
+    .about-value p { max-width: 230px; margin: 0; color: #78818a; font-size: .81rem; line-height: 1.48; }
+    .about-closing-wrap { padding: 0 0 75px; }
+    .about-closing { min-height: 245px; display: flex; align-items: center; padding: 36px 48px; border-radius: 14px; background-color: #35403c; background-position: center; background-size: cover; {% if assets.get('purpose_background', {}).get('url') %}background-image: linear-gradient(90deg, rgba(38,45,42,.84), rgba(38,45,42,.42)), url("{{ assets.get('purpose_background', {}).get('url') }}");{% endif %} }
+    .about-closing__copy { max-width: 455px; }
+    .about-closing .about-eyebrow { color: #e3c486; }
+    .about-closing h2 { color: #fff; }
+    .about-closing p { margin: 0 0 19px; color: #f2ebdf; }
+    .about-closing .about-button { background: #c18d3e; }
+    .about-closing .about-button::after { content: none; }
+    @media (max-width: 760px) { .about-section, .about-hero__content, .about-story, .about-philosophy { width: min(calc(100% - 40px), 620px); } .about-hero { min-height: 430px; background-position: 35% center; } .about-hero::before { content: none; } .about-hero__copy { max-width: 280px; padding: 8px 0; } .about-hero .about-eyebrow { color: #24475d; font-weight: 700; text-shadow: none; } .about-hero h1 { color: #102e42; font-size: clamp(2.8rem, 11vw, 3.7rem); text-shadow: none; } .about-hero p { max-width: 270px; color: #263f50; font-size: .94rem; font-weight: 400; text-shadow: none; } .about-story { width: calc(100% - 40px); max-width: 620px; grid-template-columns: 1fr; gap: 30px; padding: clamp(20px, 6vw, 40px) 0 48px; } .about-story__image { height: 360px; border-radius: 13px !important; clip-path: inset(0 round 13px); } .about-founder { grid-template-columns: 1fr; min-height: auto; {% if assets.get('founder_background', {}).get('url') %}background-image: linear-gradient(90deg, rgba(243,237,223,.95), rgba(243,237,223,.75)), url("{{ assets.get('founder_background', {}).get('url') }}");{% endif %} } .about-founder__copy { padding: 48px 0 16px; } .about-founder__portrait { height: 300px; } .about-founder__script { right: 4%; } .about-values { grid-template-columns: 1fr 1fr; } .about-value:nth-child(2) { border-right: 0; } .about-value:nth-child(-n+2) { border-bottom: 1px solid #eee5d7; } .about-closing { padding: 36px 25px; } }
+    @media (max-width: 760px) { .about-story { gap: 24px; } .about-story h2 { margin-bottom: 16px; font-size: clamp(2.3rem, 10.5vw, 3rem); line-height: .94; } .about-story .about-eyebrow { margin-bottom: 11px; font-size: .72rem; } .about-story__text > p { font-size: .92rem; line-height: 1.55; } .about-principles { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 20px 14px; margin-top: 24px; padding-top: 34px; } .about-principle__mark { width: 58px; height: 58px; margin-bottom: 8px; font-size: 1.45rem; } .about-principle span { font-size: .58rem; letter-spacing: .035em; } }
+    @media (max-width: 760px) { .about-founder__copy { padding: 34px 0 14px; } .about-founder .about-eyebrow { margin-bottom: 10px; font-size: .72rem; } .about-founder h2 { margin-bottom: 16px; font-size: clamp(2.35rem, 10.5vw, 3rem); line-height: .94; } .about-founder__copy p { font-size: .92rem; line-height: 1.55; } .about-quote { max-width: none; margin-top: 18px; padding: 15px 18px 15px 40px; font-size: 1.05rem; } .about-quote span { margin-top: 6px; font-size: .64rem; } .about-founder__portrait { height: 285px; } .about-founder__script { top: 24%; right: 1%; font-size: 1.2rem; } }
+    @media (max-width: 760px) { .about-philosophy { padding: 56px 0 44px; } .about-philosophy .about-eyebrow { margin-bottom: 10px; font-size: .72rem; } .about-philosophy h2 { margin-bottom: 14px; font-size: clamp(2.35rem, 10vw, 3rem); line-height: .94; } .about-philosophy__copy p { font-size: .92rem; line-height: 1.55; } .about-values { grid-template-columns: 1fr; margin-top: 26px; } .about-value { display: grid; grid-template-columns: 48px minmax(0,1fr); column-gap: 15px; min-height: 0; padding: 18px 42px 18px 18px; border-right: 0 !important; border-bottom: 1px solid #eee5d7; } .about-value:last-child { border-bottom: 0; } .about-value__icon { grid-row: span 2; width: 44px; height: 44px; margin: 0; font-size: 1.05rem; } .about-value h3 { align-self: end; max-width: none; margin: 0 0 5px; font-size: 1.3rem; line-height: 1; } .about-value p { align-self: start; max-width: none; font-size: .8rem; line-height: 1.4; } .about-value::after { top: 18px; right: 18px; } }
+    @media (max-width: 760px) { .about-closing-wrap { padding-bottom: 48px; } .about-closing { min-height: 0; padding: 32px 26px; border-radius: 14px; background-position: 58% center; } .about-closing__copy { max-width: 255px; } .about-closing .about-eyebrow { margin-bottom: 11px; font-size: .72rem; } .about-closing h2 { margin-bottom: 15px; font-size: clamp(2.3rem, 10vw, 2.9rem); line-height: .94; } .about-closing p { margin-bottom: 20px; font-size: .9rem; line-height: 1.55; } .about-closing .about-button { min-width: 188px; justify-content: center; padding: 13px 18px; font-size: .78rem; } }
+    @media (max-width: 430px) { .about-hero h1 { font-size: 2.75rem; } .about-principles { gap: 5px; } .about-principle span { font-size: .48rem; } .about-founder__script { width: 80px; font-size: 1.15rem; } .about-founder__portrait::before { width: 245px; height: 245px; } .about-value { padding: 16px 38px 16px 16px; } .about-value h3 { font-size: 1.18rem; } .about-closing-wrap { padding-bottom: 48px; } }
 </style>
 {% endblock %}
 
 {% block content %}
-{% if about %}
-<section class="about-container">
-    {% if about.hero_image %}
-    <img src="{{ get_image_url(about.hero_image) }}" alt="{{ about.page_title }}" class="about-image">
-    {% endif %}
-    
-    <h1>{{ about.page_title }}</h1>
-    
-    {% if about.intro_text %}
-    <p>{{ about.intro_text }}</p>
-    {% endif %}
-    
-    {% if about.story_heading %}
-    <h3>{{ about.story_heading }}</h3>
-    {% endif %}
-    
-    {% if about.story_image %}
-    <img src="{{ get_image_url(about.story_image) }}" alt="{{ about.story_heading }}" class="about-image">
-    {% endif %}
-    
-    {% if about.story_content %}
-    <p>{{ about.story_content }}</p>
-    {% endif %}
-    
-    {% if about.collection_heading %}
-    <h3>{{ about.collection_heading }}</h3>
-    {% endif %}
-    
-    {% if about.collection_image %}
-    <img src="{{ get_image_url(about.collection_image) }}" alt="{{ about.collection_heading }}" class="about-image">
-    {% endif %}
-    
-    <div class="highlight-box">
-        {% if about.collection_subheading %}
-        <h4>{{ about.collection_subheading }}</h4>
-        {% endif %}
-        {% if about.collection_description %}
-        <p style="margin-bottom: 15px;">{{ about.collection_description }}</p>
-        {% endif %}
-        {% if collection_items %}
-        <ul>
-            {% for item in collection_items %}
-            <li>{{ item }}</li>
-            {% endfor %}
-        </ul>
-        {% endif %}
-    </div>
-    
-    {% if about.commitment_heading %}
-    <h3>{{ about.commitment_heading }}</h3>
-    {% endif %}
-    
-    {% if about.commitment_content %}
-    <p>{{ about.commitment_content }}</p>
-    {% endif %}
-    
-    <div class="highlight-box">
-        {% if about.values_heading %}
-        <h4>{{ about.values_heading }}</h4>
-        {% endif %}
-        {% if values_items %}
-        <ul>
-            {% for item in values_items %}
-            <li>{{ item }}</li>
-            {% endfor %}
-        </ul>
-        {% endif %}
-    </div>
-    
-    {% if about.legacy_heading %}
-    <h3>{{ about.legacy_heading }}</h3>
-    {% endif %}
-    
-    {% if about.legacy_content %}
-    <p>{{ about.legacy_content }}</p>
-    {% endif %}
-</section>
-{% else %}
-<section class="about-container">
-    <h1>About Zuhraan</h1>
-    <p>Content not configured yet. Please set up the About page in the admin panel.</p>
-</section>
-{% endif %}
+<div class="about-page">
+    <section class="about-hero">
+        <div class="about-hero__content"><div class="about-hero__copy">
+            <p class="about-eyebrow">{{ content.hero.eyebrow }}</p>
+            <h1>{{ content.hero.heading }}</h1>
+            <p>{{ content.hero.description }}</p>
+            <a class="about-button" href="{{ content.hero.button_href }}">{{ content.hero.button_label }}</a>
+        </div></div>
+    </section>
+
+    <section class="about-section about-story" id="our-story">
+        {% if assets.get('story_image', {}).get('url') %}<img class="about-story__image" src="{{ assets.get('story_image', {}).get('url') }}" alt="{{ content.story.heading }}" loading="lazy">{% endif %}
+        <div class="about-story__text">
+            <p class="about-eyebrow">{{ content.story.eyebrow }}</p>
+            <h2>{{ content.story.heading }}</h2>
+            <p>{{ content.story.description }}</p>
+            <div class="about-principles" aria-label="Zuhraan principles">
+                {% for pillar in content.story.pillars %}<div class="about-principle"><div class="about-principle__mark">{{ pillar.icon }}</div><span>{{ pillar.label }}</span></div>{% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <div class="about-founder-wrap"><section class="about-section about-founder">
+        <div class="about-founder__copy">
+            <p class="about-eyebrow">{{ content.founder.eyebrow }}</p>
+            <h2>{{ content.founder.heading }}</h2>
+            <p>{{ content.founder.description }}</p>
+            <div class="about-quote">{{ content.founder.quote }}<span>— {{ content.founder.attribution }}</span></div>
+        </div>
+        <div class="about-founder__portrait">{% if assets.get('founder_portrait', {}).get('url') %}<img src="{{ assets.get('founder_portrait', {}).get('url') }}" alt="{{ content.founder.portrait_alt }}" loading="lazy">{% endif %}<div class="about-founder__script">{{ content.founder.script }}</div></div>
+    </section></div>
+
+    <section class="about-section about-philosophy">
+        <div class="about-philosophy__copy"><p class="about-eyebrow">{{ content['values'].eyebrow }}</p><h2>{{ content['values'].heading }}</h2><p>{{ content['values'].description }}</p></div>
+        <div class="about-values">
+            {% for item in content['values']['items'] %}<article class="about-value"><div class="about-value__icon">{{ item.icon }}</div><h3>{{ item.title }}</h3><p>{{ item.description }}</p></article>{% endfor %}
+        </div>
+    </section>
+
+    <div class="about-section about-closing-wrap"><section class="about-closing"><div class="about-closing__copy">
+        <p class="about-eyebrow">{{ content.purpose.eyebrow }}</p><h2>{{ content.purpose.heading }}</h2>
+        <p>{{ content.purpose.description }}</p>
+        <a class="about-button" href="{{ content.purpose.button_href }}">{{ content.purpose.button_label }}</a>
+    </div></section></div>
+</div>
 {% endblock %}

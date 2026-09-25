@@ -8,6 +8,7 @@ import cloudinary.uploader
 from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 import re
+from about_cms import ASSET_SPECS, MAX_IMAGE_MB, delete_asset_from_cloudinary, get_assets, get_content, save_assets, save_content, upload_asset
 
 def slugify(text):
     text = text.lower()
@@ -783,53 +784,114 @@ def homepage_media():
     hero_about_image_url = (Setting.query.filter_by(key='hero_about_image_url').first() or Setting(value='')).value
     return render_template('admin/homepage_media.html', media_url=media_url, media_type=media_type, banner_url=banner_url, hero_about_image_url=hero_about_image_url)
 
+def _about_text(field_name, maximum, required=False):
+    value = request.form.get(field_name, '').strip()
+    if required and not value:
+        raise ValueError(f'{field_name.replace("_", " ").title()} is required.')
+    if len(value) > maximum:
+        raise ValueError(f'{field_name.replace("_", " ").title()} must be {maximum} characters or fewer.')
+    return value
+
+
+def _about_content_from_form(existing_content):
+    pillars = []
+    values = []
+    for index in range(1, 5):
+        pillars.append({
+            'icon': existing_content['story']['pillars'][index - 1]['icon'],
+            'label': _about_text(f'story_pillar_{index}_label', 80, required=True),
+        })
+        values.append({
+            'icon': existing_content['values']['items'][index - 1]['icon'],
+            'title': _about_text(f'value_{index}_title', 100, required=True),
+            'description': _about_text(f'value_{index}_description', 220, required=True),
+        })
+
+    return {
+        'seo_title': _about_text('seo_title', 200, required=True),
+        'hero': {
+            'eyebrow': _about_text('hero_eyebrow', 80, required=True),
+            'heading': _about_text('hero_heading', 160, required=True),
+            'description': _about_text('hero_description', 700, required=True),
+            'button_label': existing_content['hero']['button_label'],
+            'button_href': existing_content['hero']['button_href'],
+        },
+        'story': {
+            'eyebrow': _about_text('story_eyebrow', 80, required=True),
+            'heading': _about_text('story_heading', 200, required=True),
+            'description': _about_text('story_description', 1200, required=True),
+            'pillars': pillars,
+        },
+        'founder': {
+            'eyebrow': _about_text('founder_eyebrow', 80, required=True),
+            'heading': _about_text('founder_heading', 200, required=True),
+            'description': _about_text('founder_description', 900, required=True),
+            'quote': _about_text('founder_quote', 350, required=True),
+            'attribution': _about_text('founder_attribution', 100, required=True),
+            'script': _about_text('founder_script', 120, required=True),
+            'portrait_alt': _about_text('founder_portrait_alt', 160, required=True),
+        },
+        'values': {
+            'eyebrow': _about_text('values_eyebrow', 80, required=True),
+            'heading': _about_text('values_heading', 160, required=True),
+            'description': _about_text('values_description', 700, required=True),
+            'items': values,
+        },
+        'purpose': {
+            'eyebrow': _about_text('purpose_eyebrow', 80, required=True),
+            'heading': _about_text('purpose_heading', 160, required=True),
+            'description': _about_text('purpose_description', 700, required=True),
+            'button_label': existing_content['purpose']['button_label'],
+            'button_href': existing_content['purpose']['button_href'],
+        },
+    }
+
+
 # --- ABOUT PAGE MANAGEMENT ---
 @admin_bp.route('/about', methods=['GET', 'POST'])
 @admin_required
 def manage_about():
-    # Always do a fresh query to avoid session caching
-    db.session.expire_all()
-    about = AboutPage.query.first()
-    if not about:
-        about = AboutPage()
-        db.session.add(about)
-        db.session.commit()
-    
     if request.method == 'POST':
-        action = request.form.get('action')
-        
-        # Update text content
-        if action == 'update_content':
-            about.page_title = request.form.get('page_title', 'About Zuhraan')
-            about.intro_text = request.form.get('intro_text', '')
-            about.story_heading = request.form.get('story_heading', 'Our Story')
-            about.story_content = request.form.get('story_content', '')
-            about.collection_heading = request.form.get('collection_heading', 'Our Collection')
-            about.collection_subheading = request.form.get('collection_subheading', 'Diverse Fragrance Portfolio')
-            about.collection_description = request.form.get('collection_description', '')
-            about.collection_items = request.form.get('collection_items', '')
-            about.commitment_heading = request.form.get('commitment_heading', 'Our Commitment')
-            about.commitment_content = request.form.get('commitment_content', '')
-            about.values_heading = request.form.get('values_heading', 'Our Values')
-            about.values_items = request.form.get('values_items', '')
-            about.legacy_heading = request.form.get('legacy_heading', 'Legacy')
-            about.legacy_content = request.form.get('legacy_content', '')
-            db.session.commit()
-            flash('About page content updated successfully.', 'success')
-            return redirect(url_for('admin.manage_about'))
+        action = request.form.get('action', '')
+        try:
+            if action == 'save_about_content':
+                save_content(_about_content_from_form(get_content()))
+                flash('About page content saved. The public page is updated immediately.', 'success')
+            elif action == 'upload_about_asset':
+                slot = request.form.get('slot', '')
+                image_file = request.files.get('image')
+                if image_file is None or not image_file.filename:
+                    raise ValueError('Choose an image to upload.')
+                assets = get_assets()
+                previous_asset = assets.get(slot, {})
+                assets[slot] = upload_asset(slot, image_file)
+                save_assets(assets)
+                try:
+                    delete_asset_from_cloudinary(previous_asset.get('public_id', ''))
+                except Exception:
+                    current_app.logger.warning('About image replaced but the previous Cloudinary asset could not be deleted.', exc_info=True)
+                flash(f'{ASSET_SPECS[slot]["label"]} uploaded and optimized successfully.', 'success')
+            elif action == 'delete_about_asset':
+                slot = request.form.get('slot', '')
+                if slot not in ASSET_SPECS:
+                    raise ValueError('Unknown About-page image slot.')
+                assets = get_assets()
+                asset = assets.get(slot, {})
+                if not asset:
+                    raise ValueError('This image has already been removed.')
+                delete_asset_from_cloudinary(asset.get('public_id', ''))
+                assets.pop(slot, None)
+                save_assets(assets)
+                flash(f'{ASSET_SPECS[slot]["label"]} removed.', 'success')
+            else:
+                raise ValueError('Unknown About-page update request.')
+        except (ValueError, RuntimeError) as error:
+            db.session.rollback()
+            flash(str(error), 'error')
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception('About page update failed.', extra={'action': action})
+            flash('The About page could not be updated. Please try again.', 'error')
+        return redirect(url_for('admin.manage_about'))
 
-    # Prepare collection items for template
-    import json
-    collection_items = []
-    values_items = []
-    try:
-        if about.collection_items:
-            collection_items = json.loads(about.collection_items)
-        if about.values_items:
-            values_items = json.loads(about.values_items)
-    except:
-        pass
-
-    # Expire again before rendering to ensure fresh data
-    db.session.expire(about)
-    return render_template('admin/about.html', about=about, collection_items=collection_items, values_items=values_items)
+    return render_template('admin/about.html', content=get_content(), assets=get_assets(), asset_specs=ASSET_SPECS, max_image_mb=MAX_IMAGE_MB)
