@@ -123,6 +123,16 @@ class Review(db.Model):
 
     product = db.relationship('Product', backref=db.backref('reviews', lazy=True, cascade="all, delete-orphan"))
 
+class ContactMessage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    topic = db.Column(db.String(50), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(120), nullable=False)
+    phone = db.Column(db.String(30), nullable=True)
+    message = db.Column(db.Text, nullable=False)
+    is_read = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
 class Coupon(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     code = db.Column(db.String(50), unique=True, nullable=False)           # e.g. "SAVE20"

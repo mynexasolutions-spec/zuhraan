@@ -1,5 +1,5 @@
 from flask import Blueprint, current_app, jsonify, render_template, request, redirect, url_for, flash, session
-from models import db, Product, Category, ProductVariant, Review, User, Order, OrderItem, Setting, Coupon, OfferBanner, AboutPage
+from models import db, Product, Category, ProductVariant, Review, User, Order, OrderItem, Setting, Coupon, OfferBanner, AboutPage, ContactMessage
 from flask_login import current_user, login_user, logout_user, login_required
 from werkzeug.security import generate_password_hash, check_password_hash
 import hashlib
@@ -8,6 +8,8 @@ import secrets
 import time
 import requests
 from decimal import Decimal, InvalidOperation
+from sqlalchemy import and_, func
+from sqlalchemy.exc import SQLAlchemyError
 
 from datetime import datetime
 from about_cms import get_assets, get_content
@@ -99,9 +101,52 @@ def cancellation():
 def about():
     return render_template('main/about.html', content=get_content(), assets=get_assets())
 
-@main_bp.route('/contact')
+@main_bp.route('/contact', methods=['GET', 'POST'])
 def contact():
-    return render_template('main/contact.html')
+    if request.method == 'GET':
+        return render_template('main/contact.html')
+
+    topic = request.form.get('topic', '').strip()
+    name = request.form.get('name', '').strip()
+    email = request.form.get('email', '').strip().lower()
+    phone = request.form.get('phone', '').strip()
+    message = request.form.get('message', '').strip()
+    valid_topics = {'Scent Advice', 'Gifts & Custom', 'Order Status', 'General Query'}
+
+    if topic not in valid_topics:
+        flash('Please select a valid topic.', 'error')
+        return redirect(url_for('main.contact') + '#contact-form')
+    if not name or len(name) > 100:
+        flash('Enter a name of up to 100 characters.', 'error')
+        return redirect(url_for('main.contact') + '#contact-form')
+    if not email or len(email) > 120 or '@' not in email or email.startswith('@') or email.endswith('@'):
+        flash('Enter a valid email address.', 'error')
+        return redirect(url_for('main.contact') + '#contact-form')
+    if len(phone) > 30:
+        flash('Enter a phone number of up to 30 characters.', 'error')
+        return redirect(url_for('main.contact') + '#contact-form')
+    if not message or len(message) > 500:
+        flash('Enter a message of up to 500 characters.', 'error')
+        return redirect(url_for('main.contact') + '#contact-form')
+
+    contact_message = ContactMessage(
+        topic=topic,
+        name=name,
+        email=email,
+        phone=phone or None,
+        message=message,
+    )
+    try:
+        db.session.add(contact_message)
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception('Failed to save contact message.')
+        flash('We could not save your message. Please try again shortly.', 'error')
+        return redirect(url_for('main.contact') + '#contact-form')
+
+    flash('Your message has been received. Our support team will reply soon.', 'success')
+    return redirect(url_for('main.contact') + '#contact-form')
 
 @main_bp.route('/product/<string:slug>')
 def product_detail(slug):
@@ -135,14 +180,20 @@ def submit_review(slug):
 
 @main_bp.route('/shop')
 def shop():
-    cat_slug = request.args.get('cat')
+    category_value = request.args.get('cat', '').strip()
     sort = request.args.get('sort', 'newest')
-    on_sale = request.args.get('on_sale', type=int)
+    if sort not in {'newest', 'price_low', 'price_high'}:
+        sort = 'newest'
+
+    on_sale = 1 if request.args.get('on_sale') == '1' else None
     min_price = request.args.get('min_price', type=float)
     max_price = request.args.get('max_price', type=float)
     search_query = request.args.get('search', '').strip()
     page = request.args.get('page', 1, type=int)
     per_page = 8
+
+    if min_price is not None and max_price is not None and min_price > max_price:
+        flash('Minimum price cannot be greater than maximum price.', 'error')
     
     query = Product.query
     
@@ -155,23 +206,58 @@ def shop():
         )
         
     active_category = None
-    if cat_slug:
-        active_category = Category.query.filter_by(slug=cat_slug).first()
+    if category_value:
+        # Category IDs are the canonical shop-filter value.  Accept slugs too so
+        # existing category-card links and bookmarked URLs keep working.
+        if category_value.isdecimal():
+            active_category = db.session.get(Category, int(category_value))
+        if active_category is None:
+            active_category = Category.query.filter_by(slug=category_value).first()
         if active_category:
             query = query.filter_by(category_id=active_category.id)
-            
-    if on_sale == 1:
-        query = query.join(ProductVariant).filter(ProductVariant.original_price > ProductVariant.price)
-    if min_price is not None: query = query.join(ProductVariant, isouter=True, aliased=True).filter(ProductVariant.price >= min_price)
-    if max_price is not None: query = query.join(ProductVariant, isouter=True, aliased=True).filter(ProductVariant.price <= max_price)
-    if sort == 'price_low': query = query.join(ProductVariant, isouter=True).order_by(ProductVariant.price.asc()).distinct()
-    elif sort == 'price_high': query = query.join(ProductVariant, isouter=True).order_by(ProductVariant.price.desc()).distinct()
-    else: query = query.order_by(Product.created_at.desc())
+
+    variant_filters = []
+    if on_sale:
+        variant_filters.append(ProductVariant.original_price > ProductVariant.price)
+    if min_price is not None:
+        variant_filters.append(ProductVariant.price >= min_price)
+    if max_price is not None:
+        variant_filters.append(ProductVariant.price <= max_price)
+    if variant_filters:
+        # A product is included only when one of its variants meets every active
+        # price/deal condition.  EXISTS avoids duplicate products and conflicting
+        # joins when filters are combined.
+        query = query.filter(Product.variants.any(and_(*variant_filters)))
+
+    if sort in {'price_low', 'price_high'}:
+        price_aggregate = func.min if sort == 'price_low' else func.max
+        product_price = (
+            db.session.query(price_aggregate(ProductVariant.price))
+            .filter(ProductVariant.product_id == Product.id)
+            .correlate(Product)
+            .scalar_subquery()
+        )
+        price_order = product_price.asc() if sort == 'price_low' else product_price.desc()
+        query = query.order_by(product_price.is_(None), price_order, Product.created_at.desc())
+    else:
+        query = query.order_by(Product.created_at.desc())
     
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
     products = pagination.items
     categories = Category.query.all()
-    return render_template('shop.html', categories=categories, products=products, active_cat=cat_slug, active_sort=sort, active_sale=on_sale, active_min_price=min_price, active_max_price=max_price, search_query=search_query, pagination=pagination, page=page)
+    return render_template(
+        'shop.html',
+        categories=categories,
+        products=products,
+        active_cat=active_category.id if active_category else None,
+        active_sort=sort,
+        active_sale=on_sale,
+        active_min_price=min_price,
+        active_max_price=max_price,
+        search_query=search_query,
+        pagination=pagination,
+        page=page,
+    )
 
 # --- CART LOGIC ---
 @main_bp.route('/cart/add', methods=['POST'])

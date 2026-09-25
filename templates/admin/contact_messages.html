@@ -1,0 +1,67 @@
+{% extends 'admin/base.html' %}
+
+{% block content %}
+<style>
+    .messages-panel { overflow: hidden; background: #fff; border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 12px 28px -22px rgba(15, 23, 42, 0.45); }
+    .messages-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 21px 24px 17px; border-bottom: 1px solid #eef2f7; }
+    .messages-header h1 { margin: 0; color: #1e293b; font-size: 1.35rem; font-weight: 600; }
+    .message-count { padding: 5px 10px; color: #475569; background: #f1f5f9; border-radius: 999px; font-size: 0.8rem; font-weight: 700; }
+    .message-list { display: grid; gap: 0; }
+    .message-card { display: grid; grid-template-columns: minmax(160px, 0.7fr) minmax(0, 1.5fr) auto; gap: 24px; align-items: start; padding: 22px 24px; border-bottom: 1px solid #eef2f7; }
+    .message-card:last-child { border-bottom: 0; }
+    .message-card--unread { background: #fffbeb; }
+    .message-meta { display: grid; gap: 6px; color: #64748b; font-size: 0.86rem; }
+    .message-meta strong { color: #1e293b; font-size: 1rem; }
+    .message-topic { display: inline-flex; width: fit-content; padding: 4px 9px; color: #92400e; background: #fef3c7; border-radius: 999px; font-size: 0.75rem; font-weight: 700; }
+    .message-body { color: #334155; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+    .message-contact { margin-top: 8px; color: #64748b; font-size: 0.85rem; }
+    .message-actions { display: flex; align-items: center; gap: 10px; }
+    .message-actions form { margin: 0; }
+    .message-read { padding: 8px 12px; color: #2563eb; background: #eff6ff; border: 1px solid #dbeafe; border-radius: 7px; cursor: pointer; font-size: 0.82rem; font-weight: 600; }
+    .message-delete { padding: 8px 12px; color: #b91c1c; background: #fff; border: 1px solid #fecaca; border-radius: 7px; cursor: pointer; font-size: 0.82rem; font-weight: 600; }
+    .message-delete:hover { background: #fef2f2; border-color: #fca5a5; }
+    .message-empty { padding: 42px 24px; color: #94a3b8; text-align: center; }
+    @media (max-width: 760px) { .message-card { grid-template-columns: 1fr; gap: 14px; } .message-actions { justify-content: flex-start; } }
+</style>
+
+<section class="messages-panel">
+    <header class="messages-header">
+        <h1>Customer Messages</h1>
+        <span class="message-count">{{ messages|length }} total</span>
+    </header>
+
+    {% if messages %}
+    <div class="message-list">
+        {% for contact_message in messages %}
+        <article class="message-card {% if not contact_message.is_read %}message-card--unread{% endif %}">
+            <div class="message-meta">
+                <strong>{{ contact_message.name }}</strong>
+                <span class="message-topic">{{ contact_message.topic }}</span>
+                <span>{{ contact_message.created_at.strftime('%d %b %Y, %I:%M %p') }}</span>
+            </div>
+            <div>
+                <div class="message-body">{{ contact_message.message }}</div>
+                <div class="message-contact">{{ contact_message.email }}{% if contact_message.phone %} &middot; {{ contact_message.phone }}{% endif %}</div>
+            </div>
+            <div class="message-actions">
+                {% if not contact_message.is_read %}
+                <form method="POST" action="{{ url_for('admin.mark_contact_message_read', message_id=contact_message.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="message-read">Mark read</button>
+                </form>
+                {% else %}
+                <span class="message-count">Read</span>
+                {% endif %}
+                <form method="POST" action="{{ url_for('admin.delete_contact_message', message_id=contact_message.id) }}" onsubmit="event.preventDefault(); openDeleteModal('this customer message', this)">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="message-delete">Delete</button>
+                </form>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="message-empty">No customer messages yet.</div>
+    {% endif %}
+</section>
+{% endblock %}

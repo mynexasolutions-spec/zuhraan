@@ -17,13 +17,13 @@
 
         <!-- CATEGORY PILLS -->
         <div class="shop-cat-pills">
-            <a href="{{ url_for('main.shop', sort=active_sort) }}"
+            <a href="{{ url_for('main.shop', sort=active_sort, min_price=active_min_price, max_price=active_max_price, search=search_query) }}"
                class="cat-pill {% if not active_cat and not active_sale %}cat-pill--active{% endif %}">All</a>
             {% for cat in categories %}
-            <a href="{{ url_for('main.shop', cat=cat.id, sort=active_sort) }}"
+            <a href="{{ url_for('main.shop', cat=cat.id, sort=active_sort, min_price=active_min_price, max_price=active_max_price, search=search_query) }}"
                class="cat-pill {% if active_cat == cat.id %}cat-pill--active{% endif %}">{{ cat.name }}</a>
             {% endfor %}
-            <a href="{{ url_for('main.shop', sort=active_sort, on_sale=1) }}"
+            <a href="{{ url_for('main.shop', sort=active_sort, on_sale=1, min_price=active_min_price, max_price=active_max_price, search=search_query) }}"
                class="cat-pill {% if active_sale == 1 %}cat-pill--active{% endif %}">On Sale</a>
         </div>
     </div>
@@ -53,24 +53,25 @@
 
             <div class="sidebar-section">
                 <h3 class="sidebar-title">Price Range</h3>
-                <form action="{{ url_for('main.shop') }}" method="GET" class="price-filter-form">
+                <form action="{{ url_for('main.shop') }}" method="GET" class="price-filter-form" id="price-filter-form">
                     {% if active_cat %}<input type="hidden" name="cat" value="{{ active_cat }}">{% endif %}
                     {% if active_sort %}<input type="hidden" name="sort" value="{{ active_sort }}">{% endif %}
                     {% if active_sale %}<input type="hidden" name="on_sale" value="{{ active_sale }}">{% endif %}
+                    {% if search_query %}<input type="hidden" name="search" value="{{ search_query }}">{% endif %}
                     
                     <div class="price-inputs">
                         <div class="price-field">
                             <span>Min</span>
-                            <input type="number" name="min_price" value="{{ active_min_price or '' }}" placeholder="0">
+                            <input type="number" name="min_price" value="{{ active_min_price if active_min_price is not none else '' }}" placeholder="0" min="0" step="0.01">
                         </div>
                         <div class="price-field">
                             <span>Max</span>
-                            <input type="number" name="max_price" value="{{ active_max_price or '' }}" placeholder="500">
+                            <input type="number" name="max_price" value="{{ active_max_price if active_max_price is not none else '' }}" placeholder="500" min="0" step="0.01">
                         </div>
                     </div>
                     <button type="submit" class="btn-apply-price">Apply Filter</button>
-                    {% if active_min_price or active_max_price %}
-                        <a href="{{ url_for('main.shop', cat=active_cat, sort=active_sort, on_sale=active_sale) }}" class="btn-clear-price">Clear Price</a>
+                    {% if active_min_price is not none or active_max_price is not none %}
+                        <a href="{{ url_for('main.shop', cat=active_cat, sort=active_sort, on_sale=active_sale, search=search_query) }}" class="btn-clear-price">Clear Price</a>
                     {% endif %}
                 </form>
             </div>
@@ -78,9 +79,9 @@
             <div class="sidebar-section">
                 <h3 class="sidebar-title">Categories</h3>
                 <ul class="side-filter-list">
-                    <li><a href="{{ url_for('main.shop') }}" class="{% if not active_cat and not active_sale %}active{% endif %}">Show All</a></li>
+                    <li><a href="{{ url_for('main.shop', sort=active_sort, on_sale=active_sale, min_price=active_min_price, max_price=active_max_price, search=search_query) }}" class="{% if not active_cat %}active{% endif %}">Show All</a></li>
                     {% for cat in categories %}
-                    <li><a href="{{ url_for('main.shop', cat=cat.slug, sort=active_sort, on_sale=active_sale, min_price=active_min_price, max_price=active_max_price) }}" class="{% if active_cat == cat.slug %}active{% endif %}">{{ cat.name }}</a></li>
+                    <li><a href="{{ url_for('main.shop', cat=cat.id, sort=active_sort, on_sale=active_sale, min_price=active_min_price, max_price=active_max_price, search=search_query) }}" class="{% if active_cat == cat.id %}active{% endif %}">{{ cat.name }}</a></li>
                     {% endfor %}
                 </ul>
             </div>
@@ -88,7 +89,7 @@
             <div class="sidebar-section">
                 <h3 class="sidebar-title">Deals</h3>
                 <ul class="side-filter-list">
-                    <li><a href="{{ url_for('main.shop', cat=active_cat, sort=active_sort, on_sale=1, min_price=active_min_price, max_price=active_max_price) }}" class="{% if active_sale == 1 %}active{% endif %}">On Sale</a></li>
+                    <li><a href="{{ url_for('main.shop', cat=active_cat, sort=active_sort, on_sale=1, min_price=active_min_price, max_price=active_max_price, search=search_query) }}" class="{% if active_sale == 1 %}active{% endif %}">On Sale</a></li>
                 </ul>
             </div>
         </aside>
@@ -138,18 +139,18 @@
             {% if pagination.pages > 1 %}
             <div class="shop-pagination">
                 {% if pagination.has_prev %}
-                <a href="{{ url_for('main.shop', cat=active_cat, sort=active_sort, on_sale=active_sale, search=search_query, page=pagination.prev_num) }}" class="pg-btn">Prev</a>
+                <a href="{{ url_for('main.shop', cat=active_cat, sort=active_sort, on_sale=active_sale, min_price=active_min_price, max_price=active_max_price, search=search_query, page=pagination.prev_num) }}" class="pg-btn">Prev</a>
                 {% else %}<span class="pg-btn pg-btn--disabled">Prev</span>{% endif %}
 
                 {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
                     {% if p %}
-                    <a href="{{ url_for('main.shop', cat=active_cat, sort=active_sort, on_sale=active_sale, search=search_query, page=p) }}"
+                    <a href="{{ url_for('main.shop', cat=active_cat, sort=active_sort, on_sale=active_sale, min_price=active_min_price, max_price=active_max_price, search=search_query, page=p) }}"
                        class="pg-btn {% if p == page %}pg-btn--active{% endif %}">{{ p }}</a>
                     {% else %}<span class="pg-dots">...</span>{% endif %}
                 {% endfor %}
 
                 {% if pagination.has_next %}
-                <a href="{{ url_for('main.shop', cat=active_cat, sort=active_sort, on_sale=active_sale, search=search_query, page=pagination.next_num) }}" class="pg-btn">Next</a>
+                <a href="{{ url_for('main.shop', cat=active_cat, sort=active_sort, on_sale=active_sale, min_price=active_min_price, max_price=active_max_price, search=search_query, page=pagination.next_num) }}" class="pg-btn">Next</a>
                 {% else %}<span class="pg-btn pg-btn--disabled">Next</span>{% endif %}
             </div>
             {% endif %}
@@ -344,6 +345,23 @@
     document.getElementById('close-filter-drawer')?.addEventListener('click', () => {
         document.getElementById('filter-drawer').classList.remove('active');
     });
+
+    const priceFilterForm = document.getElementById('price-filter-form');
+    const minPriceInput = priceFilterForm?.elements.min_price;
+    const maxPriceInput = priceFilterForm?.elements.max_price;
+    const validatePriceRange = () => {
+        if (!minPriceInput || !maxPriceInput) return;
+
+        const hasInvalidRange = minPriceInput.value && maxPriceInput.value
+            && Number(minPriceInput.value) > Number(maxPriceInput.value);
+        maxPriceInput.setCustomValidity(
+            hasInvalidRange ? 'Maximum price must be at least the minimum price.' : ''
+        );
+    };
+
+    minPriceInput?.addEventListener('input', validatePriceRange);
+    maxPriceInput?.addEventListener('input', validatePriceRange);
+    priceFilterForm?.addEventListener('submit', validatePriceRange);
 </script>
 
 {% endblock %}

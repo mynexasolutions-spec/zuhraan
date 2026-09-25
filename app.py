@@ -7,7 +7,7 @@ from flask import Flask, session
 from flask_wtf.csrf import CSRFProtect
 import bleach
 
-from models import db, Category, User, Setting, AboutPage
+from models import db, Category, User, Setting, AboutPage, ContactMessage
 from routes.main import main_bp
 from routes.admin import admin_bp
 from flask_login import LoginManager
@@ -182,6 +182,12 @@ def seed_db():
             
     db.session.commit()
     print('Database initialized with default categories and admin user (admin@zuhraan.com / admin123)')
+
+@app.cli.command('init-contact-messages')
+def init_contact_messages():
+    """Create the contact message table without changing existing store data."""
+    ContactMessage.__table__.create(bind=db.engine, checkfirst=True)
+    print('Contact message table is ready.')
 
 if __name__ == '__main__':
     with app.app_context():

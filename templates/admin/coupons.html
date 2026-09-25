@@ -33,8 +33,12 @@
     .action-link { font-size: 0.98rem; font-weight: 600; text-decoration: none; padding: 5px 10px; border-radius: 6px; transition: background 0.15s; }
     .action-toggle { color: #2563eb; background: #eff6ff; }
     .action-toggle:hover { background: #dbeafe; }
-    .action-delete { color: #dc2626; background: #fef2f2; margin-left: 6px; }
+    .action-delete { color: #dc2626; background: #fef2f2; }
     .action-delete:hover { background: #fee2e2; }
+    .coupon-actions-cell { min-width: 165px; }
+    .coupon-actions { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+    .coupon-action-form { display: block; margin: 0; }
+    .coupon-action-button { border: none; cursor: pointer; font-family: inherit; }
     .empty { text-align: center; padding: 60px 20px; color: var(--text-muted); font-size: 1.15rem; }
 </style>
 
@@ -120,13 +124,19 @@
                         {% if c.is_active %}<i class="fa-solid fa-check"></i> Active{% else %}<i class="fa-solid fa-xmark"></i> Inactive{% endif %}
                     </span>
                 </td>
-                <td>
-                    <a href="{{ url_for('admin.toggle_coupon', coupon_id=c.id) }}" class="action-link action-toggle">
-                        {% if c.is_active %}Deactivate{% else %}Activate{% endif %}
-                    </a>
-                    <a href="javascript:void(0)"
-                       class="action-link action-delete"
-                       onclick="openDeleteModal(`coupon {{ c.code }}`, `{{ url_for('admin.delete_coupon', coupon_id=c.id) }}`)">Delete</a>
+                <td class="coupon-actions-cell">
+                    <div class="coupon-actions">
+                        <form method="POST" action="{{ url_for('admin.toggle_coupon', coupon_id=c.id) }}" class="coupon-action-form">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="action-link action-toggle coupon-action-button">
+                            {% if c.is_active %}Deactivate{% else %}Activate{% endif %}
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ url_for('admin.delete_coupon', coupon_id=c.id) }}" class="coupon-action-form" onsubmit="event.preventDefault(); openDeleteModal('this coupon', this)">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="action-link action-delete coupon-action-button">Delete</button>
+                        </form>
+                    </div>
                 </td>
             </tr>
             {% endfor %}

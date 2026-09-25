@@ -3,7 +3,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from functools import wraps
-from models import db, Product, Category, ProductVariant, Order, User, Setting, Review, Coupon, OfferBanner, OrderItem, AboutPage
+from models import db, Product, Category, ProductVariant, Order, User, Setting, Review, Coupon, OfferBanner, OrderItem, AboutPage, ContactMessage
 import cloudinary.uploader
 from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
@@ -58,6 +58,41 @@ def dashboard():
                             customers=customers_count,
                             low_stock=low_stock_variants,
                             recent_orders=recent_orders)
+
+@admin_bp.route('/messages')
+@admin_required
+def manage_contact_messages():
+    messages = ContactMessage.query.order_by(
+        ContactMessage.is_read.asc(),
+        ContactMessage.created_at.desc(),
+    ).all()
+    return render_template('admin/contact_messages.html', messages=messages)
+
+@admin_bp.route('/message/<int:message_id>/read', methods=['POST'])
+@admin_required
+def mark_contact_message_read(message_id):
+    contact_message = db.session.get(ContactMessage, message_id)
+    if contact_message is None:
+        flash('Message not found.', 'error')
+        return redirect(url_for('admin.manage_contact_messages'))
+
+    contact_message.is_read = True
+    db.session.commit()
+    flash('Message marked as read.', 'success')
+    return redirect(url_for('admin.manage_contact_messages'))
+
+@admin_bp.route('/message/<int:message_id>/delete', methods=['POST'])
+@admin_required
+def delete_contact_message(message_id):
+    contact_message = db.session.get(ContactMessage, message_id)
+    if contact_message is None:
+        flash('Message not found.', 'error')
+        return redirect(url_for('admin.manage_contact_messages'))
+
+    db.session.delete(contact_message)
+    db.session.commit()
+    flash('Customer message deleted.', 'success')
+    return redirect(url_for('admin.manage_contact_messages'))
 
 # PRODUCTS MANAGEMENT
 @admin_bp.route('/products')
@@ -524,7 +559,7 @@ def create_coupon():
     flash(f'Coupon "{code}" created successfully!', 'success')
     return redirect(url_for('admin.manage_coupons'))
 
-@admin_bp.route('/coupons/<int:coupon_id>/toggle')
+@admin_bp.route('/coupons/<int:coupon_id>/toggle', methods=['POST'])
 @admin_required
 def toggle_coupon(coupon_id):
     if current_user.role != 'admin': return redirect(url_for('main.index'))
@@ -535,11 +570,15 @@ def toggle_coupon(coupon_id):
     flash(f'Coupon "{coupon.code}" {state}.', 'success')
     return redirect(url_for('admin.manage_coupons'))
 
-@admin_bp.route('/coupons/<int:coupon_id>/delete')
+@admin_bp.route('/coupons/<int:coupon_id>/delete', methods=['POST'])
 @admin_required
 def delete_coupon(coupon_id):
     if current_user.role != 'admin': return redirect(url_for('main.index'))
     coupon = Coupon.query.get_or_404(coupon_id)
+    Order.query.filter_by(coupon_id=coupon.id).update(
+        {Order.coupon_id: None},
+        synchronize_session=False,
+    )
     db.session.delete(coupon)
     db.session.commit()
     flash(f'Coupon deleted.', 'success')
