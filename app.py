@@ -1,5 +1,6 @@
 import os
 import json
+import click
 from dotenv import load_dotenv
 load_dotenv() # Load variables from .env
 
@@ -140,14 +141,17 @@ def seed_db():
     settings = {
         'shipping_charge': '0',
         'free_shipping_threshold': '0',
-        'razorpay_key': 'rzp_test_RbJeXJAhskSAHd', 
-        'razorpay_secret': '0Z7vD3Oy3QliqQqW82jw1yML',
         'payment_cod_enabled': '0',
         'payment_online_enabled': '1'
     }
     for k, v in settings.items():
         if not Setting.query.filter_by(key=k).first():
             db.session.add(Setting(key=k, value=v))
+
+    # Razorpay credentials are intentionally managed only through environment
+    # variables. Remove obsolete database values created by older releases.
+    for setting in Setting.query.filter(Setting.key.in_({'razorpay_key', 'razorpay_secret'})).all():
+        db.session.delete(setting)
             
     # Seed About Page
     if not AboutPage.query.first():
@@ -182,6 +186,18 @@ def seed_db():
             
     db.session.commit()
     print('Database initialized with default categories and admin user (admin@zuhraan.com / admin123)')
+
+
+@app.cli.command('purge-legacy-razorpay-settings')
+def purge_legacy_razorpay_settings():
+    """Remove obsolete Razorpay credentials stored in the settings table."""
+    deleted_count = (
+        Setting.query
+        .filter(Setting.key.in_({'razorpay_key', 'razorpay_secret'}))
+        .delete(synchronize_session=False)
+    )
+    db.session.commit()
+    click.echo(f'Removed {deleted_count} obsolete Razorpay setting(s).')
 
 @app.cli.command('init-contact-messages')
 def init_contact_messages():

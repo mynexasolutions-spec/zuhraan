@@ -96,18 +96,14 @@
         </div>
     </div>
 
-    <!-- RAZORPAY KEYS -->
+    <!-- RAZORPAY CONFIGURATION -->
     <div class="card">
         <h3><i class="fa-solid fa-credit-card"></i> Razorpay Configuration</h3>
         <div class="group">
-            <label>Razorpay Key ID</label>
-            <input type="text" name="razorpay_key" value="{{ settings.get('razorpay_key', '') }}" placeholder="rzp_test_...">
+            <p style="font-size: 0.95rem; color:var(--text-muted);">
+                Razorpay credentials are managed securely through server environment variables and cannot be changed from this dashboard.
+            </p>
         </div>
-        <div class="group">
-            <label>Razorpay Secret Key</label>
-            <input type="password" name="razorpay_secret" value="{{ settings.get('razorpay_secret', '') }}" placeholder="••••••••••••••••">
-        </div>
-        <p style="font-size: 0.95rem; color: #ef4444; font-weight: 500;">Securely stored for server-side order generation and signature verification.</p>
     </div>
 
     <div style="max-width: 800px;">

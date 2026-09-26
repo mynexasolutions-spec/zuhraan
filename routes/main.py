@@ -597,10 +597,37 @@ def account():
 
 # --- CHECKOUT ---
 import razorpay
-from flask import current_app
 
 def get_razorpay_client():
-    return razorpay.Client(auth=(current_app.config['RAZORPAY_KEY_ID'], current_app.config['RAZORPAY_KEY_SECRET']))
+    key_id = current_app.config.get('RAZORPAY_KEY_ID')
+    key_secret = current_app.config.get('RAZORPAY_KEY_SECRET')
+    if not key_id or not key_secret:
+        raise RuntimeError('Razorpay API credentials are not configured.')
+    return razorpay.Client(auth=(key_id, key_secret))
+
+
+def mark_order_as_paid(razorpay_order_id, razorpay_payment_id):
+    order = Order.query.filter_by(razorpay_order_id=razorpay_order_id).with_for_update().first()
+    if not order:
+        return None
+
+    if order.payment_status == 'paid':
+        if not order.razorpay_payment_id and razorpay_payment_id:
+            order.razorpay_payment_id = razorpay_payment_id
+            db.session.commit()
+        return order
+
+    order.payment_status = 'paid'
+    order.status = 'processing'
+    order.razorpay_payment_id = razorpay_payment_id
+
+    if order.coupon_id:
+        coupon = Coupon.query.get(order.coupon_id)
+        if coupon:
+            coupon.used_count = (coupon.used_count or 0) + 1
+
+    db.session.commit()
+    return order
 
 @main_bp.route('/api/validate-coupon', methods=['POST'])
 def api_validate_coupon():
@@ -720,10 +747,10 @@ def checkout():
                                        razorpay_order_id=razorpay_order['id'],
                                        key_id=current_app.config['RAZORPAY_KEY_ID'],
                                        amount=razorpay_amount)
-            except Exception as e:
+            except Exception:
                 db.session.rollback()
-                flash(f'Razorpay Error: {str(e)}', 'error')
-                print(f"Razorpay Error: {str(e)}")
+                current_app.logger.exception('Unable to create Razorpay order')
+                flash('Online payment is currently unavailable. Please try again shortly.', 'error')
                 return redirect(url_for('main.checkout'))
         else:
             db.session.commit()
@@ -756,9 +783,23 @@ def verify_payment():
             'razorpay_signature': razorpay_signature
         })
 
-        # 2. Fetch payment status from Razorpay to confirm
+        order = Order.query.filter_by(razorpay_order_id=razorpay_order_id).first()
+        if not order:
+            flash('Order not found. Please contact support with your payment ID.', 'error')
+            return redirect(url_for('main.checkout'))
+
+        # 2. Fetch payment status from Razorpay to confirm.
         payment = client.payment.fetch(razorpay_payment_id)
         payment_status = payment.get('status')  # 'authorized', 'captured', 'failed'
+        expected_amount = max(100, int(Decimal(str(order.total_amount)) * 100))
+
+        if payment.get('order_id') != razorpay_order_id or payment.get('amount') != expected_amount:
+            current_app.logger.warning(
+                'Razorpay payment did not match the local order',
+                extra={'razorpay_order_id': razorpay_order_id, 'razorpay_payment_id': razorpay_payment_id},
+            )
+            flash('Payment could not be matched to this order. Please contact support.', 'error')
+            return redirect(url_for('main.checkout'))
 
         # 3. If authorized but not yet captured, capture it now (fallback)
         if payment_status == 'authorized':
@@ -766,24 +807,11 @@ def verify_payment():
             payment_status = 'captured'
 
         if payment_status == 'captured':
-            order = Order.query.filter_by(razorpay_order_id=razorpay_order_id).first()
+            order = mark_order_as_paid(razorpay_order_id, razorpay_payment_id)
             if order:
-                order.payment_status = 'paid'
-                order.status = 'processing'
-                order.razorpay_payment_id = razorpay_payment_id
-                
-                # Exquisitely increment the coupon usage now that payment is confirmed
-                if order.coupon_id:
-                    c = Coupon.query.get(order.coupon_id)
-                    if c:
-                        c.used_count += 1
-                        
-                db.session.commit()
                 session['cart'] = {}
                 flash('Payment successful! Your order is being processed.', 'success')
                 return redirect(url_for('main.account'))
-            else:
-                flash('Order not found. Please contact support with Payment ID: ' + razorpay_payment_id, 'error')
         else:
             flash(f'Payment could not be confirmed (status: {payment_status}). Please contact support.', 'error')
 
@@ -796,40 +824,52 @@ def verify_payment():
 
     return redirect(url_for('main.index'))
 
-from flask import jsonify
 @main_bp.route('/payment/webhook', methods=['POST'])
 def payment_webhook():
-    webhook_body = request.get_data(as_text=True)
+    webhook_body = request.get_data(cache=True, as_text=True)
     webhook_signature = request.headers.get('X-Razorpay-Signature')
     secret = current_app.config.get('RAZORPAY_WEBHOOK_SECRET')
-    client = get_razorpay_client()
-    
-    try:
-        # Verify webhook signature using the client utility
-        client.utility.verify_webhook_signature(webhook_body, webhook_signature, secret)
-    except Exception as e:
-        print(f"[Webhook Error] Invalid signature: {str(e)}")
-        return jsonify({"status": "invalid signature"}), 400
 
-    data = request.json
+    if not secret:
+        current_app.logger.error('Razorpay webhook secret is not configured')
+        return jsonify({'status': 'webhook configuration error'}), 500
+    if not webhook_signature:
+        return jsonify({'status': 'invalid signature'}), 400
+
+    client = get_razorpay_client()
+
+    try:
+        client.utility.verify_webhook_signature(webhook_body, webhook_signature, secret)
+    except razorpay.errors.SignatureVerificationError:
+        current_app.logger.warning('Rejected Razorpay webhook with invalid signature')
+        return jsonify({'status': 'invalid signature'}), 400
+
+    try:
+        data = json.loads(webhook_body)
+    except json.JSONDecodeError:
+        return jsonify({'status': 'invalid payload'}), 400
+
     event = data.get('event')
-    
-    if event == 'order.paid':
-        payload = data.get('payload', {}).get('order', {}).get('entity', {})
-        razorpay_order_id = payload.get('id')
-        
-        # Check if already updated
-        order = Order.query.filter_by(razorpay_order_id=razorpay_order_id).first()
-        if order and order.payment_status != 'paid':
-            order.payment_status = 'paid'
-            order.status = 'processing'
-            
-            if order.coupon_id:
-                c = Coupon.query.get(order.coupon_id)
-                if c:
-                    c.used_count += 1
-                    
-            db.session.commit()
-            print(f"[Webhook] Order {razorpay_order_id} marked as paid.")
-            
-    return jsonify({"status": "ok"}), 200
+    payment = data.get('payload', {}).get('payment', {}).get('entity', {})
+    order_data = data.get('payload', {}).get('order', {}).get('entity', {})
+
+    if event == 'payment.captured':
+        razorpay_order_id = payment.get('order_id')
+    elif event == 'order.paid':
+        razorpay_order_id = order_data.get('id')
+    else:
+        return jsonify({'status': 'ignored'}), 200
+
+    razorpay_payment_id = payment.get('id')
+    if not razorpay_order_id or not razorpay_payment_id:
+        current_app.logger.warning('Razorpay webhook did not contain order and payment identifiers')
+        return jsonify({'status': 'invalid payload'}), 400
+
+    try:
+        mark_order_as_paid(razorpay_order_id, razorpay_payment_id)
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception('Unable to record Razorpay webhook result')
+        return jsonify({'status': 'temporary error'}), 500
+
+    return jsonify({'status': 'ok'}), 200
