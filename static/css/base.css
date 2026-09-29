@@ -821,10 +821,38 @@ nav {
     filter: drop-shadow(0 6px 12px rgba(0,0,0,0.3));
 }
 
+.float-btn.whatsapp {
+    animation: whatsapp-attention 3s ease-in-out infinite;
+}
+
+.float-btn.whatsapp:hover,
+.float-btn.whatsapp:focus-visible {
+    animation: none;
+    transform: scale(1.1);
+}
+
+@keyframes whatsapp-attention {
+    0%, 100% {
+        transform: translateY(0) scale(1);
+        filter: drop-shadow(0 3px 6px rgba(37, 211, 102, 0.35));
+    }
+
+    50% {
+        transform: translateY(-6px) scale(1.08);
+        filter: drop-shadow(0 8px 14px rgba(37, 211, 102, 0.65));
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .float-btn.whatsapp {
+        animation: none;
+    }
+}
+
 @media (max-width: 600px) {
     .float-btn {
-        width: 32px;
-        height: 32px;
+        width: 48px;
+        height: 48px;
     }
     .floating-contact {
         bottom: 15px;
