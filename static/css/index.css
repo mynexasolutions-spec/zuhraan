@@ -831,6 +831,12 @@
     gap: 8px;
 }
 
+.story-image-pagination {
+    width: 100%;
+    max-width: 650px;
+    justify-content: center;
+}
+
 .carousel-dots .dot {
     width: 6px;
     height: 6px;
