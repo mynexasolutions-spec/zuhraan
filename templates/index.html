@@ -227,18 +227,28 @@
 <!-- ABOUT SECTION (Always shows) -->
 <div class="section-bg-gold">
     <section class="about-section">
+        <h2 class="about-section-title">The Zuhraan Story</h2>
         <div class="about-left">
-            {% if about_page and about_page.home_about_image %}
-            <img src="{{ get_image_url(about_page.home_about_image, (about_page.home_about_image_pub_id or '') + '|' + (about_page.updated_at.timestamp() if about_page.updated_at else '')) }}" alt="About Zuhraan" class="about-img">
-            {% else %}
-            <img src="https://images.unsplash.com/photo-1594035910387-fea47794261f?w=800&h=800&fit=crop&q=80"
-                alt="Perfume reflection" class="about-img">
-            {% endif %}
-            <div class="carousel-dots">
-                <span class="dot active"></span>
-                <span class="dot"></span>
-                <span class="dot"></span>
+            <div class="swiper story-image-slider">
+                <div class="swiper-wrapper">
+                    {% if story_images %}
+                    {% for image in story_images %}
+                    <div class="swiper-slide">
+                        <img src="{{ get_image_url(image.url, image.public_id or '') }}" alt="The Zuhraan Story image {{ loop.index }}" class="about-img">
+                    </div>
+                    {% endfor %}
+                    {% elif about_page and about_page.home_about_image %}
+                    <div class="swiper-slide">
+                        <img src="{{ get_image_url(about_page.home_about_image, (about_page.home_about_image_pub_id or '') + '|' + (about_page.updated_at.timestamp() if about_page.updated_at else '')) }}" alt="About Zuhraan" class="about-img">
+                    </div>
+                    {% else %}
+                    <div class="swiper-slide">
+                        <img src="https://images.unsplash.com/photo-1594035910387-fea47794261f?w=800&h=800&fit=crop&q=80" alt="Perfume reflection" class="about-img">
+                    </div>
+                    {% endif %}
+                </div>
             </div>
+            <div class="carousel-dots story-image-pagination"></div>
         </div>
         <div class="about-right">
             <h2 class="about-heading">At Zuhraan, we believe a fragrance is more than just a scent</h2>
@@ -438,6 +448,22 @@
                 },
                 speed: 1000,
                 allowTouchMove: false
+            });
+        }
+
+        const storyImageSlider = document.querySelector('.story-image-slider');
+        if (storyImageSlider) {
+            new Swiper(storyImageSlider, {
+                loop: storyImageSlider.querySelectorAll('.swiper-slide').length > 1,
+                speed: 800,
+                autoplay: {
+                    delay: 2000,
+                    disableOnInteraction: false,
+                },
+                pagination: {
+                    el: '.story-image-pagination',
+                    clickable: true,
+                },
             });
         }
     });

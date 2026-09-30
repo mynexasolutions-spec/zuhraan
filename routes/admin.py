@@ -1,3 +1,4 @@
+import json
 import os
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
@@ -9,6 +10,36 @@ from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 import re
 from about_cms import ASSET_SPECS, MAX_IMAGE_MB, delete_asset_from_cloudinary, get_assets, get_content, save_assets, save_content, upload_asset
+
+
+HOME_STORY_IMAGES_KEY = 'home_story_images'
+MAX_HOME_STORY_IMAGES = 5
+
+
+def get_home_story_images():
+    setting = Setting.query.filter_by(key=HOME_STORY_IMAGES_KEY).first()
+    if setting is None or not setting.value:
+        return []
+    try:
+        saved_images = json.loads(setting.value)
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(saved_images, list):
+        return []
+    return [
+        {'url': image['url'], 'public_id': image.get('public_id', '')}
+        for image in saved_images
+        if isinstance(image, dict) and isinstance(image.get('url'), str) and image['url']
+    ]
+
+
+def save_home_story_images(images):
+    setting = Setting.query.filter_by(key=HOME_STORY_IMAGES_KEY).first()
+    value = json.dumps(images)
+    if setting is None:
+        db.session.add(Setting(key=HOME_STORY_IMAGES_KEY, value=value))
+    else:
+        setting.value = value
 
 def slugify(text):
     text = text.lower()
@@ -814,6 +845,88 @@ def homepage_media():
                     s.value = ''
             db.session.commit()
             flash('Hero About Us image removed.', 'success')
+
+        # --- The Zuhraan Story Image Gallery ---
+        elif action == 'upload_home_story_images':
+            image_files = [image_file for image_file in request.files.getlist('home_story_images') if image_file.filename]
+            allowed_image_extensions = {'png', 'jpg', 'jpeg', 'webp'}
+            invalid_image = next(
+                (image_file for image_file in image_files
+                 if '.' not in image_file.filename or image_file.filename.rsplit('.', 1)[1].lower() not in allowed_image_extensions),
+                None,
+            )
+            if not image_files:
+                flash('Choose at least one image to upload.', 'error')
+            elif invalid_image:
+                flash('Invalid image type. Allowed: PNG, JPG, JPEG, WEBP.', 'error')
+            else:
+                try:
+                    about_page = AboutPage.query.first()
+                    saved_images = get_home_story_images()
+                    legacy_image = None
+                    if not saved_images and about_page and about_page.home_about_image:
+                        legacy_image = {
+                            'url': about_page.home_about_image,
+                            'public_id': about_page.home_about_image_pub_id or '',
+                        }
+
+                    image_count = len(saved_images) + len(image_files) + (1 if legacy_image else 0)
+                    if image_count > MAX_HOME_STORY_IMAGES:
+                        flash(f'The Zuhraan Story supports a maximum of {MAX_HOME_STORY_IMAGES} images.', 'error')
+                    else:
+                        uploaded_images = [
+                            {
+                                'url': uploaded_image.get('secure_url'),
+                                'public_id': uploaded_image.get('public_id'),
+                            }
+                            for uploaded_image in (
+                                cloudinary.uploader.upload(image_file, folder='homepage')
+                                for image_file in image_files
+                            )
+                        ]
+                        if legacy_image:
+                            saved_images.append(legacy_image)
+                            about_page.home_about_image = None
+                            about_page.home_about_image_pub_id = None
+                        saved_images.extend(uploaded_images)
+                        save_home_story_images(saved_images)
+                        db.session.commit()
+                        flash(f'{len(uploaded_images)} image(s) added to The Zuhraan Story.', 'success')
+                except Exception as error:
+                    db.session.rollback()
+                    flash(f'Image upload error: {str(error)}', 'error')
+
+        elif action == 'delete_home_story_image':
+            try:
+                image_index = int(request.form.get('image_index', ''))
+            except ValueError:
+                image_index = -1
+
+            saved_images = get_home_story_images()
+            if saved_images and 0 <= image_index < len(saved_images):
+                removed_image = saved_images.pop(image_index)
+                if removed_image['public_id']:
+                    try:
+                        cloudinary.uploader.destroy(removed_image['public_id'])
+                    except Exception:
+                        current_app.logger.warning('The Zuhraan Story image was removed from the site, but the Cloudinary asset could not be deleted.', exc_info=True)
+                save_home_story_images(saved_images)
+                db.session.commit()
+                flash('The Zuhraan Story image removed.', 'success')
+            else:
+                about_page = AboutPage.query.first()
+                if about_page and image_index == 0 and about_page.home_about_image:
+                    if about_page.home_about_image_pub_id:
+                        try:
+                            cloudinary.uploader.destroy(about_page.home_about_image_pub_id)
+                        except Exception:
+                            current_app.logger.warning('The Zuhraan Story legacy image was removed from the site, but the Cloudinary asset could not be deleted.', exc_info=True)
+                    about_page.home_about_image = None
+                    about_page.home_about_image_pub_id = None
+                    db.session.commit()
+                    flash('The Zuhraan Story image removed.', 'success')
+                else:
+                    flash('The selected story image no longer exists.', 'error')
         
         return redirect(url_for('admin.homepage_media'))
     
@@ -821,7 +934,11 @@ def homepage_media():
     media_type = (Setting.query.filter_by(key='homepage_media_type').first() or Setting(value='')).value
     banner_url = (Setting.query.filter_by(key='bottom_banner_url').first() or Setting(value='')).value
     hero_about_image_url = (Setting.query.filter_by(key='hero_about_image_url').first() or Setting(value='')).value
-    return render_template('admin/homepage_media.html', media_url=media_url, media_type=media_type, banner_url=banner_url, hero_about_image_url=hero_about_image_url)
+    about_page = AboutPage.query.first()
+    home_story_images = get_home_story_images()
+    if not home_story_images and about_page and about_page.home_about_image:
+        home_story_images = [{'url': about_page.home_about_image, 'public_id': about_page.home_about_image_pub_id or ''}]
+    return render_template('admin/homepage_media.html', media_url=media_url, media_type=media_type, banner_url=banner_url, hero_about_image_url=hero_about_image_url, home_story_images=home_story_images, max_home_story_images=MAX_HOME_STORY_IMAGES)
 
 def _about_text(field_name, maximum, required=False):
     value = request.form.get(field_name, '').strip()

@@ -19,6 +19,14 @@
     .media-preview { width: 100%; overflow: hidden; margin: 14px 0 18px; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 12px; }
     .media-preview video, .media-preview img { display: block; width: 100%; border-radius: 11px; }
     .media-preview-banner { max-width: 255px; margin-right: auto; margin-left: auto; }
+    .story-image-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 14px 0 18px; }
+    .story-image-item { overflow: hidden; border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; }
+    .story-image-item img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; }
+    .story-image-item form { margin: 0; padding: 9px; }
+    .story-image-item .btn-delete-media { width: 100%; min-height: 35px; padding: 7px 9px; font-size: .8rem; }
+    .story-image-slot { display: grid; aspect-ratio: 1; place-content: center; gap: 7px; padding: 12px; border: 1px dashed #cbd5e1; border-radius: 12px; color: #94a3b8; background: #fbfdff; text-align: center; }
+    .story-image-slot i { font-size: 1.25rem; }
+    .story-image-slot span { font-size: .75rem; font-weight: 600; }
     .upload-zone { position: relative; display: grid; min-height: 176px; place-content: center; padding: 22px; overflow: hidden; text-align: center; cursor: pointer; color: var(--text-muted); background: #fbfdff; border: 2px dashed #cbd5e1; border-radius: 14px; transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease; }
     .upload-zone:hover, .upload-zone:focus-within { color: var(--primary); background: #f4f8ff; border-color: var(--primary); }
     .upload-zone:hover .upload-icon, .upload-zone:focus-within .upload-icon { transform: translateY(-3px); }
@@ -37,7 +45,7 @@
     .delete-form { margin: 14px 0 0; }
 
     @media (max-width: 900px) { .media-grid { grid-template-columns: 1fr; } }
-    @media (max-width: 480px) { .media-card-header, .media-card-body { padding-right: 18px; padding-left: 18px; } .media-card-header { gap: 11px; } }
+    @media (max-width: 480px) { .media-card-header, .media-card-body { padding-right: 18px; padding-left: 18px; } .media-card-header { gap: 11px; } .story-image-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 </style>
 {% endblock %}
 
@@ -116,6 +124,45 @@
                 </div>
                 <div class="media-actions"><button type="submit" class="btn-upload"><i class="fa-solid fa-upload"></i> Upload Image</button></div>
             </form>
+        </div>
+    </section>
+
+    <section class="media-card">
+        <div class="media-card-header">
+            <div class="media-icon"><i class="fa-solid fa-book-open"></i></div>
+            <div><h3>The Zuhraan Story Images</h3><p class="desc">Upload up to {{ max_home_story_images }} images for the automatic homepage slider.</p></div>
+        </div>
+        <div class="media-card-body">
+            <span class="status-badge {% if home_story_images %}status-active{% endif %}"><i class="fa-solid fa-circle"></i> {{ home_story_images|length }} of {{ max_home_story_images }} live</span>
+            <div class="story-image-grid">
+                {% for image_index in range(max_home_story_images) %}
+                    {% if image_index < home_story_images|length %}
+                    {% set image = home_story_images[image_index] %}
+                    <article class="story-image-item">
+                        <img src="{{ image.url }}" alt="The Zuhraan Story image {{ image_index + 1 }}">
+                        <form method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="delete_home_story_image"><input type="hidden" name="image_index" value="{{ image_index }}">
+                            <button type="submit" class="btn-delete-media" onclick="return confirm('Remove image {{ image_index + 1 }}?')"><i class="fa-solid fa-trash"></i> Remove</button>
+                        </form>
+                    </article>
+                    {% else %}
+                    <div class="story-image-slot"><i class="fa-regular fa-image"></i><span>Available slot</span></div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            {% if home_story_images|length < max_home_story_images %}
+            <form method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="upload_home_story_images">
+                <div class="upload-zone" id="homeStoryImageDropZone">
+                    <div class="upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                    <p>Drop up to <strong>{{ max_home_story_images - home_story_images|length }} image(s)</strong> here</p>
+                    <p class="upload-hint">or click to browse · PNG, JPG, JPEG, WEBP</p>
+                    <p class="file-info" id="homeStoryImageFileName" aria-live="polite"></p>
+                    <input type="file" name="home_story_images" accept="image/png,image/jpeg,image/webp" multiple onchange="document.getElementById('homeStoryImageFileName').textContent = Array.from(this.files).map((file) => file.name).join(', ')">
+                </div>
+                <div class="media-actions"><button type="submit" class="btn-upload"><i class="fa-solid fa-upload"></i> Upload Image</button></div>
+            </form>
+            {% endif %}
         </div>
     </section>
 

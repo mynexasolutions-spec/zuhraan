@@ -79,7 +79,13 @@ def index():
     # About page data for home page About Us image - force fresh query from DB
     db.session.expire_all()
     about_page = db.session.query(AboutPage).populate_existing().first()
-    return render_template('index.html', best_sellers=best_sellers, categories=categories, offers=offers, hero_products=hero_products, favorite_products=favorite_products, media_url=media_url, media_type=media_type, bottom_banner_url=bottom_banner_url, hero_about_image_url=hero_about_image_url, about_page=about_page)
+    story_images_setting = Setting.query.filter_by(key='home_story_images').first()
+    try:
+        story_images = json.loads(story_images_setting.value) if story_images_setting and story_images_setting.value else []
+    except json.JSONDecodeError:
+        story_images = []
+    story_images = [image for image in story_images if isinstance(image, dict) and image.get('url')] if isinstance(story_images, list) else []
+    return render_template('index.html', best_sellers=best_sellers, categories=categories, offers=offers, hero_products=hero_products, favorite_products=favorite_products, media_url=media_url, media_type=media_type, bottom_banner_url=bottom_banner_url, hero_about_image_url=hero_about_image_url, about_page=about_page, story_images=story_images)
 
 @main_bp.route('/privacy-policy')
 def privacy():
