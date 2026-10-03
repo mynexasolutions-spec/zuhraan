@@ -283,12 +283,12 @@
 
     <div class="slider-container">
         <!-- Swiper Navigation Arrows -->
-        <button class="slider-arrow left-arrow fav-prev">
+        <button type="button" class="slider-arrow left-arrow fav-prev" aria-label="Previous favorite">
             <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path d="M15 18l-6-6 6-6" />
             </svg>
         </button>
-        <button class="slider-arrow right-arrow fav-next">
+        <button type="button" class="slider-arrow right-arrow fav-next" aria-label="Next favorite">
             <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path d="M9 18l6-6-6-6" />
             </svg>
@@ -398,27 +398,36 @@
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 <script>
     document.addEventListener("DOMContentLoaded", function () {
+        const favoriteWrapper = document.querySelector('.favorites-slider .swiper-wrapper');
+        const favoriteSlides = Array.from(favoriteWrapper.children);
+        const maxVisibleFavorites = Math.min(5, favoriteSlides.length);
+
+        // Looping needs one more slide than the largest visible group.
+        if (favoriteSlides.length > 1 && favoriteSlides.length <= maxVisibleFavorites) {
+            favoriteSlides.forEach(slide => favoriteWrapper.appendChild(slide.cloneNode(true)));
+        }
+
         const favSwiper = new Swiper('.favorites-slider', {
-            loop: true,
+            loop: favoriteSlides.length > 1,
             grabCursor: true,
             centeredSlides: false,
             spaceBetween: 20,
-            slidesPerView: 2,
+            slidesPerView: Math.min(2, favoriteSlides.length),
             navigation: {
-                nextEl: '.fav-next',
-                prevEl: '.fav-prev',
+                nextEl: document.querySelector('.fav-next'),
+                prevEl: document.querySelector('.fav-prev'),
             },
             breakpoints: {
                 640: {
-                    slidesPerView: 3,
+                    slidesPerView: Math.min(3, favoriteSlides.length),
                     spaceBetween: 20,
                 },
                 1024: {
-                    slidesPerView: 4,
+                    slidesPerView: Math.min(4, favoriteSlides.length),
                     spaceBetween: 30,
                 },
                 1400: {
-                    slidesPerView: 5,
+                    slidesPerView: maxVisibleFavorites,
                     spaceBetween: 40,
                 }
             }
