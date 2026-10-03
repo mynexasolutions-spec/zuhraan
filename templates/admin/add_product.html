@@ -193,10 +193,10 @@
 
             <div class="card">
                 <h3>Pricing & Inventory (Variants)</h3>
-                <label style="display: block; margin-bottom: 16px;"><input type="checkbox" name="variants_enabled" checked> Enable pricing and inventory variants for this product</label>
                 <div id="variants-container" style="display: flex; flex-direction: column; gap: 16px;">
                     <div class="variant-row">
                         <div class="variant-heading">
+                            <label><input type="checkbox" name="variants_enabled" checked> Enable pricing and inventory variants for this product</label>
                             <input type="text" name="variant_size" value="50ml" required placeholder="Volume (e.g. 50ml)">
                             <button type="button" class="btn-remove-variant" onclick="removeVariant(this)">Remove</button>
                         </div>
@@ -290,12 +290,16 @@
 
     function toggleVariants() {
         const enabled = variantsToggle.checked;
-        document.querySelectorAll('#variants-container input').forEach((input) => {
-            input.disabled = !enabled;
+        const rows = document.querySelectorAll('#variants-container .variant-row');
+        rows.forEach((row, index) => {
+            row.hidden = !enabled && index > 0;
+            row.querySelectorAll('input').forEach((input) => {
+                input.disabled = !enabled && index > 0;
+            });
         });
-        document.querySelectorAll('#variants-container .btn-remove-variant').forEach((button) => {
-            button.disabled = !enabled;
-        });
+        document.querySelector('#variants-container .variant-row:first-child input[name="variant_size"]').value = enabled ? '50ml' : 'Standard';
+        document.querySelector('#variants-container .variant-row:first-child input[name="variant_size"]').readOnly = !enabled;
+        document.querySelector('#variants-container .variant-row:first-child .btn-remove-variant').disabled = !enabled;
         document.querySelector('.btn-add-variant').disabled = !enabled;
     }
 

@@ -225,12 +225,12 @@
 
             <div class="card">
                 <h3>Pricing & Inventory (Variants)</h3>
-                <label style="display: block; margin-bottom: 16px;"><input type="checkbox" name="variants_enabled" {% if product.variants_enabled %}checked{% endif %}> Enable pricing and inventory variants for this product</label>
                 <div id="variants-container" style="display: flex; flex-direction: column; gap: 16px;">
                     {% for variant in variants %}
                     <div class="variant-row">
                         <div class="variant-heading">
                             <input type="hidden" name="variant_id" value="{{ variant.id }}">
+                            {% if loop.first %}<label><input type="checkbox" name="variants_enabled" {% if product.variants_enabled %}checked{% endif %}> Enable pricing and inventory variants for this product</label>{% endif %}
                             <input type="text" name="variant_size" value="{{ variant.size }}" required placeholder="Volume (e.g. 50ml)">
                             <button type="button" class="btn-remove-variant" onclick="removeVariant(this)">Remove</button>
                         </div>
@@ -338,12 +338,19 @@
 
     function toggleVariants() {
         const enabled = variantsToggle.checked;
-        document.querySelectorAll('#variants-container input').forEach((input) => {
-            input.disabled = !enabled;
+        const rows = document.querySelectorAll('#variants-container .variant-row');
+        rows.forEach((row, index) => {
+            row.hidden = !enabled && index > 0;
+            row.querySelectorAll('input').forEach((input) => {
+                input.disabled = !enabled && index > 0;
+            });
         });
-        document.querySelectorAll('#variants-container .btn-remove-variant').forEach((button) => {
-            button.disabled = !enabled;
-        });
+        const firstSizeInput = document.querySelector('#variants-container .variant-row:first-child input[name="variant_size"]');
+        if (!enabled) {
+            firstSizeInput.value = 'Standard';
+        }
+        firstSizeInput.readOnly = !enabled;
+        document.querySelector('#variants-container .variant-row:first-child .btn-remove-variant').disabled = !enabled;
         document.querySelector('.btn-add-variant').disabled = !enabled;
     }
 

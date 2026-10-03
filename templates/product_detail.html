@@ -32,8 +32,9 @@
                 {{ product.short_description or "A beautiful fragrance from Zuhraan." }}
             </p>
 
-            {% if product.variants_enabled and product.variants %}
+            {% if product.variants %}
             <!-- VARIANT SELECTOR -->
+            {% if product.variants_enabled %}
             <div class="variant-selection">
                 <p class="selection-title">Select Size</p>
                 <div class="variant-pills">
@@ -47,6 +48,7 @@
                     {% endfor %}
                 </div>
             </div>
+            {% endif %}
 
             <div class="price-display">
                 <span id="currentPrice" class="detail-current-price">
@@ -141,7 +143,7 @@
         <h2 class="section-heading">You May Also Like</h2>
         <div class="related-grid">
             {% for rel in related_products %}
-            {% set rel_variant = rel.variants[0] if rel.variants_enabled and rel.variants else None %}
+            {% set rel_variant = rel.variants[0] if rel.variants else None %}
             {% set raw_rel_images = rel.images.split(',') if rel.images else [] %}
             {% set rel_images = raw_rel_images | map('trim') | reject('equalto', '') | list %}
             {% set rel_img = rel_images[0] if rel_images else '' %}

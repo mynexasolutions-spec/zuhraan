@@ -319,7 +319,7 @@
                 </div>
                 {% else %}
                 {% for product in favorite_products %}
-                {% set first_variant = product.variants[0] if product.variants_enabled and product.variants else None %}
+                {% set first_variant = product.variants[0] if product.variants else None %}
                 {% set img_list = product.images.split(',') if product.images else [] %}
                 <div class="swiper-slide">
                     <a href="{{ url_for('main.product_detail', slug=product.slug) }}" class="product-card-link">
@@ -363,7 +363,7 @@
             {% endif %}
 
             {% for product in best_sellers %}
-            {% set first_variant = product.variants[0] if product.variants_enabled and product.variants else None %}
+            {% set first_variant = product.variants[0] if product.variants else None %}
             {% set isOnSale = first_variant and first_variant.original_price and (first_variant.original_price >
             first_variant.price) %}
             <a href="{{ url_for('main.product_detail', slug=product.slug) }}" class="product-card-link">

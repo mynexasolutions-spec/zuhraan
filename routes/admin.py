@@ -114,6 +114,33 @@ def _sync_product_variants(product_id):
             db.session.delete(variant)
 
 
+def _sync_single_product_variant(product_id):
+    price = (request.form.getlist('variant_price') or [''])[0].strip()
+    original_price = (request.form.getlist('variant_original_price') or [''])[0].strip()
+    stock = (request.form.getlist('variant_stock') or [''])[0].strip()
+    if not price:
+        raise ValueError('A sale price is required when variants are disabled.')
+    try:
+        price_value = float(price)
+        original_price_value = float(original_price) if original_price else None
+        stock_value = int(stock or 0)
+    except (TypeError, ValueError):
+        raise ValueError('Price and stock quantity must be valid numbers.')
+    if price_value < 0 or (original_price_value is not None and original_price_value < 0) or stock_value < 0:
+        raise ValueError('Price and stock quantity cannot be negative.')
+
+    variants = ProductVariant.query.filter_by(product_id=product_id).order_by(ProductVariant.id).all()
+    variant = variants[0] if variants else ProductVariant(product_id=product_id)
+    variant.size = 'Standard'
+    variant.price = price_value
+    variant.original_price = original_price_value
+    variant.stock_quantity = stock_value
+    db.session.add(variant)
+    for extra_variant in variants[1:]:
+        OrderItem.query.filter_by(variant_id=extra_variant.id).delete(synchronize_session=False)
+        db.session.delete(extra_variant)
+
+
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -283,6 +310,8 @@ def add_product():
         try:
             if variants_enabled:
                 _sync_product_variants(new_product.id)
+            else:
+                _sync_single_product_variant(new_product.id)
             db.session.commit()
         except ValueError as exc:
             db.session.rollback()
@@ -352,9 +381,7 @@ def edit_product(product_id):
             if product.variants_enabled:
                 _sync_product_variants(product.id)
             else:
-                for variant in ProductVariant.query.filter_by(product_id=product.id).all():
-                    OrderItem.query.filter_by(variant_id=variant.id).delete(synchronize_session=False)
-                    db.session.delete(variant)
+                _sync_single_product_variant(product.id)
             db.session.commit()
         except ValueError as exc:
             db.session.rollback()

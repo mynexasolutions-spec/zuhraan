@@ -101,7 +101,7 @@
             {% else %}
             <div class="shop-products-grid">
                 {% for product in products %}
-                {% set first_variant = product.variants[0] if product.variants_enabled and product.variants else None %}
+                {% set first_variant = product.variants[0] if product.variants else None %}
                 {% set isOnSale = first_variant and first_variant.original_price and (first_variant.original_price > first_variant.price) %}
                 {% set img_list = product.images.split(',') if product.images else [] %}
 
