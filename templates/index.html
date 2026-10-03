@@ -13,13 +13,6 @@
 
     <!-- LEFT -->
     <div class="left-col">
-        <div class="left-badge">
-            <svg width="17" height="17" fill="#fff" viewBox="0 0 24 24">
-                <path
-                    d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-            </svg>
-        </div>
-        <p class="left-note">Explore the art of fine fragrances</p>
         <div class="left-card">
             {% if hero_about_image_url %}
             <img src="{{ get_image_url(hero_about_image_url) }}" alt="About Zuhraan" class="left-card-logo">
@@ -57,6 +50,12 @@
                         {% endfor %}
                     </div>
                 </div>
+                {% if offers|length > 1 %}
+                <div class="hero-slider-controls" aria-label="Offer image controls">
+                    <button type="button" class="hero-slider-arrow hero-offers-prev" aria-label="Previous offer">&#8592;</button>
+                    <button type="button" class="hero-slider-arrow hero-offers-next" aria-label="Next offer">&#8594;</button>
+                </div>
+                {% endif %}
                 {% else %}
                 <!-- Dark floral perfume hero image -->
                 <img class="hero-main-img" src="{{ url_for('static', filename='images/banner/zuhran_2.webp') }}"
@@ -73,16 +72,8 @@
             aria-label="View {% if hero_products %}{{ hero_products[0].name }}{% else %}Signature Scent{% endif %} details">
             <div class="right-top-card" id="heroRightCard">
                 <div class="rtc-head">
-                    <div>
-                        <h4 id="heroProductTitle">{% if hero_products %}{{ hero_products[0].name }}{% else %}Signature
-                            Scent{% endif %}</h4>
-                    </div>
-                    <span class="btn-circle" aria-hidden="true">
-                        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"
-                            viewBox="0 0 24 24">
-                            <path d="M5 12h14M12 5l7 7-7 7" />
-                        </svg>
-                    </span>
+                    <h4 id="heroProductTitle">{% if hero_products %}{{ hero_products[0].name }}{% else %}Signature
+                        Scent{% endif %}</h4>
                 </div>
                 <div class="hero-product-img-wrap">
                     {% if hero_products %}
@@ -97,19 +88,12 @@
                 </div>
             </div>
         </a>
-
-        <div class="promo-card">
-            <a href="{% if hero_products %}{{ url_for('main.product_detail', slug=hero_products[0].slug) }}{% else %}{{ url_for('main.shop') }}{% endif %}"
-                class="shop-now-btn" id="heroShopBtn">
-                Shop Now
-                <span class="sc">
-                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"
-                        viewBox="0 0 24 24">
-                        <path d="M5 12h14M12 5l7 7-7 7" />
-                    </svg>
-                </span>
-            </a>
+        {% if hero_products|length > 1 %}
+        <div class="hero-product-controls" aria-label="Product controls">
+            <button type="button" class="hero-slider-arrow hero-product-prev" aria-label="Previous product">&#8592;</button>
+            <button type="button" class="hero-slider-arrow hero-product-next" aria-label="Next product">&#8594;</button>
         </div>
+        {% endif %}
     </div>
 
 </section>
@@ -135,13 +119,11 @@
         let currentIdx = 0;
         const titleEl = document.getElementById('heroProductTitle');
         const imgEl = document.getElementById('heroProductImg');
-        const promoEl = document.getElementById('heroPromoText');
-        const btnEl = document.getElementById('heroShopBtn');
         const linkEl = document.getElementById('heroProductLink');
         const cardEl = document.getElementById('heroRightCard');
 
-        function transitionProduct() {
-            currentIdx = (currentIdx + 1) % heroData.length;
+        function transitionProduct(direction = 1) {
+            currentIdx = (currentIdx + direction + heroData.length) % heroData.length;
             const product = heroData[currentIdx];
 
             // Slide out to the left
@@ -154,7 +136,6 @@
                 imgEl.alt = product.name;
                 linkEl.href = '/product/' + product.slug;
                 linkEl.setAttribute('aria-label', 'View ' + product.name + ' details');
-                btnEl.href = '/product/' + product.slug;
 
                 // Position off-screen right, then slide in
                 cardEl.style.transition = 'none';
@@ -170,7 +151,9 @@
             }, 500);
         }
 
-        setInterval(transitionProduct, 3000);
+        document.querySelector('.hero-product-prev')?.addEventListener('click', () => transitionProduct(-1));
+        document.querySelector('.hero-product-next')?.addEventListener('click', () => transitionProduct(1));
+        setInterval(() => transitionProduct(1), 4000);
     })();
 </script>
 {% endif %}
@@ -451,7 +434,11 @@
                     disableOnInteraction: false,
                 },
                 speed: 1000,
-                allowTouchMove: false
+                allowTouchMove: true,
+                navigation: {
+                    nextEl: '.hero-offers-next',
+                    prevEl: '.hero-offers-prev',
+                }
             });
         }
 
