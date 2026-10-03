@@ -333,16 +333,59 @@
         .cart-pg-header h1 { font-size: 1.7rem; font-family: sans-serif; }
 
         /* Hide price col on mobile — show only qty + total */
+        .cart-tbl {
+            display: block;
+        }
+        .cart-tbl thead,
+        .cart-tbl tbody,
+        .cart-tbl tr {
+            display: block;
+        }
+        .cart-tbl thead tr,
+        .cart-tbl tbody tr {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 78px 68px;
+            align-items: center;
+            width: 100%;
+        }
+        .cart-tbl th,
+        .cart-tbl td {
+            width: auto !important;
+            min-width: 0;
+        }
         .cart-tbl thead th:nth-child(2),
         .cart-tbl tbody td:nth-child(2) { display: none; }
 
-        .ci-img { width: 68px; height: 68px; }
-        .ci-name { font-size: 1rem; font-family: sans-serif; }
-        .cart-tbl tbody td { padding: 16px 10px; }
-        .cart-tbl thead th { padding: 12px 10px; font-size: 0.7rem; }
+        .cart-tbl thead th { padding: 12px 2px; font-size: 0.65rem; }
+        .cart-tbl tbody td { padding: 16px 2px; }
+        .cart-tbl thead th:nth-child(3),
+        .cart-tbl tbody td:nth-child(3) {
+            text-align: center;
+        }
+        .cart-tbl thead th:last-child,
+        .cart-tbl tbody td:last-child {
+            text-align: right;
+        }
+        .ci-wrap { gap: 8px; min-width: 0; }
+        .ci-wrap > div { min-width: 0; }
+        .ci-img { width: 52px; height: 52px; }
+        .ci-name {
+            font-size: 0.9rem;
+            line-height: 1.15;
+            font-family: sans-serif;
+            overflow-wrap: normal;
+        }
+        .ci-sub {
+            font-size: 0.72rem;
+            line-height: 1.35;
+            margin-bottom: 8px;
+        }
+        .ci-remove { font-size: 0.7rem; }
 
-        .qty-btn { width: 30px; height: 30px; font-size: 1rem; }
-        .qty-num { min-width: 32px; font-size: 0.85rem; line-height: 30px; }
+        .qty-stepper { margin: 0; }
+        .qty-btn { width: 25px; height: 30px; font-size: 0.9rem; }
+        .qty-num { min-width: 28px; font-size: 0.8rem; line-height: 30px; }
+        .ci-line-total { font-size: 0.84rem; }
 
         .sum-sidebar { padding: 20px; }
         .sum-title { font-size: 1.2rem; font-family: sans-serif; }
