@@ -61,6 +61,13 @@
         box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
     }
 
+    .group label input[type="checkbox"] {
+        width: auto;
+        margin: 0 6px 0 0;
+        padding: 0;
+        vertical-align: middle;
+    }
+
     .variants-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -69,6 +76,45 @@
         background: #f8fafc;
         border-radius: 10px;
         border: 1px dashed var(--border);
+    }
+
+    .variant-row {
+        padding: 16px;
+        background: #f8fafc;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+    }
+
+    .variant-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .variant-heading input {
+        max-width: 220px;
+        margin: 0;
+    }
+
+    .btn-add-variant,
+    .btn-remove-variant {
+        border: 0;
+        border-radius: 6px;
+        padding: 8px 12px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .btn-add-variant {
+        color: #fff;
+        background: #475569;
+    }
+
+    .btn-remove-variant {
+        color: #b91c1c;
+        background: #fee2e2;
     }
 
     .btn-save {
@@ -145,21 +191,21 @@
                 <h3>Fragrance Architecture</h3>
                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
                     <div class="group">
-                        <label>Top Notes</label>
+                        <label><input type="checkbox" name="show_top_notes" {% if product.show_top_notes %}checked{% endif %}> Top Notes</label>
                         <input type="text" name="top_notes" value="{{ product.top_notes or '' }}">
                     </div>
                     <div class="group">
-                        <label>Middle Notes</label>
+                        <label><input type="checkbox" name="show_middle_notes" {% if product.show_middle_notes %}checked{% endif %}> Heart Notes</label>
                         <input type="text" name="middle_notes" value="{{ product.middle_notes or '' }}">
                     </div>
                     <div class="group">
-                        <label>Base Notes</label>
+                        <label><input type="checkbox" name="show_base_notes" {% if product.show_base_notes %}checked{% endif %}> Base Notes</label>
                         <input type="text" name="base_notes" value="{{ product.base_notes or '' }}">
                     </div>
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                     <div class="group">
-                        <label>Longevity</label>
+                        <label><input type="checkbox" name="show_longevity" {% if product.show_longevity %}checked{% endif %}> Longevity</label>
                         <select name="longevity">
                             <option {% if product.longevity=='Moderate' %}selected{% endif %}>Moderate</option>
                             <option {% if product.longevity=='Long Lasting' %}selected{% endif %}>Long Lasting</option>
@@ -167,7 +213,7 @@
                         </select>
                     </div>
                     <div class="group">
-                        <label>Projection</label>
+                        <label><input type="checkbox" name="show_projection" {% if product.show_projection %}checked{% endif %}> Projection</label>
                         <select name="projection">
                             <option {% if product.projection=='Intimate' %}selected{% endif %}>Intimate</option>
                             <option {% if product.projection=='Moderate' %}selected{% endif %}>Moderate</option>
@@ -179,55 +225,24 @@
 
             <div class="card">
                 <h3>Pricing & Inventory (Variants)</h3>
-                <div style="display: flex; flex-direction: column; gap: 24px;">
-                    <div class="variants-row">
-                        <div style="display:flex; align-items:center; gap: 8px; margin-bottom: 12px;">
-                            <input type="text" name="size_1" value="{{ var1.size if var1 else '50ml' }}" style="font-size: 1.1rem; font-weight: 600; color: var(--text-main); border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 12px; width: 180px;" required placeholder="e.g. 50ml">
-                            <input type="hidden" name="var1_id" value="{{ var1.id if var1 else '' }}">
+                <label style="display: block; margin-bottom: 16px;"><input type="checkbox" name="variants_enabled" {% if product.variants_enabled %}checked{% endif %}> Enable pricing and inventory variants for this product</label>
+                <div id="variants-container" style="display: flex; flex-direction: column; gap: 16px;">
+                    {% for variant in variants %}
+                    <div class="variant-row">
+                        <div class="variant-heading">
+                            <input type="hidden" name="variant_id" value="{{ variant.id }}">
+                            <input type="text" name="variant_size" value="{{ variant.size }}" required placeholder="Volume (e.g. 50ml)">
+                            <button type="button" class="btn-remove-variant" onclick="removeVariant(this)">Remove</button>
                         </div>
                         <div class="variants-grid" style="grid-template-columns: repeat(3, 1fr);">
-                            <div class="group" style="margin-bottom: 0;">
-                                <label>Original Price (₹)</label>
-                                <input type="number" step="0.01" name="orig_price_1"
-                                    value="{{ var1.original_price if var1 and var1.original_price else '' }}">
-                            </div>
-                            <div class="group" style="margin-bottom: 0;">
-                                <label>Sale Price (₹)</label>
-                                <input type="number" step="0.01" name="price_1"
-                                    value="{{ var1.price if var1 else '' }}">
-                            </div>
-                            <div class="group" style="margin-bottom: 0;">
-                                <label>Stock Qty</label>
-                                <input type="number" name="stock_1"
-                                    value="{{ var1.stock_quantity if var1 else 0 }}">
-                            </div>
+                            <div class="group" style="margin-bottom: 0;"><label>Original Price (₹)</label><input type="number" step="0.01" min="0" name="variant_original_price" value="{{ variant.original_price if variant.original_price is not none else '' }}"></div>
+                            <div class="group" style="margin-bottom: 0;"><label>Sale Price (₹)</label><input type="number" step="0.01" min="0" name="variant_price" value="{{ variant.price }}" required></div>
+                            <div class="group" style="margin-bottom: 0;"><label>Stock Qty</label><input type="number" min="0" name="variant_stock" value="{{ variant.stock_quantity or 0 }}"></div>
                         </div>
                     </div>
-
-                    <div class="variants-row">
-                        <div style="display:flex; align-items:center; gap: 8px; margin-bottom: 12px;">
-                            <input type="text" name="size_2" value="{{ var2.size if var2 else '100ml' }}" style="font-size: 1.1rem; font-weight: 600; color: var(--text-main); border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 12px; width: 180px;" placeholder="e.g. 100ml">
-                            <input type="hidden" name="var2_id" value="{{ var2.id if var2 else '' }}">
-                        </div>
-                        <div class="variants-grid" style="grid-template-columns: repeat(3, 1fr);">
-                            <div class="group" style="margin-bottom: 0;">
-                                <label>Original Price (₹)</label>
-                                <input type="number" step="0.01" name="orig_price_2"
-                                    value="{{ var2.original_price if var2 and var2.original_price else '' }}">
-                            </div>
-                            <div class="group" style="margin-bottom: 0;">
-                                <label>Sale Price (₹)</label>
-                                <input type="number" step="0.01" name="price_2"
-                                    value="{{ var2.price if var2 else '' }}">
-                            </div>
-                            <div class="group" style="margin-bottom: 0;">
-                                <label>Stock Qty</label>
-                                <input type="number" name="stock_2"
-                                    value="{{ var2.stock_quantity if var2 else 0 }}">
-                            </div>
-                        </div>
-                    </div>
+                    {% endfor %}
                 </div>
+                <button type="button" class="btn-add-variant" onclick="addVariant()">+ Add Variant</button>
             </div>
         </div>
 
@@ -305,4 +320,50 @@
         </div>
     </div>
 </form>
+<template id="variant-template">
+    <div class="variant-row">
+        <div class="variant-heading">
+            <input type="text" name="variant_size" required placeholder="Volume (e.g. 50ml)">
+            <button type="button" class="btn-remove-variant" onclick="removeVariant(this)">Remove</button>
+        </div>
+        <div class="variants-grid" style="grid-template-columns: repeat(3, 1fr);">
+            <div class="group" style="margin-bottom: 0;"><label>Original Price (₹)</label><input type="number" step="0.01" min="0" name="variant_original_price" placeholder="0.00"></div>
+            <div class="group" style="margin-bottom: 0;"><label>Sale Price (₹)</label><input type="number" step="0.01" min="0" name="variant_price" placeholder="0.00" required></div>
+            <div class="group" style="margin-bottom: 0;"><label>Stock Qty</label><input type="number" min="0" name="variant_stock" value="0" placeholder="0"></div>
+        </div>
+    </div>
+</template>
+<script>
+    const variantsToggle = document.querySelector('input[name="variants_enabled"]');
+
+    function toggleVariants() {
+        const enabled = variantsToggle.checked;
+        document.querySelectorAll('#variants-container input').forEach((input) => {
+            input.disabled = !enabled;
+        });
+        document.querySelectorAll('#variants-container .btn-remove-variant').forEach((button) => {
+            button.disabled = !enabled;
+        });
+        document.querySelector('.btn-add-variant').disabled = !enabled;
+    }
+
+    function addVariant() {
+        const template = document.getElementById('variant-template');
+        document.getElementById('variants-container').appendChild(template.content.cloneNode(true));
+        toggleVariants();
+    }
+
+    function removeVariant(button) {
+        if (document.querySelectorAll('#variants-container .variant-row').length <= 1) {
+            alert('At least one variant is required.');
+            return;
+        }
+        if (confirm('Remove this variant? This will be saved when you submit the product.')) {
+            button.closest('.variant-row').remove();
+        }
+    }
+
+    variantsToggle.addEventListener('change', toggleVariants);
+    toggleVariants();
+</script>
 {% endblock %}

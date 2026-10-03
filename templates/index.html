@@ -68,31 +68,35 @@
 
     <!-- RIGHT -->
     <div class="right-col">
-        <div class="right-top-card" id="heroRightCard">
-            <div class="rtc-head">
-                <div>
-                    <h4 id="heroProductTitle">{% if hero_products %}{{ hero_products[0].name }}{% else %}Signature
-                        Scent{% endif %}</h4>
+        <a href="{% if hero_products %}{{ url_for('main.product_detail', slug=hero_products[0].slug) }}{% else %}{{ url_for('main.shop') }}{% endif %}"
+            class="hero-product-card-link" id="heroProductLink"
+            aria-label="View {% if hero_products %}{{ hero_products[0].name }}{% else %}Signature Scent{% endif %} details">
+            <div class="right-top-card" id="heroRightCard">
+                <div class="rtc-head">
+                    <div>
+                        <h4 id="heroProductTitle">{% if hero_products %}{{ hero_products[0].name }}{% else %}Signature
+                            Scent{% endif %}</h4>
+                    </div>
+                    <span class="btn-circle" aria-hidden="true">
+                        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"
+                            viewBox="0 0 24 24">
+                            <path d="M5 12h14M12 5l7 7-7 7" />
+                        </svg>
+                    </span>
                 </div>
-                <button class="btn-circle">
-                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"
-                        viewBox="0 0 24 24">
-                        <path d="M5 12h14M12 5l7 7-7 7" />
-                    </svg>
-                </button>
+                <div class="hero-product-img-wrap">
+                    {% if hero_products %}
+                    {% set hero_img_list = hero_products[0].images.split(',') if hero_products[0].images else [] %}
+                    <img id="heroProductImg"
+                        src="{% if hero_img_list %}{{ get_image_url(hero_img_list[0]) }}{% else %}{{ url_for('static', filename='images/banner/zuhran_3.jpg') }}{% endif %}"
+                        alt="{{ hero_products[0].name }}">
+                    {% else %}
+                    <img id="heroProductImg" src="{{ url_for('static', filename='images/banner/zuhran_3.jpg') }}"
+                        alt="Signature Scent">
+                    {% endif %}
+                </div>
             </div>
-            <div class="hero-product-img-wrap">
-                {% if hero_products %}
-                {% set hero_img_list = hero_products[0].images.split(',') if hero_products[0].images else [] %}
-                <img id="heroProductImg"
-                    src="{% if hero_img_list %}{{ get_image_url(hero_img_list[0]) }}{% else %}{{ url_for('static', filename='images/banner/zuhran_3.jpg') }}{% endif %}"
-                    alt="{{ hero_products[0].name }}">
-                {% else %}
-                <img id="heroProductImg" src="{{ url_for('static', filename='images/banner/zuhran_3.jpg') }}"
-                    alt="Signature Scent">
-                {% endif %}
-            </div>
-        </div>
+        </a>
 
         <div class="promo-card">
             <a href="{% if hero_products %}{{ url_for('main.product_detail', slug=hero_products[0].slug) }}{% else %}{{ url_for('main.shop') }}{% endif %}"
@@ -133,6 +137,7 @@
         const imgEl = document.getElementById('heroProductImg');
         const promoEl = document.getElementById('heroPromoText');
         const btnEl = document.getElementById('heroShopBtn');
+        const linkEl = document.getElementById('heroProductLink');
         const cardEl = document.getElementById('heroRightCard');
 
         function transitionProduct() {
@@ -147,6 +152,8 @@
                 titleEl.textContent = product.name;
                 imgEl.src = product.img;
                 imgEl.alt = product.name;
+                linkEl.href = '/product/' + product.slug;
+                linkEl.setAttribute('aria-label', 'View ' + product.name + ' details');
                 btnEl.href = '/product/' + product.slug;
 
                 // Position off-screen right, then slide in
@@ -250,8 +257,10 @@
             <div class="carousel-dots story-image-pagination"></div>
         </div>
         <div class="about-right">
-            <h2 class="about-heading">At Zuhraan, we believe a fragrance is more than just a scent</h2>
-            <hr class="about-divider">
+            <div class="about-intro">
+                <h2 class="about-heading">At Zuhraan, we believe a fragrance is more than just a scent</h2>
+                <hr class="about-divider">
+            </div>
             <div class="about-features">
                 <div class="feature-box">
                     <div class="feature-icon">
@@ -310,7 +319,7 @@
                 </div>
                 {% else %}
                 {% for product in favorite_products %}
-                {% set first_variant = product.variants[0] if product.variants else None %}
+                {% set first_variant = product.variants[0] if product.variants_enabled and product.variants else None %}
                 {% set img_list = product.images.split(',') if product.images else [] %}
                 <div class="swiper-slide">
                     <a href="{{ url_for('main.product_detail', slug=product.slug) }}" class="product-card-link">
@@ -320,16 +329,14 @@
                             </div>
                             <div class="product-card-body">
                                 <h4>{{ product.name }}</h4>
+                                {% if first_variant %}
                                 <p class="price">
-                                    {% if first_variant %}
                                     {% if first_variant.original_price and first_variant.original_price > first_variant.price %}
                                     <span class="old-price" style="text-decoration: line-through; opacity: 0.6; margin-right: 8px;">₹{{ "{:,.2f}".format(first_variant.original_price) }}</span>
                                     {% endif %}
                                     <span class="current-price">₹{{ "{:,.2f}".format(first_variant.price) }}</span>
-                                    {% else %}
-                                    Price TBD
-                                    {% endif %}
                                 </p>
+                                {% endif %}
                                 <span class="btn-buy-now">Buy Now</span>
                             </div>
                         </div>
@@ -356,7 +363,7 @@
             {% endif %}
 
             {% for product in best_sellers %}
-            {% set first_variant = product.variants[0] if product.variants else None %}
+            {% set first_variant = product.variants[0] if product.variants_enabled and product.variants else None %}
             {% set isOnSale = first_variant and first_variant.original_price and (first_variant.original_price >
             first_variant.price) %}
             <a href="{{ url_for('main.product_detail', slug=product.slug) }}" class="product-card-link">
@@ -378,16 +385,14 @@
                     </div>
                     <div class="product-card-body">
                         <h4>{{ product.name }}</h4>
+                        {% if first_variant %}
                         <p class="price">
-                            {% if first_variant %}
                             {% if isOnSale %}<span class="old-price"
                                 style="text-decoration: line-through; opacity: 0.6; margin-right: 8px;">₹{{
                                 "{:,.2f}".format(first_variant.original_price) }}</span>{% endif %}
                             <span class="current-price">₹{{ "{:,.2f}".format(first_variant.price) }}</span>
-                            {% else %}
-                            Price TBD
-                            {% endif %}
                         </p>
+                        {% endif %}
                         <span class="btn-buy-now">Buy Now</span>
                     </div>
                 </div>

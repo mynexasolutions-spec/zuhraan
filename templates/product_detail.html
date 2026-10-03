@@ -32,6 +32,7 @@
                 {{ product.short_description or "A beautiful fragrance from Zuhraan." }}
             </p>
 
+            {% if product.variants_enabled and product.variants %}
             <!-- VARIANT SELECTOR -->
             <div class="variant-selection">
                 <p class="selection-title">Select Size</p>
@@ -49,7 +50,7 @@
 
             <div class="price-display">
                 <span id="currentPrice" class="detail-current-price">
-                    {% if product.variants %}₹{{ "{:,.2f}".format(product.variants[0].price) }}{% else %}Price TBD{% endif %}
+                    ₹{{ "{:,.2f}".format(product.variants[0].price) }}
                 </span>
                 <span id="oldPrice" class="detail-old-price" style="display: {% if product.variants and product.variants[0].original_price and product.variants[0].original_price > product.variants[0].price %}inline{% else %}none{% endif %};">
                     {% if product.variants and product.variants[0].original_price %}₹{{ "{:,.2f}".format(product.variants[0].original_price) }}{% endif %}
@@ -77,33 +78,51 @@
                     <button type="submit" class="btn-add-to-cart" id="addBtn" {% if not product.variants or not product.variants[0].stock_quantity %}disabled{% endif %}>{% if product.variants and product.variants[0].stock_quantity %}Add to Bag{% else %}Sold Out{% endif %}</button>
                 </div>
             </form>
+            {% endif %}
 
             <!-- PRODUCT ATTRIBUTES TABLE -->
+            {% set has_product_specs = (product.show_top_notes and product.top_notes) or
+                (product.show_middle_notes and product.middle_notes) or
+                (product.show_base_notes and product.base_notes) or
+                (product.show_longevity and product.longevity) or
+                (product.show_projection and product.projection) %}
+            {% if has_product_specs %}
             <div class="product-specs-tabular">
                 <h3 class="specs-title">Product Details</h3>
                 <table class="specs-table">
+                    {% if product.show_top_notes and product.top_notes %}
                     <tr>
                         <th>Top Notes</th>
-                        <td>{{ product.top_notes or 'Not Specified' }}</td>
+                        <td>{{ product.top_notes }}</td>
                     </tr>
+                    {% endif %}
+                    {% if product.show_middle_notes and product.middle_notes %}
                     <tr>
                         <th>Heart Notes</th>
-                        <td>{{ product.middle_notes or 'Not Specified' }}</td>
+                        <td>{{ product.middle_notes }}</td>
                     </tr>
+                    {% endif %}
+                    {% if product.show_base_notes and product.base_notes %}
                     <tr>
                         <th>Base Notes</th>
-                        <td>{{ product.base_notes or 'Not Specified' }}</td>
+                        <td>{{ product.base_notes }}</td>
                     </tr>
+                    {% endif %}
+                    {% if product.show_longevity and product.longevity %}
                     <tr>
                         <th>Longevity</th>
-                        <td>{{ product.longevity or 'Moderate' }}</td>
+                        <td>{{ product.longevity }}</td>
                     </tr>
+                    {% endif %}
+                    {% if product.show_projection and product.projection %}
                     <tr>
                         <th>Projection</th>
-                        <td>{{ product.projection or 'Moderate' }}</td>
+                        <td>{{ product.projection }}</td>
                     </tr>
+                    {% endif %}
                 </table>
             </div>
+            {% endif %}
         </div>
     </div>
 
@@ -122,7 +141,7 @@
         <h2 class="section-heading">You May Also Like</h2>
         <div class="related-grid">
             {% for rel in related_products %}
-            {% set rel_variant = rel.variants[0] if rel.variants else None %}
+            {% set rel_variant = rel.variants[0] if rel.variants_enabled and rel.variants else None %}
             {% set raw_rel_images = rel.images.split(',') if rel.images else [] %}
             {% set rel_images = raw_rel_images | map('trim') | reject('equalto', '') | list %}
             {% set rel_img = rel_images[0] if rel_images else '' %}
@@ -142,14 +161,14 @@
                     </div>
                     <div class="product-card-body">
                         <h4>{{ rel.name }}</h4>
+                        {% if rel_variant %}
                         <p class="price">
-                            {% if rel_variant %}
                                 {% if rel_variant.original_price and (rel_variant.original_price > rel_variant.price) %}
                                 <span class="old-price">₹{{ "{:,.2f}".format(rel_variant.original_price) }}</span>
                                 {% endif %}
                                 <span class="current-price">₹{{ "{:,.2f}".format(rel_variant.price) }}</span>
-                            {% else %}Price TBD{% endif %}
                         </p>
+                        {% endif %}
                         <span class="btn-buy-now">Buy Now</span>
                     </div>
                 </div>
@@ -242,7 +261,14 @@
         height: auto;
         margin: 0 auto;
     }
-    .main-image-display img { width: 100%; height: 100%; object-fit: cover; }
+    .main-image-display img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        opacity: 1;
+        transition: opacity 180ms ease-in-out;
+    }
+    .main-image-display img.is-changing { opacity: 0; }
 
     .product-gallery--with-thumbnails {
         display: grid;
@@ -492,18 +518,60 @@
         .section-heading { font-size: 1.8rem; }
         .product-specs-tabular { margin-top: 40px; }
         .btn-add-to-cart { padding: 16px; font-size: 0.9rem; }
-        .main-image-display { border-radius: 12px; }
+        .main-image-display { border-radius: 12px; touch-action: pan-y; }
         .thumb { width: 60px; height: 60px; }
     }
 
 </style>
 
 <script>
+let imageTransitionTimeout;
+
 function updateMainImage(src, thumb) {
-    document.getElementById('mainProductImage').src = src;
+    const mainImage = document.getElementById('mainProductImage');
+    window.clearTimeout(imageTransitionTimeout);
+    mainImage.classList.add('is-changing');
+    imageTransitionTimeout = window.setTimeout(() => {
+        mainImage.src = src;
+        mainImage.classList.remove('is-changing');
+    }, 180);
     document.querySelectorAll('.thumb').forEach(t => t.classList.remove('thumb--active'));
-    thumb.classList.add('thumb--active');
+    if (thumb) thumb.classList.add('thumb--active');
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    const gallery = document.querySelector('.product-gallery--with-thumbnails');
+    const mainImageDisplay = gallery?.querySelector('.main-image-display');
+    const thumbnails = [...(gallery?.querySelectorAll('.thumb') ?? [])];
+
+    if (!mainImageDisplay || thumbnails.length < 2) return;
+
+    let pointerStart = null;
+
+    mainImageDisplay.addEventListener('pointerdown', event => {
+        if (event.pointerType !== 'touch' || !window.matchMedia('(max-width: 600px)').matches) return;
+        pointerStart = { x: event.clientX, y: event.clientY };
+    });
+
+    mainImageDisplay.addEventListener('pointerup', event => {
+        if (!pointerStart) return;
+
+        const deltaX = event.clientX - pointerStart.x;
+        const deltaY = event.clientY - pointerStart.y;
+        pointerStart = null;
+
+        if (Math.abs(deltaX) < 40 || Math.abs(deltaX) <= Math.abs(deltaY)) return;
+
+        const activeIndex = Math.max(0, thumbnails.findIndex(thumb => thumb.classList.contains('thumb--active')));
+        const nextIndex = (activeIndex + (deltaX < 0 ? 1 : -1) + thumbnails.length) % thumbnails.length;
+        const nextThumb = thumbnails[nextIndex];
+        updateMainImage(nextThumb.querySelector('img').src, nextThumb);
+    });
+
+    mainImageDisplay.addEventListener('pointercancel', () => {
+        pointerStart = null;
+    });
+});
 
 function updatePrice(price, original, pill, variantId, stockQuantity) {
     document.getElementById('currentPrice').innerText = '₹' + parseFloat(price).toLocaleString(undefined, {minimumFractionDigits: 2});
@@ -550,7 +618,9 @@ function adjustQty(amount) {
 }
 
 // AJAX Add to Cart
-document.getElementById('addToCartForm').addEventListener('submit', function(e) {
+const addToCartForm = document.getElementById('addToCartForm');
+if (addToCartForm) {
+addToCartForm.addEventListener('submit', function(e) {
     e.preventDefault();
     const form = this;
     const btn = document.getElementById('addBtn');
@@ -596,5 +666,6 @@ document.getElementById('addToCartForm').addEventListener('submit', function(e) 
         btn.disabled = false;
     });
 });
+}
 </script>
 {% endblock %}

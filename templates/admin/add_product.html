@@ -61,6 +61,13 @@
         box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
     }
 
+    .group label input[type="checkbox"] {
+        width: auto;
+        margin: 0 6px 0 0;
+        padding: 0;
+        vertical-align: middle;
+    }
+
     .variants-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -69,6 +76,45 @@
         background: #f8fafc;
         border-radius: 10px;
         border: 1px dashed var(--border);
+    }
+
+    .variant-row {
+        padding: 16px;
+        background: #f8fafc;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+    }
+
+    .variant-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+
+    .variant-heading input {
+        max-width: 220px;
+        margin: 0;
+    }
+
+    .btn-add-variant,
+    .btn-remove-variant {
+        border: 0;
+        border-radius: 6px;
+        padding: 8px 12px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .btn-add-variant {
+        color: #fff;
+        background: #475569;
+    }
+
+    .btn-remove-variant {
+        color: #b91c1c;
+        background: #fee2e2;
     }
 
     .btn-save {
@@ -113,21 +159,21 @@
                 <h3>Fragrance Architecture</h3>
                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
                     <div class="group">
-                        <label>Top Notes</label>
+                        <label><input type="checkbox" name="show_top_notes" checked> Top Notes</label>
                         <input type="text" name="top_notes" placeholder="e.g. Bergamot, Saffron">
                     </div>
                     <div class="group">
-                        <label>Middle Notes</label>
+                        <label><input type="checkbox" name="show_middle_notes" checked> Heart Notes</label>
                         <input type="text" name="middle_notes" placeholder="e.g. Rose, Jasmine">
                     </div>
                     <div class="group">
-                        <label>Base Notes</label>
+                        <label><input type="checkbox" name="show_base_notes" checked> Base Notes</label>
                         <input type="text" name="base_notes" placeholder="e.g. Oud, Vanilla">
                     </div>
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                     <div class="group">
-                        <label>Longevity</label>
+                        <label><input type="checkbox" name="show_longevity" checked> Longevity</label>
                         <select name="longevity">
                             <option>Moderate</option>
                             <option>Long Lasting</option>
@@ -135,7 +181,7 @@
                         </select>
                     </div>
                     <div class="group">
-                        <label>Projection</label>
+                        <label><input type="checkbox" name="show_projection" checked> Projection</label>
                         <select name="projection">
                             <option>Intimate</option>
                             <option>Moderate</option>
@@ -147,45 +193,32 @@
 
             <div class="card">
                 <h3>Pricing & Inventory (Variants)</h3>
-                <div style="display: flex; flex-direction: column; gap: 24px;">
-                    <div class="variants-row">
-                        <h4 style="font-size: 1.1rem; margin-bottom: 12px; color: var(--text-muted);">50ml Variation
-                        </h4>
+                <label style="display: block; margin-bottom: 16px;"><input type="checkbox" name="variants_enabled" checked> Enable pricing and inventory variants for this product</label>
+                <div id="variants-container" style="display: flex; flex-direction: column; gap: 16px;">
+                    <div class="variant-row">
+                        <div class="variant-heading">
+                            <input type="text" name="variant_size" value="50ml" required placeholder="Volume (e.g. 50ml)">
+                            <button type="button" class="btn-remove-variant" onclick="removeVariant(this)">Remove</button>
+                        </div>
                         <div class="variants-grid" style="grid-template-columns: repeat(3, 1fr);">
-                            <div class="group" style="margin-bottom: 0;">
-                                <label>Original Price (₹)</label>
-                                <input type="number" step="0.01" name="orig_price_50ml" placeholder="0.00">
-                            </div>
-                            <div class="group" style="margin-bottom: 0;">
-                                <label>Sale Price (₹)</label>
-                                <input type="number" step="0.01" name="price_50ml" placeholder="0.00">
-                            </div>
-                            <div class="group" style="margin-bottom: 0;">
-                                <label>Stock Qty</label>
-                                <input type="number" name="stock_50ml" placeholder="0">
-                            </div>
+                            <div class="group" style="margin-bottom: 0;"><label>Original Price (₹)</label><input type="number" step="0.01" min="0" name="variant_original_price" placeholder="0.00"></div>
+                            <div class="group" style="margin-bottom: 0;"><label>Sale Price (₹)</label><input type="number" step="0.01" min="0" name="variant_price" placeholder="0.00" required></div>
+                            <div class="group" style="margin-bottom: 0;"><label>Stock Qty</label><input type="number" min="0" name="variant_stock" value="0" placeholder="0"></div>
                         </div>
                     </div>
-
-                    <div class="variants-row">
-                        <h4 style="font-size: 1.1rem; margin-bottom: 12px; color: var(--text-muted);">100ml Variation
-                        </h4>
+                    <div class="variant-row">
+                        <div class="variant-heading">
+                            <input type="text" name="variant_size" value="100ml" placeholder="Volume (e.g. 100ml)">
+                            <button type="button" class="btn-remove-variant" onclick="removeVariant(this)">Remove</button>
+                        </div>
                         <div class="variants-grid" style="grid-template-columns: repeat(3, 1fr);">
-                            <div class="group" style="margin-bottom: 0;">
-                                <label>Original Price (₹)</label>
-                                <input type="number" step="0.01" name="orig_price_100ml" placeholder="0.00">
-                            </div>
-                            <div class="group" style="margin-bottom: 0;">
-                                <label>Sale Price (₹)</label>
-                                <input type="number" step="0.01" name="price_100ml" placeholder="0.00">
-                            </div>
-                            <div class="group" style="margin-bottom: 0;">
-                                <label>Stock Qty</label>
-                                <input type="number" name="stock_100ml" placeholder="0">
-                            </div>
+                            <div class="group" style="margin-bottom: 0;"><label>Original Price (₹)</label><input type="number" step="0.01" min="0" name="variant_original_price" placeholder="0.00"></div>
+                            <div class="group" style="margin-bottom: 0;"><label>Sale Price (₹)</label><input type="number" step="0.01" min="0" name="variant_price" placeholder="0.00"></div>
+                            <div class="group" style="margin-bottom: 0;"><label>Stock Qty</label><input type="number" min="0" name="variant_stock" value="0" placeholder="0"></div>
                         </div>
                     </div>
                 </div>
+                <button type="button" class="btn-add-variant" onclick="addVariant()">+ Add Variant</button>
             </div>
         </div>
 
@@ -239,4 +272,50 @@
         </div>
     </div>
 </form>
+<template id="variant-template">
+    <div class="variant-row">
+        <div class="variant-heading">
+            <input type="text" name="variant_size" required placeholder="Volume (e.g. 50ml)">
+            <button type="button" class="btn-remove-variant" onclick="removeVariant(this)">Remove</button>
+        </div>
+        <div class="variants-grid" style="grid-template-columns: repeat(3, 1fr);">
+            <div class="group" style="margin-bottom: 0;"><label>Original Price (₹)</label><input type="number" step="0.01" min="0" name="variant_original_price" placeholder="0.00"></div>
+            <div class="group" style="margin-bottom: 0;"><label>Sale Price (₹)</label><input type="number" step="0.01" min="0" name="variant_price" placeholder="0.00" required></div>
+            <div class="group" style="margin-bottom: 0;"><label>Stock Qty</label><input type="number" min="0" name="variant_stock" value="0" placeholder="0"></div>
+        </div>
+    </div>
+</template>
+<script>
+    const variantsToggle = document.querySelector('input[name="variants_enabled"]');
+
+    function toggleVariants() {
+        const enabled = variantsToggle.checked;
+        document.querySelectorAll('#variants-container input').forEach((input) => {
+            input.disabled = !enabled;
+        });
+        document.querySelectorAll('#variants-container .btn-remove-variant').forEach((button) => {
+            button.disabled = !enabled;
+        });
+        document.querySelector('.btn-add-variant').disabled = !enabled;
+    }
+
+    function addVariant() {
+        const template = document.getElementById('variant-template');
+        document.getElementById('variants-container').appendChild(template.content.cloneNode(true));
+        toggleVariants();
+    }
+
+    function removeVariant(button) {
+        if (document.querySelectorAll('#variants-container .variant-row').length <= 1) {
+            alert('At least one variant is required.');
+            return;
+        }
+        if (confirm('Remove this variant? This will be saved when you submit the product.')) {
+            button.closest('.variant-row').remove();
+        }
+    }
+
+    variantsToggle.addEventListener('change', toggleVariants);
+    toggleVariants();
+</script>
 {% endblock %}

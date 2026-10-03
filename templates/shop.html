@@ -101,7 +101,7 @@
             {% else %}
             <div class="shop-products-grid">
                 {% for product in products %}
-                {% set first_variant = product.variants[0] if product.variants else None %}
+                {% set first_variant = product.variants[0] if product.variants_enabled and product.variants else None %}
                 {% set isOnSale = first_variant and first_variant.original_price and (first_variant.original_price > first_variant.price) %}
                 {% set img_list = product.images.split(',') if product.images else [] %}
 
@@ -122,12 +122,12 @@
                         </div>
                         <div class="product-card-body">
                             <h4>{{ product.name }}</h4>
+                            {% if first_variant %}
                             <p class="price">
-                                {% if first_variant %}
                                     {% if isOnSale %}<span class="old-price">₹{{ "{:,.2f}".format(first_variant.original_price) }}</span>{% endif %}
                                     <span class="current-price">₹{{ "{:,.2f}".format(first_variant.price) }}</span>
-                                {% else %}Price TBD{% endif %}
                             </p>
+                            {% endif %}
                             <span class="btn-buy-now">Buy Now</span>
                         </div>
                     </div>

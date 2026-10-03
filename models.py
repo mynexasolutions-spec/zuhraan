@@ -47,6 +47,14 @@ class Product(db.Model):
     # Stats
     longevity = db.Column(db.String(50)) # e.g. "Long Lasting", "Moderate"
     projection = db.Column(db.String(50)) # e.g. "Strong", "Intimate"
+
+    # Per-product controls for optional product information.
+    show_top_notes = db.Column(db.Boolean, nullable=False, default=True, server_default=db.true())
+    show_middle_notes = db.Column(db.Boolean, nullable=False, default=True, server_default=db.true())
+    show_base_notes = db.Column(db.Boolean, nullable=False, default=True, server_default=db.true())
+    show_longevity = db.Column(db.Boolean, nullable=False, default=True, server_default=db.true())
+    show_projection = db.Column(db.Boolean, nullable=False, default=True, server_default=db.true())
+    variants_enabled = db.Column(db.Boolean, nullable=False, default=True, server_default=db.true())
     
     # Images - Store multiple image paths as a JSON or comma-separated string
     images = db.Column(db.Text) 

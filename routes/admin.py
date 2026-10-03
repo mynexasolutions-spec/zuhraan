@@ -48,6 +48,72 @@ def slugify(text):
     text = text.strip('-')
     return text
 
+
+def _variant_rows_from_form():
+    sizes = request.form.getlist('variant_size')
+    original_prices = request.form.getlist('variant_original_price')
+    prices = request.form.getlist('variant_price')
+    stocks = request.form.getlist('variant_stock')
+    ids = request.form.getlist('variant_id')
+
+    rows = []
+    for index, size in enumerate(sizes):
+        size = size.strip()
+        original_price = original_prices[index] if index < len(original_prices) else ''
+        price = prices[index] if index < len(prices) else ''
+        stock = stocks[index] if index < len(stocks) else ''
+        variant_id = ids[index] if index < len(ids) else ''
+        if not size and not price and not original_price and not stock:
+            continue
+        if not size or not price:
+            raise ValueError('Each variant must include a volume and sale price.')
+        try:
+            sale_price = float(price)
+            msrp = float(original_price) if original_price else None
+            stock_quantity = int(stock or 0)
+        except (TypeError, ValueError):
+            raise ValueError('Variant prices and stock quantity must be valid numbers.')
+        if sale_price < 0 or (msrp is not None and msrp < 0) or stock_quantity < 0:
+            raise ValueError('Variant prices and stock quantity cannot be negative.')
+        rows.append({
+            'id': int(variant_id) if variant_id else None,
+            'size': size,
+            'price': sale_price,
+            'original_price': msrp,
+            'stock_quantity': stock_quantity,
+        })
+    return rows
+
+
+def _sync_product_variants(product_id):
+    submitted_rows = _variant_rows_from_form()
+    existing_variants = {
+        variant.id: variant
+        for variant in ProductVariant.query.filter_by(product_id=product_id).all()
+    }
+    submitted_ids = set()
+
+    for row in submitted_rows:
+        variant_id = row.pop('id')
+        if variant_id is not None:
+            variant = existing_variants.get(variant_id)
+            if variant is None:
+                raise ValueError('One of the selected variants no longer exists.')
+            submitted_ids.add(variant_id)
+        else:
+            variant = ProductVariant(product_id=product_id)
+            db.session.add(variant)
+        variant.size = row['size']
+        variant.price = row['price']
+        variant.original_price = row['original_price']
+        variant.stock_quantity = row['stock_quantity']
+
+    for variant_id, variant in existing_variants.items():
+        if variant_id not in submitted_ids:
+            OrderItem.query.filter_by(variant_id=variant_id).delete(synchronize_session=False)
+            db.session.delete(variant)
+
+
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -145,10 +211,16 @@ def add_product():
         top = request.form.get('top_notes')
         middle = request.form.get('middle_notes')
         base = request.form.get('base_notes')
+        show_top_notes = 'show_top_notes' in request.form
+        show_middle_notes = 'show_middle_notes' in request.form
+        show_base_notes = 'show_base_notes' in request.form
         
         # Stats
         long = request.form.get('longevity')
         proj = request.form.get('projection')
+        show_longevity = 'show_longevity' in request.form
+        show_projection = 'show_projection' in request.form
+        variants_enabled = 'variants_enabled' in request.form
         
         # Special Tag
         tag = request.form.get('tag') or None
@@ -194,6 +266,12 @@ def add_product():
             base_notes=base,
             longevity=long,
             projection=proj,
+            show_top_notes=show_top_notes,
+            show_middle_notes=show_middle_notes,
+            show_base_notes=show_base_notes,
+            show_longevity=show_longevity,
+            show_projection=show_projection,
+            variants_enabled=variants_enabled,
             tag=tag,
             best_seller_rank=best_seller_rank,
             images=','.join(image_paths) if image_paths else '',
@@ -202,30 +280,14 @@ def add_product():
         db.session.add(new_product)
         db.session.flush() # To get ID for variants
         
-        # Create Variants (50ml & 100ml)
-        # 50ml
-        p50 = request.form.get('price_50ml')
-        op50 = request.form.get('orig_price_50ml')
-        s50 = request.form.get('stock_50ml')
-        if p50:
-            var50 = ProductVariant(product_id=new_product.id, size='50ml', 
-                                   price=float(p50), 
-                                   original_price=float(op50) if op50 else None,
-                                   stock_quantity=int(s50 or 0))
-            db.session.add(var50)
-            
-        # 100ml
-        p100 = request.form.get('price_100ml')
-        op100 = request.form.get('orig_price_100ml')
-        s100 = request.form.get('stock_100ml')
-        if p100:
-            var100 = ProductVariant(product_id=new_product.id, size='100ml', 
-                                    price=float(p100), 
-                                    original_price=float(op100) if op100 else None,
-                                    stock_quantity=int(s100 or 0))
-            db.session.add(var100)
-            
-        db.session.commit()
+        try:
+            if variants_enabled:
+                _sync_product_variants(new_product.id)
+            db.session.commit()
+        except ValueError as exc:
+            db.session.rollback()
+            flash(str(exc), 'error')
+            return redirect(url_for('admin.add_product'))
         flash('Product added successfully', 'success')
         return redirect(url_for('admin.manage_products'))
         
@@ -256,6 +318,12 @@ def edit_product(product_id):
         product.base_notes = request.form.get('base_notes')
         product.longevity = request.form.get('longevity')
         product.projection = request.form.get('projection')
+        product.show_top_notes = 'show_top_notes' in request.form
+        product.show_middle_notes = 'show_middle_notes' in request.form
+        product.show_base_notes = 'show_base_notes' in request.form
+        product.show_longevity = 'show_longevity' in request.form
+        product.show_projection = 'show_projection' in request.form
+        product.variants_enabled = 'variants_enabled' in request.form
         product.tag = request.form.get('tag') or None
         rank_raw = request.form.get('best_seller_rank')
         product.best_seller_rank = int(rank_raw) if rank_raw else None
@@ -280,48 +348,24 @@ def edit_product(product_id):
         product.images = ','.join(image_paths) if image_paths else ''
         product.image_pub_ids = ','.join(image_pubs) if image_pubs else ''
         
-        # Variants update
-        variants = ProductVariant.query.filter_by(product_id=product.id).order_by(ProductVariant.id).all()
-        var1 = variants[0] if len(variants) > 0 else None
-        var2 = variants[1] if len(variants) > 1 else None
-
-        # Variant 1
-        p1 = request.form.get('price_1') or request.form.get('price_50ml')
-        op1 = request.form.get('orig_price_1') or request.form.get('orig_price_50ml')
-        s1 = request.form.get('stock_1') or request.form.get('stock_50ml')
-        size1 = request.form.get('size_1', '50ml')
-        if p1:
-            if var1:
-                var1.size = size1
-                var1.price = float(p1)
-                var1.original_price = float(op1) if op1 else None
-                var1.stock_quantity = int(s1 or 0)
+        try:
+            if product.variants_enabled:
+                _sync_product_variants(product.id)
             else:
-                db.session.add(ProductVariant(product_id=product.id, size=size1, price=float(p1), original_price=float(op1) if op1 else None, stock_quantity=int(s1 or 0)))
-        
-        # Variant 2
-        p2 = request.form.get('price_2') or request.form.get('price_100ml')
-        op2 = request.form.get('orig_price_2') or request.form.get('orig_price_100ml')
-        s2 = request.form.get('stock_2') or request.form.get('stock_100ml')
-        size2 = request.form.get('size_2', '100ml')
-        if p2:
-            if var2:
-                var2.size = size2
-                var2.price = float(p2)
-                var2.original_price = float(op2) if op2 else None
-                var2.stock_quantity = int(s2 or 0)
-            else:
-                db.session.add(ProductVariant(product_id=product.id, size=size2, price=float(p2), original_price=float(op2) if op2 else None, stock_quantity=int(s2 or 0)))
-
-        db.session.commit()
+                for variant in ProductVariant.query.filter_by(product_id=product.id).all():
+                    OrderItem.query.filter_by(variant_id=variant.id).delete(synchronize_session=False)
+                    db.session.delete(variant)
+            db.session.commit()
+        except ValueError as exc:
+            db.session.rollback()
+            flash(str(exc), 'error')
+            return redirect(url_for('admin.edit_product', product_id=product.id))
         flash('Product updated successfully', 'success')
         return redirect(url_for('admin.manage_products'))
 
     categories = Category.query.all()
     variants = ProductVariant.query.filter_by(product_id=product.id).order_by(ProductVariant.id).all()
-    var1 = variants[0] if len(variants) > 0 else None
-    var2 = variants[1] if len(variants) > 1 else None
-    return render_template('admin/edit_product.html', product=product, categories=categories, var1=var1, var2=var2)
+    return render_template('admin/edit_product.html', product=product, categories=categories, variants=variants)
 
 @admin_bp.route('/product/<int:product_id>/image/<int:image_index>/delete', methods=['POST'])
 @admin_required

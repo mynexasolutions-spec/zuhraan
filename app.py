@@ -7,6 +7,7 @@ load_dotenv() # Load variables from .env
 from flask import Flask, session
 from flask_wtf.csrf import CSRFProtect
 import bleach
+from sqlalchemy import inspect, text
 
 from models import db, Category, User, Setting, AboutPage, ContactMessage
 from routes.main import main_bp
@@ -80,6 +81,41 @@ def utility_processor():
 
 # Initialize DB
 db.init_app(app)
+
+
+def ensure_product_optional_columns():
+    """Add optional product controls to databases created before these fields existed."""
+    columns = {
+        'show_top_notes': 'BOOLEAN NOT NULL DEFAULT TRUE',
+        'show_middle_notes': 'BOOLEAN NOT NULL DEFAULT TRUE',
+        'show_base_notes': 'BOOLEAN NOT NULL DEFAULT TRUE',
+        'show_longevity': 'BOOLEAN NOT NULL DEFAULT TRUE',
+        'show_projection': 'BOOLEAN NOT NULL DEFAULT TRUE',
+        'variants_enabled': 'BOOLEAN NOT NULL DEFAULT TRUE',
+    }
+    with app.app_context():
+        inspector = inspect(db.engine)
+        if not inspector.has_table('product'):
+            return
+        existing_columns = {column['name'] for column in inspector.get_columns('product')}
+        missing_columns = {
+            name: definition
+            for name, definition in columns.items()
+            if name not in existing_columns
+        }
+        if not missing_columns:
+            return
+        try:
+            for name, definition in missing_columns.items():
+                db.session.execute(text(f'ALTER TABLE product ADD COLUMN {name} {definition}'))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            app.logger.exception('Failed to add optional product columns.')
+            raise
+
+
+ensure_product_optional_columns()
 
 # Login Manager
 login_manager = LoginManager()
