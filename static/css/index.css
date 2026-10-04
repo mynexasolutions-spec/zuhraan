@@ -2061,7 +2061,7 @@
         --hero-card-height: clamp(340px, 46vw, 470px);
         grid-template-columns: minmax(180px, 0.84fr) minmax(260px, 1.32fr) minmax(190px, 0.9fr);
         gap: clamp(16px, 2vw, 28px);
-        padding: clamp(52px, 7vw, 92px) 32px 80px;
+        padding: clamp(36px, 4vw, 64px) 32px 56px;
     }
 
     .left-card,
@@ -2098,6 +2098,10 @@
 
     .left-card-body {
         padding: 12px 20px clamp(28px, 4vw, 46px);
+    }
+
+    .left-card-link h4 {
+        font-size: clamp(1.2rem, 2.2vw, 1.75rem);
     }
 
     .left-card-link::before {
@@ -2224,6 +2228,7 @@
         border-radius: 0;
     }
 
+    .left-card-link h4,
     .rtc-head h4 {
         display: flex;
         align-items: center;
@@ -2231,9 +2236,13 @@
         gap: 4px;
         color: var(--dark);
         font-family: 'Cormorant Garamond', serif;
-        font-size: clamp(0.56rem, 2vw, 0.82rem);
+        font-size: clamp(0.8rem, 3vw, 1.1rem);
         line-height: 1;
         text-align: center;
+    }
+
+    .rtc-head h4 {
+        transform: translateY(-4px);
     }
 
     .rtc-head h4::before,
@@ -2380,6 +2389,12 @@
     .right-top-card .hero-product-img-wrap img {
         object-fit: contain;
         object-position: center;
+    }
+
+    .left-card-logo,
+    .left-card img {
+        transform: scale(1.12);
+        transform-origin: center center;
     }
 
     .right-col,

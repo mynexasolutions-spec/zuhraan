@@ -18,14 +18,14 @@ body {
     font-family: 'Jost', sans-serif;
     font-weight: 300;
     min-height: 100vh;
-    padding-top: 115px;
+    padding-top: 92px;
 }
 
 /* NAV */
 nav {
     background: var(--dark);
-    border-radius: 18px;
-    margin: 23px 40px 0;
+    border-radius: 0;
+    margin: 0;
     padding: 0 52px;
     display: flex;
     align-items: center;
@@ -392,7 +392,7 @@ nav {
 }
 
 @media (max-width: 1024px) {
-    body { padding-top: 74px; }
+    body { padding-top: 64px; }
     .nav-links, .hide-mobile {
         display: none !important;
     }
@@ -401,7 +401,7 @@ nav {
         display: flex !important;
     }
     nav {
-        margin: 10px 12px 0;
+        margin: 0;
         padding: 0 12px;
         height: 64px;
     }
@@ -441,6 +441,14 @@ nav {
     }
 }
 
+@media (max-width: 768px) {
+    nav {
+        margin-left: 0;
+        margin-right: 0;
+        border-radius: 0;
+    }
+}
+
 .nav-icons button, .account-link {
     background: none;
     border: none;
@@ -460,12 +468,12 @@ nav {
 
 @media (max-width: 600px) {
     body {
-        padding-top: 82px;
+        padding-top: 58px;
     }
 
     nav {
         height: 58px;
-        margin: 10px 6px 0;
+        margin: 0;
         padding: 0 12px;
     }
 
