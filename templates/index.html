@@ -14,13 +14,7 @@
     <!-- LEFT -->
     <div class="left-col">
         <div class="left-card">
-            {% if hero_about_image_url %}
-            <img src="{{ get_image_url(hero_about_image_url) }}" alt="About Zuhraan" class="left-card-logo">
-            {% elif about_page and about_page.home_about_image %}
-            <img src="{{ get_image_url(about_page.home_about_image, (about_page.home_about_image_pub_id or '') + '|' + (about_page.updated_at.timestamp() if about_page.updated_at else '')) }}" alt="About Zuhraan" class="left-card-logo">
-            {% else %}
-            <img src="{{ url_for('static', filename='images/logo/banner_logo.png') }}" alt="Zuhraan Logo" class="left-card-logo">
-            {% endif %}
+            <img src="{{ url_for('static', filename='images/logo/About_without_logo.png') }}" alt="About Zuhraan" class="left-card-logo">
             <div class="left-card-body">
                 <a href="{{ url_for('main.about') }}" class="left-card-link">
                     <h4>About Us</h4>

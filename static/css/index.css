@@ -60,6 +60,8 @@
     display: block;
     margin: 0;
     padding: 0;
+    transform: scale(1.25);
+    clip-path: inset(0);
 }
 
 .left-card-body {
@@ -2393,7 +2395,7 @@
 
     .left-card-logo,
     .left-card img {
-        transform: scale(1.12);
+        transform: scale(2);
         transform-origin: center center;
     }
 
@@ -2410,4 +2412,12 @@
     .right-top-card .hero-product-img-wrap img {
         object-position: center top;
     }
+}
+
+/* Give the side-card surfaces more contrast while keeping their images untouched. */
+.left-card,
+.right-top-card,
+.left-card-body,
+.rtc-head {
+    background: #f5efe5;
 }
