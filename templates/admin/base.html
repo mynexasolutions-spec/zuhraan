@@ -49,7 +49,7 @@
         }
         nav::-webkit-scrollbar { width: 7px; }
         nav::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.55); border-radius: 999px; }
-        nav a {
+        nav a, nav .nav-button {
             display: flex;
             align-items: center;
             gap: 12px;
@@ -59,7 +59,8 @@
             font-size: 1.35rem;
             transition: all 0.2s;
         }
-        nav a:hover, nav a.active {
+        nav .nav-button { width: 100%; border: 0; background: transparent; cursor: pointer; }
+        nav a:hover, nav a.active, nav .nav-button:hover {
             background: rgba(37, 99, 235, 0.1);
             color: var(--primary);
             border-left: 3px solid var(--primary);
@@ -89,8 +90,8 @@
             aside { width: 80px; }
             .brand span, nav span, .user-block span, .user-block div { display: none; }
             main { margin-left: 80px; }
-            nav a { justify-content: center; padding: 14px 0; }
-            nav a i { width: auto; }
+            nav a, nav .nav-button { justify-content: center; padding: 14px 0; }
+            nav a i, nav .nav-button i { width: auto; }
             .brand { justify-content: center; padding: 0 0 24px; }
         }
 
@@ -104,7 +105,7 @@
             }
             aside.mobile-open { left: 0; }
             .brand span, nav span, .user-block span, .user-block div { display: block; }
-            nav a { justify-content: flex-start; padding: 12px 24px; }
+            nav a, nav .nav-button { justify-content: flex-start; padding: 12px 24px; }
             .brand { justify-content: flex-start; padding: 0 24px 32px; }
             main { margin-left: 0; padding: 20px 16px; padding-top: 70px; }
             .header { flex-direction: column; gap: 12px; align-items: flex-start; margin-bottom: 24px; }
@@ -299,10 +300,13 @@
                 <i class="fa-solid fa-globe"></i>
                 <span>View Site</span>
             </a>
-            <a href="{{ url_for('main.logout') }}">
-                <i class="fa-solid fa-right-from-bracket"></i>
-                <span>Logout</span>
-            </a>
+            <form method="POST" action="{{ url_for('main.logout') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="nav-button">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Logout</span>
+                </button>
+            </form>
         </nav>
         <div class="user-block">
             <div class="user-avatar">AD</div>
@@ -340,22 +344,12 @@
 
     <script>
         let deleteForm = null;
-        let deleteUrl = null;
-
-        function openDeleteModal(name, arg) {
+        function openDeleteModal(name, form) {
             const modal = document.getElementById('deleteModal');
             const text = document.getElementById('modalText');
-            
-            // Handle both form element (new) and URL string (legacy)
-            if (arg instanceof HTMLFormElement) {
-                deleteForm = arg;
-                deleteUrl = null;
-            } else {
-                deleteUrl = arg;
-                deleteForm = null;
-            }
-            
-            text.innerHTML = `Are you sure you want to delete <strong>${name}</strong>? This action is permanent and cannot be undone.`;
+
+            deleteForm = form instanceof HTMLFormElement ? form : null;
+            text.textContent = `Are you sure you want to delete ${name}? This action is permanent and cannot be undone.`;
             
             modal.classList.add('active');
         }
@@ -363,14 +357,11 @@
         function closeModal() {
             document.getElementById('deleteModal').classList.remove('active');
             deleteForm = null;
-            deleteUrl = null;
         }
 
         function confirmDelete() {
             if (deleteForm) {
                 deleteForm.submit();
-            } else if (deleteUrl) {
-                window.location.href = deleteUrl;
             }
             closeModal();
         }

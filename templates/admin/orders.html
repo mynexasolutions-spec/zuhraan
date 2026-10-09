@@ -16,6 +16,10 @@
     .badge-unpaid { background: #fee2e2; color: #991b1b; }
     .badge-pending { background: #fef9c3; color: #92400e; }
     .badge-processing { background: #e0e7ff; color: #3730a3; }
+    .shiprocket-box { margin-top:10px; padding:10px; border:1px solid #dbeafe; border-radius:8px; background:#eff6ff; display:grid; gap:7px; }
+    .shiprocket-box input { min-width:0; padding:6px; border:1px solid var(--border); border-radius:6px; }
+    .shiprocket-actions { display:flex; gap:6px; flex-wrap:wrap; }
+    .shiprocket-actions button, .shiprocket-actions a { padding:6px 9px; border:0; border-radius:6px; cursor:pointer; text-decoration:none; font-size:0.9rem; background:#1d4ed8; color:#fff; }
 </style>
 
 <div class="card">
@@ -88,6 +92,47 @@
                         {% endif %}
                         <button type="submit" style="padding:6px 10px; border:0; border-radius:6px; cursor:pointer;">Save</button>
                     </form>
+                    {% if shiprocket_enabled or order.shiprocket_shipment_id %}
+                    <div class="shiprocket-box">
+                        <strong><i class="fa-solid fa-truck-fast"></i> Shiprocket</strong>
+                        {% if order.shiprocket_shipment_id %}
+                            <div>Shipment: {{ order.shiprocket_shipment_id }}</div>
+                            <div>Status: {{ order.shiprocket_status or 'Created' }}</div>
+                            {% if order.shipping_provider %}<div>Courier: {{ order.shipping_provider }}</div>{% endif %}
+                            {% if order.awb_number %}<div>AWB: {{ order.awb_number }}</div>{% endif %}
+                            <div class="shiprocket-actions">
+                                {% if order.awb_number %}
+                                <a href="{{ order.shiprocket_tracking_url or ('https://shiprocket.co/tracking/' ~ order.awb_number) }}" target="_blank" rel="noopener noreferrer">Track</a>
+                                <form action="{{ url_for('admin.refresh_shiprocket_tracking', order_id=order.id) }}" method="POST">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit">Refresh</button>
+                                </form>
+                                {% endif %}
+                                {% if order.awb_number and not order.shiprocket_pickup_scheduled %}
+                                <form action="{{ url_for('admin.schedule_shiprocket_pickup', order_id=order.id) }}" method="POST">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit">Schedule pickup</button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                        {% if shiprocket_enabled and not order.awb_number and order.status not in ['cancelled', 'delivered'] %}
+                        <form action="{{ url_for('admin.create_shiprocket_shipment', order_id=order.id) }}" method="POST" style="display:grid; gap:6px;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:5px;">
+                                <input type="number" min="0.01" step="0.01" name="weight" value="{{ shiprocket_defaults.weight }}" aria-label="Weight in kilograms" title="Weight in kilograms" required>
+                                <input type="number" min="0.1" step="0.1" name="length" value="{{ shiprocket_defaults.length }}" aria-label="Length in centimeters" title="Length in centimeters" required>
+                                <input type="number" min="0.1" step="0.1" name="breadth" value="{{ shiprocket_defaults.breadth }}" aria-label="Breadth in centimeters" title="Breadth in centimeters" required>
+                                <input type="number" min="0.1" step="0.1" name="height" value="{{ shiprocket_defaults.height }}" aria-label="Height in centimeters" title="Height in centimeters" required>
+                            </div>
+                            <input type="number" min="1" name="courier_id" placeholder="Courier ID (blank = auto)">
+                            <button type="submit" style="padding:7px; border:0; border-radius:6px; background:#1d4ed8; color:white; cursor:pointer;">
+                                {% if order.shiprocket_shipment_id %}Assign AWB{% else %}Create shipment & AWB{% endif %}
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                    {% endif %}
                 </td>
                 <td style="font-size: 1.05rem; color: var(--text-muted);">{{ order.created_at.strftime('%b %d, %Y') }}</td>
             </tr>

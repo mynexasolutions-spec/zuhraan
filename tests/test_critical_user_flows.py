@@ -3,8 +3,10 @@ import hashlib
 import hmac
 import json
 
+os.environ['APP_ENV'] = 'testing'
 os.environ['SUPABASE_DATABASE_URL'] = 'sqlite:///:memory:'
 os.environ['SECRET_KEY'] = 'test-secret'
+os.environ['SHIPROCKET_ENABLED'] = '0'
 os.environ['RAZORPAY_KEY_ID'] = 'rzp_test_example'
 os.environ['RAZORPAY_KEY_SECRET'] = 'test-api-secret'
 os.environ['RAZORPAY_WEBHOOK_SECRET'] = 'test-webhook-secret'
@@ -12,8 +14,8 @@ os.environ['RAZORPAY_WEBHOOK_SECRET'] = 'test-webhook-secret'
 import pytest
 
 from app import app
-from models import Category, Coupon, Order, Product, ProductVariant, Setting, User, db
-from routes.main import calculate_shipping
+from models import Category, Coupon, Order, OrderItem, Product, ProductVariant, Setting, User, db
+from routes.main import calculate_shipping, safe_internal_redirect
 
 
 @pytest.fixture(autouse=True)
@@ -64,6 +66,13 @@ def test_cart_add_returns_success_message_and_updated_count(client):
 
     assert response.status_code == 200
     assert response.get_json() == {'message': 'Test Perfume added to cart!', 'cart_count': 2}
+
+
+def test_health_check_verifies_database_connection(client):
+    response = client.get('/healthz')
+
+    assert response.status_code == 200
+    assert response.get_json() == {'status': 'ok'}
 
 
 def test_shipping_settings_persist_and_checkout_adds_standard_charge(client):
@@ -320,3 +329,117 @@ def test_purge_legacy_razorpay_settings_command_removes_only_legacy_settings():
         assert Setting.query.filter_by(key='razorpay_key').first() is None
         assert Setting.query.filter_by(key='razorpay_secret').first() is None
         assert Setting.query.filter_by(key='shipping_charge').one().value == '79.00'
+
+
+def checkout_form(payment_method='cod'):
+    return {
+        'name': 'Test Customer',
+        'email': 'customer@example.test',
+        'phone': '9999999999',
+        'address_line1': '123 Test Street',
+        'address_line2': '',
+        'city': 'Mumbai',
+        'state': 'MH',
+        'pincode': '400001',
+        'country': 'India',
+        'payment_method': payment_method,
+    }
+
+
+def test_native_cod_checkout_locks_and_decrements_stock(client):
+    with app.app_context():
+        variant_id = create_product(149.0)
+        db.session.add(Setting(key='payment_cod_enabled', value='1'))
+        db.session.commit()
+    with client.session_transaction() as browser_session:
+        browser_session['cart'] = {str(variant_id): 2}
+
+    response = client.post('/checkout', data=checkout_form())
+
+    assert response.status_code == 302
+    with app.app_context():
+        order = Order.query.one()
+        assert order.payment_method == 'native_cod'
+        assert db.session.get(ProductVariant, variant_id).stock_quantity == 8
+
+
+def test_disabled_payment_method_is_rejected_without_creating_order(client):
+    with app.app_context():
+        variant_id = create_product(149.0)
+        db.session.add(Setting(key='payment_cod_enabled', value='0'))
+        db.session.commit()
+    with client.session_transaction() as browser_session:
+        browser_session['cart'] = {str(variant_id): 1}
+
+    response = client.post('/checkout', data=checkout_form('cod'))
+
+    assert response.status_code == 302
+    with app.app_context():
+        assert Order.query.count() == 0
+        assert db.session.get(ProductVariant, variant_id).stock_quantity == 10
+
+
+def test_cancelling_order_restores_stock_only_once(client):
+    with app.app_context():
+        admin = User(email='admin@example.test', password='test-password', role='admin')
+        db.session.add(admin)
+        db.session.flush()
+        admin_id = admin.id
+        variant_id = create_product(149.0)
+        variant = db.session.get(ProductVariant, variant_id)
+        variant.stock_quantity = 8
+        order = Order(total_amount=298.0, payment_method='native_cod', status='pending')
+        db.session.add(order)
+        db.session.flush()
+        db.session.add(OrderItem(
+            order_id=order.id,
+            variant_id=variant_id,
+            quantity=2,
+            price_at_time=149.0,
+        ))
+        db.session.commit()
+        order_id = order.id
+    add_admin_session(client, admin_id)
+
+    first = client.post(f'/admin/orders/{order_id}/status', data={'status': 'cancelled'})
+    second = client.post(f'/admin/orders/{order_id}/status', data={'status': 'cancelled'})
+
+    assert first.status_code == 302
+    assert second.status_code == 302
+    with app.app_context():
+        assert db.session.get(ProductVariant, variant_id).stock_quantity == 10
+
+
+def test_product_with_order_history_cannot_be_deleted(client):
+    with app.app_context():
+        admin = User(email='admin@example.test', password='test-password', role='admin')
+        db.session.add(admin)
+        db.session.flush()
+        admin_id = admin.id
+        variant_id = create_product(149.0)
+        product_id = db.session.get(ProductVariant, variant_id).product_id
+        order = Order(total_amount=149.0)
+        db.session.add(order)
+        db.session.flush()
+        db.session.add(OrderItem(
+            order_id=order.id,
+            variant_id=variant_id,
+            quantity=1,
+            price_at_time=149.0,
+        ))
+        db.session.commit()
+    add_admin_session(client, admin_id)
+
+    assert client.get(f'/admin/product/{product_id}/delete').status_code == 405
+    assert client.post(f'/admin/product/{product_id}/delete').status_code == 302
+    with app.app_context():
+        assert db.session.get(Product, product_id) is not None
+        assert OrderItem.query.count() == 1
+
+
+def test_state_changes_require_post_and_external_redirects_are_rejected(client):
+    assert client.get('/account/logout').status_code == 405
+    assert client.get('/cart/remove/1').status_code == 405
+    assert safe_internal_redirect('/account') == '/account'
+    assert safe_internal_redirect('//example.com') == ''
+    assert safe_internal_redirect('https://example.com') == ''

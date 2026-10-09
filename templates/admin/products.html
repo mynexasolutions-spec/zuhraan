@@ -77,7 +77,10 @@
                 <td style="vertical-align: middle;">
                     <div class="product-actions">
                         <a href="{{ url_for('admin.edit_product', product_id=product.id) }}" class="product-action"><i class="fa-solid fa-pen"></i> Edit</a>
-                        <a href="javascript:void(0)" class="product-action product-action--delete" onclick="openDeleteModal(`{{ product.name }}`, `{{ url_for('admin.delete_product', product_id=product.id) }}`)"><i class="fa-solid fa-trash"></i> Delete</a>
+                        <form method="POST" action="{{ url_for('admin.delete_product', product_id=product.id) }}" onsubmit='event.preventDefault(); openDeleteModal({{ product.name|tojson }}, this)'>
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="product-action product-action--delete"><i class="fa-solid fa-trash"></i> Delete</button>
+                        </form>
                     </div>
                 </td>
             </tr>

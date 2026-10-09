@@ -1,7 +1,9 @@
 import os
 
+os.environ['APP_ENV'] = 'testing'
 os.environ['SUPABASE_DATABASE_URL'] = 'sqlite:///:memory:'
 os.environ['SECRET_KEY'] = 'test-secret'
+os.environ['SHIPROCKET_ENABLED'] = '0'
 os.environ['GOKWIK_ENABLED'] = '1'
 os.environ['GOKWIK_STOREFRONT_ENABLED'] = '1'
 os.environ['GOKWIK_ENV'] = 'sandbox'
@@ -11,7 +13,7 @@ os.environ['GOKWIK_APP_SECRET'] = 'test-app-secret'
 
 import pytest
 
-from app import app
+from app import app, get_database_engine_options, get_supabase_database_url
 from models import Category, Coupon, GoKwikCheckoutSession, Order, Product, ProductVariant, Setting, db
 
 
@@ -247,3 +249,25 @@ def test_readiness_command_does_not_print_credentials():
     assert result.exit_code == 0
     assert '[PASS] authenticated_health_route' in result.output
     assert 'test-app-secret' not in result.output
+
+
+def test_production_database_requires_ssl(monkeypatch):
+    monkeypatch.setenv('APP_ENV', 'production')
+    monkeypatch.setenv(
+        'SUPABASE_DATABASE_URL',
+        'postgresql://user:password@pooler.supabase.com:5432/postgres',
+    )
+
+    with pytest.raises(RuntimeError, match='require SSL'):
+        get_supabase_database_url()
+
+    secure_url = (
+        'postgresql://user:password@pooler.supabase.com:5432/postgres?sslmode=require'
+    )
+    monkeypatch.setenv('SUPABASE_DATABASE_URL', secure_url)
+
+    assert get_supabase_database_url() == secure_url
+    assert get_database_engine_options() == {
+        'pool_pre_ping': True,
+        'pool_recycle': 300,
+    }

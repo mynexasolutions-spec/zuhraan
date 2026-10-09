@@ -107,6 +107,10 @@
         color: #c0392b;
         text-decoration: none;
         transition: opacity 0.2s;
+        background: none;
+        border: 0;
+        padding: 0;
+        cursor: pointer;
     }
     .ci-remove:hover { opacity: 0.7; }
 
@@ -431,10 +435,13 @@
                                 <div>
                                     <div class="ci-name">{{ item.variant.product.name }}</div>
                                     <div class="ci-sub">{{ item.variant.size }} &middot; {{ item.variant.product.category.name }}</div>
-                                    <a href="{{ url_for('main.remove_from_cart', variant_id=item.variant.id) }}" class="ci-remove">
-                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                                        Remove
-                                    </a>
+                                    <form method="POST" action="{{ url_for('main.remove_from_cart', variant_id=item.variant.id) }}">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="ci-remove">
+                                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                                            Remove
+                                        </button>
+                                    </form>
                                 </div>
                             </div>
                         </td>

@@ -1,0 +1,19 @@
+[Unit]
+Description=Zuhraan Flask storefront
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/srv/zuhraan
+EnvironmentFile=/srv/zuhraan/.env
+ExecStart=/srv/zuhraan/.venv/bin/gunicorn --workers 2 --bind 127.0.0.1:8000 --timeout 60 --access-logfile - --error-logfile - app:app
+Restart=on-failure
+RestartSec=5
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

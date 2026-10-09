@@ -59,10 +59,19 @@
         border-left: 4px solid var(--amber);
         padding-left: 26px;
     }
-    .account-nav a.logout-link {
+    .account-nav .logout-link {
         color: #e03c3c;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        padding: 12px 30px;
+        background: transparent;
+        border: 0;
+        border-left: 4px solid transparent;
+        cursor: pointer;
     }
-    .account-nav a.logout-link:hover {
+    .account-nav .logout-link:hover {
         background: #fef2f2;
         border-left-color: #e03c3c;
     }
@@ -212,9 +221,12 @@
             </li>
             {% endif %}
             <li style="margin-top: 5px;">
-                <a href="{{ url_for('main.logout') }}" class="logout-link">
-                    <i class="fa-solid fa-arrow-right-from-bracket"></i> Sign Out
-                </a>
+                <form method="POST" action="{{ url_for('main.logout') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="logout-link">
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i> Sign Out
+                    </button>
+                </form>
             </li>
         </ul>
     </aside>
@@ -260,6 +272,7 @@
                             <th>Date</th>
                             <th>Total</th>
                             <th>Status</th>
+                            <th>Tracking</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -270,6 +283,16 @@
                             <td style="font-weight: 600;">₹{{ "{:,.2f}".format(order.total_amount) }}</td>
                             <td>
                                 <span class="status-badge">{{ order.status }}</span>
+                            </td>
+                            <td>
+                                {% if order.awb_number %}
+                                <div>{{ order.shiprocket_status or 'Shipment created' }}</div>
+                                <a href="{{ order.shiprocket_tracking_url or ('https://shiprocket.co/tracking/' ~ order.awb_number) }}" target="_blank" rel="noopener noreferrer">
+                                    Track {{ order.shipping_provider or 'shipment' }}
+                                </a>
+                                {% else %}
+                                <span style="color:#888;">Not shipped</span>
+                                {% endif %}
                             </td>
                         </tr>
                         {% endfor %}

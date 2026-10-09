@@ -56,11 +56,12 @@
                     {{ review.created_at.strftime('%b %d, %Y') }}
                 </td>
                 <td>
-                    <a href="javascript:void(0)" 
-                       class="action-delete" 
-                       onclick="openDeleteModal(`review from {{ review.customer_name }}`, `{{ url_for('admin.delete_review', review_id=review.id) }}`)">
-                        <i class="fa-solid fa-trash-can"></i>
-                    </a>
+                    <form method="POST" action="{{ url_for('admin.delete_review', review_id=review.id) }}" onsubmit='event.preventDefault(); openDeleteModal({{ ("review from " ~ review.customer_name)|tojson }}, this)'>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="action-delete" aria-label="Delete review">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </form>
                 </td>
             </tr>
             {% endfor %}

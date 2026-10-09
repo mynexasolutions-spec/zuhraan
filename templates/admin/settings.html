@@ -96,6 +96,48 @@
         </div>
     </div>
 
+    <!-- SHIPROCKET -->
+    <div class="card">
+        <h3><i class="fa-solid fa-box"></i> Shiprocket Fulfillment</h3>
+        <p style="font-size: 0.95rem; color:var(--text-muted); margin-bottom:20px;">
+            API credentials and the webhook security token are managed through server environment variables. These operational defaults may be changed here.
+        </p>
+        <div class="group">
+            <label>Pickup Location Nickname</label>
+            <input type="text" maxlength="100" name="shiprocket_pickup_location" value="{{ settings.get('shiprocket_pickup_location', '') }}" placeholder="Exact nickname from Shiprocket">
+            <p>This must exactly match a pickup-location nickname in the Shiprocket dashboard.</p>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:14px;">
+            <div class="group">
+                <label>Weight (kg)</label>
+                <input type="number" min="0.01" step="0.01" name="shiprocket_default_weight_kg" value="{{ settings.get('shiprocket_default_weight_kg', '0.5') }}" required>
+            </div>
+            <div class="group">
+                <label>Length (cm)</label>
+                <input type="number" min="0.1" step="0.1" name="shiprocket_default_length_cm" value="{{ settings.get('shiprocket_default_length_cm', '10') }}" required>
+            </div>
+            <div class="group">
+                <label>Breadth (cm)</label>
+                <input type="number" min="0.1" step="0.1" name="shiprocket_default_breadth_cm" value="{{ settings.get('shiprocket_default_breadth_cm', '10') }}" required>
+            </div>
+            <div class="group">
+                <label>Height (cm)</label>
+                <input type="number" min="0.1" step="0.1" name="shiprocket_default_height_cm" value="{{ settings.get('shiprocket_default_height_cm', '10') }}" required>
+            </div>
+        </div>
+        <div class="toggle-row">
+            <div class="toggle-info">
+                <h4>Automatically schedule pickup</h4>
+                <p>After an AWB is assigned, immediately request a Shiprocket pickup.</p>
+            </div>
+            <label class="switch">
+                <input type="checkbox" name="shiprocket_auto_pickup" value="1"
+                       {% if settings.get('shiprocket_auto_pickup', '0') == '1' %}checked{% endif %}>
+                <span class="slider"></span>
+            </label>
+        </div>
+    </div>
+
     <!-- RAZORPAY CONFIGURATION -->
     <div class="card">
         <h3><i class="fa-solid fa-credit-card"></i> Razorpay Configuration</h3>

@@ -1,6 +1,8 @@
 import os
 import json
 import click
+from urllib.parse import parse_qs, urlparse
+
 from dotenv import load_dotenv
 load_dotenv() # Load variables from .env
 
@@ -8,11 +10,14 @@ from flask import Flask, session
 from flask_wtf.csrf import CSRFProtect
 import bleach
 from sqlalchemy import inspect, text
+from sqlalchemy.exc import SQLAlchemyError
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from models import db, Category, User, Setting, AboutPage, ContactMessage, GoKwikCheckoutSession
 from routes.main import main_bp
 from routes.admin import admin_bp
 from routes.gokwik import gokwik_api_bp, gokwik_storefront_bp
+from routes.shiprocket import shiprocket_bp
 from flask_login import LoginManager
 from werkzeug.security import generate_password_hash
 import cloudinary
@@ -23,29 +28,67 @@ app = Flask(__name__)
 csrf = CSRFProtect(app)
 
 
+def environment_flag(name: str, default: bool = False) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {'1', 'true', 'yes', 'on'}
+
+
+def is_production_runtime() -> bool:
+    return os.environ.get('APP_ENV', 'development').strip().lower() == 'production'
+
+
 def get_supabase_database_url() -> str:
     database_url = os.environ.get('SUPABASE_DATABASE_URL')
     if not database_url:
         raise RuntimeError(
-            'SUPABASE_DATABASE_URL is missing. In Supabase, open Connect, choose Session pooler, '
-            'and paste the complete PostgreSQL connection string into .env.'
+            'SUPABASE_DATABASE_URL is missing. In Supabase, open Connect and copy the complete '
+            'PostgreSQL connection string into the deployment environment.'
         )
 
     placeholder_markers = ('<', '>', '[your-password]', 'copied-pooler-host', 'project-ref')
     if any(marker in database_url.lower() for marker in placeholder_markers):
         raise RuntimeError(
-            'SUPABASE_DATABASE_URL still contains a template placeholder. Copy the complete Session '
-            'pooler URL from Supabase Connect; do not type the pooler host manually.'
+            'SUPABASE_DATABASE_URL still contains a template placeholder. Copy the complete pooler '
+            'URL from Supabase Connect; do not type the pooler host manually.'
         )
+
+    if is_production_runtime() and database_url.startswith(('postgresql://', 'postgres://')):
+        parsed_url = urlparse(database_url)
+        query_parameters = parse_qs(parsed_url.query)
+        ssl_mode = query_parameters.get('sslmode', [''])[0].lower()
+        if ssl_mode not in {'require', 'verify-ca', 'verify-full'}:
+            raise RuntimeError(
+                'Production SUPABASE_DATABASE_URL must require SSL. Add sslmode=require '
+                'or use verify-ca/verify-full.'
+            )
 
     return database_url
 
 
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default_secret_key')
+def get_database_engine_options() -> dict[str, object]:
+    return {
+        'pool_pre_ping': True,
+        'pool_recycle': 300,
+    }
+
+
+secret_key = os.environ.get('SECRET_KEY')
+if is_production_runtime() and (not secret_key or len(secret_key) < 32):
+    raise RuntimeError('Production SECRET_KEY must be set and contain at least 32 characters.')
+
+app.config['SECRET_KEY'] = secret_key or 'default_secret_key'
 app.config['SQLALCHEMY_DATABASE_URI'] = get_supabase_database_url()
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_pre_ping': True}
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = get_database_engine_options()
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50 MB max upload size
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = environment_flag(
+    'SESSION_COOKIE_SECURE',
+    is_production_runtime(),
+)
 app.config['SUPABASE_URL'] = os.environ.get('NEXT_PUBLIC_SUPABASE_URL')
 app.config['SUPABASE_ANON_KEY'] = os.environ.get('NEXT_PUBLIC_SUPABASE_ANON_KEY')
 app.config['SUPABASE_SERVICE_ROLE_KEY'] = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
@@ -93,9 +136,40 @@ if app.config['GOKWIK_ENABLED']:
             + ', '.join(missing_gokwik_settings)
         )
 
+app.config['SHIPROCKET_ENABLED'] = environment_flag('SHIPROCKET_ENABLED')
+app.config['SHIPROCKET_EMAIL'] = os.environ.get('SHIPROCKET_EMAIL')
+app.config['SHIPROCKET_PASSWORD'] = os.environ.get('SHIPROCKET_PASSWORD')
+app.config['SHIPROCKET_WEBHOOK_TOKEN'] = os.environ.get('SHIPROCKET_WEBHOOK_TOKEN')
+app.config['SHIPROCKET_PICKUP_LOCATION'] = os.environ.get('SHIPROCKET_PICKUP_LOCATION', '')
+app.config['SHIPROCKET_ORDER_PREFIX'] = os.environ.get('SHIPROCKET_ORDER_PREFIX', 'ZUHRAAN-')
+app.config['SHIPROCKET_DEFAULT_WEIGHT_KG'] = os.environ.get('SHIPROCKET_DEFAULT_WEIGHT_KG', '0.5')
+app.config['SHIPROCKET_DEFAULT_LENGTH_CM'] = os.environ.get('SHIPROCKET_DEFAULT_LENGTH_CM', '10')
+app.config['SHIPROCKET_DEFAULT_BREADTH_CM'] = os.environ.get('SHIPROCKET_DEFAULT_BREADTH_CM', '10')
+app.config['SHIPROCKET_DEFAULT_HEIGHT_CM'] = os.environ.get('SHIPROCKET_DEFAULT_HEIGHT_CM', '10')
+app.config['SHIPROCKET_AUTO_PICKUP'] = environment_flag('SHIPROCKET_AUTO_PICKUP')
+
+if app.config['SHIPROCKET_ENABLED']:
+    required_shiprocket_settings = (
+        'SHIPROCKET_EMAIL',
+        'SHIPROCKET_PASSWORD',
+        'SHIPROCKET_WEBHOOK_TOKEN',
+        'SHIPROCKET_PICKUP_LOCATION',
+    )
+    missing_shiprocket_settings = [
+        name for name in required_shiprocket_settings if not app.config.get(name)
+    ]
+    if missing_shiprocket_settings:
+        raise RuntimeError(
+            'Shiprocket is enabled but required configuration is missing: '
+            + ', '.join(missing_shiprocket_settings)
+        )
+
 app.config['BREVO_API_KEY'] = os.environ.get('BREVO_API_KEY')
 app.config['BREVO_SENDER_EMAIL'] = os.environ.get('BREVO_SENDER_EMAIL')
 app.config['BREVO_SENDER_NAME'] = os.environ.get('BREVO_SENDER_NAME', 'Zuhraan')
+
+if environment_flag('TRUST_PROXY_HEADERS'):
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 # Cloudinary Config
 cloudinary.config(
@@ -124,73 +198,16 @@ def utility_processor():
 db.init_app(app)
 
 
-def ensure_product_optional_columns():
-    """Add optional product controls to databases created before these fields existed."""
-    columns = {
-        'show_top_notes': 'BOOLEAN NOT NULL DEFAULT TRUE',
-        'show_middle_notes': 'BOOLEAN NOT NULL DEFAULT TRUE',
-        'show_base_notes': 'BOOLEAN NOT NULL DEFAULT TRUE',
-        'show_longevity': 'BOOLEAN NOT NULL DEFAULT TRUE',
-        'show_projection': 'BOOLEAN NOT NULL DEFAULT TRUE',
-        'variants_enabled': 'BOOLEAN NOT NULL DEFAULT TRUE',
-    }
-    with app.app_context():
-        inspector = inspect(db.engine)
-        if not inspector.has_table('product'):
-            return
-        existing_columns = {column['name'] for column in inspector.get_columns('product')}
-        missing_columns = {
-            name: definition
-            for name, definition in columns.items()
-            if name not in existing_columns
-        }
-        if not missing_columns:
-            return
-        try:
-            for name, definition in missing_columns.items():
-                db.session.execute(text(f'ALTER TABLE product ADD COLUMN {name} {definition}'))
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-            app.logger.exception('Failed to add optional product columns.')
-            raise
-
-
-ensure_product_optional_columns()
-
-
-def ensure_gokwik_schema():
-    """Create GoKwik persistence and extend legacy order tables safely."""
-    order_columns = {
-        'payment_method': 'VARCHAR(50)',
-        'gokwik_transaction_id': 'VARCHAR(150)',
-        'shipping_provider': 'VARCHAR(100)',
-        'awb_number': 'VARCHAR(150)',
-    }
-    with app.app_context():
-        inspector = inspect(db.engine)
-        if inspector.has_table('order'):
-            existing_columns = {column['name'] for column in inspector.get_columns('order')}
-            missing_columns = {
-                name: definition
-                for name, definition in order_columns.items()
-                if name not in existing_columns
-            }
-            try:
-                for name, definition in missing_columns.items():
-                    db.session.execute(text(f'ALTER TABLE "order" ADD COLUMN {name} {definition}'))
-                db.session.commit()
-            except Exception:
-                db.session.rollback()
-                app.logger.exception('Failed to add GoKwik order columns.')
-                raise
-
-        if inspector.has_table('order'):
-            GoKwikCheckoutSession.__table__.create(bind=db.engine, checkfirst=True)
-
-
-ensure_gokwik_schema()
-
+@app.get('/healthz')
+def health_check():
+    """Return deployment health without exposing configuration or credentials."""
+    try:
+        db.session.execute(text('SELECT 1'))
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.logger.exception('Database health check failed.')
+        return {'status': 'unhealthy'}, 503
+    return {'status': 'ok'}, 200
 
 @app.cli.command('gokwik-readiness')
 def gokwik_readiness():
@@ -216,6 +233,19 @@ def gokwik_readiness():
     else:
         checks['order_columns'] = False
 
+    if inspector.has_table('product'):
+        product_columns = {column['name'] for column in inspector.get_columns('product')}
+        checks['product_columns'] = {
+            'show_top_notes',
+            'show_middle_notes',
+            'show_base_notes',
+            'show_longevity',
+            'show_projection',
+            'variants_enabled',
+        }.issubset(product_columns)
+    else:
+        checks['product_columns'] = False
+
     if app.config.get('GOKWIK_ENABLED'):
         response = app.test_client().get(
             '/api/gokwik/v1/cart/health-check',
@@ -237,6 +267,66 @@ def gokwik_readiness():
     if not all(checks.values()):
         raise click.ClickException(
             'GoKwik is not ready. Resolve the failed checks; no credential values were printed.'
+        )
+
+
+@app.cli.command('shiprocket-readiness')
+@click.option(
+    '--verify-api',
+    is_flag=True,
+    help='Authenticate against the live Shiprocket API without creating a shipment.',
+)
+def shiprocket_readiness(verify_api: bool):
+    """Verify Shiprocket configuration, schema, and optionally API credentials."""
+    from shiprocket_client import ShiprocketClient, ShiprocketRequestError, parcel_dimensions
+
+    checks = {
+        'integration_enabled': bool(app.config.get('SHIPROCKET_ENABLED')),
+        'api_email': bool(app.config.get('SHIPROCKET_EMAIL')),
+        'api_password': bool(app.config.get('SHIPROCKET_PASSWORD')),
+        'webhook_token': bool(app.config.get('SHIPROCKET_WEBHOOK_TOKEN')),
+        'pickup_location': bool(app.config.get('SHIPROCKET_PICKUP_LOCATION')),
+    }
+    try:
+        parcel_dimensions(
+            app.config['SHIPROCKET_DEFAULT_WEIGHT_KG'],
+            app.config['SHIPROCKET_DEFAULT_LENGTH_CM'],
+            app.config['SHIPROCKET_DEFAULT_BREADTH_CM'],
+            app.config['SHIPROCKET_DEFAULT_HEIGHT_CM'],
+        )
+        checks['parcel_defaults'] = True
+    except ValueError:
+        checks['parcel_defaults'] = False
+
+    inspector = inspect(db.engine)
+    if inspector.has_table('order'):
+        order_columns = {column['name'] for column in inspector.get_columns('order')}
+        checks['order_columns'] = {
+            'shiprocket_order_id',
+            'shiprocket_shipment_id',
+            'shiprocket_status',
+            'shiprocket_status_id',
+            'shiprocket_pickup_scheduled',
+            'shiprocket_tracking_url',
+            'shiprocket_tracking_updated_at',
+        }.issubset(order_columns)
+    else:
+        checks['order_columns'] = False
+
+    if verify_api:
+        try:
+            ShiprocketClient().authenticate(force=True)
+            checks['api_authentication'] = True
+        except ShiprocketRequestError:
+            app.logger.exception('Shiprocket readiness authentication failed.')
+            checks['api_authentication'] = False
+
+    for name, passed in checks.items():
+        click.echo(f"[{'PASS' if passed else 'FAIL'}] {name}")
+    click.echo('[INFO] api_writes_performed=False')
+    if not all(checks.values()):
+        raise click.ClickException(
+            'Shiprocket is not ready. Resolve the failed checks; no credential values were printed.'
         )
 
 # Login Manager
@@ -267,12 +357,14 @@ app.register_blueprint(main_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(gokwik_storefront_bp)
 app.register_blueprint(gokwik_api_bp)
+app.register_blueprint(shiprocket_bp)
 
 # Exempt webhook route and AJAX API routes from CSRF
 csrf.exempt("routes.main.payment_webhook")
 csrf.exempt("routes.main.api_validate_coupon")
 csrf.exempt("routes.admin.validate_coupon_api")
 csrf.exempt(gokwik_api_bp)
+csrf.exempt(shiprocket_bp)
 
 # CREATE DB CLI COMMAND
 @app.cli.command('init-db')
@@ -286,8 +378,10 @@ def seed_db():
             db.session.add(Category(name=cat_name))
             
     # Seed Admin User
-    admin_email = os.environ.get('ADMIN_EMAIL', 'admin@zuhraan.com')
-    admin_password = os.environ.get('ADMIN_PASSWORD', 'admin123')
+    admin_email = os.environ.get('ADMIN_EMAIL')
+    admin_password = os.environ.get('ADMIN_PASSWORD')
+    if not admin_email or not admin_password:
+        raise click.ClickException('ADMIN_EMAIL and ADMIN_PASSWORD are required to create an admin.')
     
     admin = User.query.filter_by(role='admin').first()
     if not admin:
@@ -346,7 +440,7 @@ def seed_db():
         db.session.add(default_about)
             
     db.session.commit()
-    print('Database initialized with default categories and admin user (admin@zuhraan.com / admin123)')
+    click.echo('Database initialized.')
 
 
 @app.cli.command('purge-legacy-razorpay-settings')
@@ -367,6 +461,8 @@ def init_contact_messages():
     print('Contact message table is ready.')
 
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-    app.run(port=5005, host='0.0.0.0', debug=True) 
+    app.run(
+        port=int(os.environ.get('PORT', '5005')),
+        host=os.environ.get('FLASK_RUN_HOST', '127.0.0.1'),
+        debug=environment_flag('FLASK_DEBUG'),
+    )

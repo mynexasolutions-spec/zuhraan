@@ -43,6 +43,25 @@ The administrative interface gives complete control over the store's operations.
 
 *Property of Zuhraan Perfumes.*
 
+## VPS deployment
+
+1. Place the application in `/srv/zuhraan`, create `.venv`, and install
+   `requirements.txt` inside it.
+2. Create `/srv/zuhraan/.env` from `.env.example`. Keep it readable only by the
+   service account and never commit it.
+3. Run `python -m pytest -q` and `python -m flask --app app gokwik-readiness`
+   from the virtual environment.
+4. Adapt `deploy/zuhraan.service.example`, install it as a systemd unit, then
+   enable and start the service.
+5. Adapt `deploy/nginx.conf.example`, validate the Nginx configuration, and
+   reload Nginx after the HTTPS certificate paths exist.
+6. Verify `GET https://<store-domain>/healthz` returns HTTP 200 and the GoKwik
+   health route returns 401 without merchant credentials.
+
+Do not run `python app.py` or `flask run` as the public server. Schema changes
+must be applied as migrations before restarting Gunicorn; application startup
+does not create or alter production tables.
+
 ## GoKwik Checkout integration
 
 This custom Flask storefront uses a staged GoKwik integration. Keep the native
@@ -52,12 +71,25 @@ Razorpay/COD checkout active until every GoKwik sandbox flow has passed.
    specification, sandbox Merchant ID, App ID, and App Secret.
 2. Copy `.env.example` to `.env` and fill the GoKwik values locally. Never
    commit `.env` or send credentials through chat or email.
-3. After deploying the server-side endpoints, use `GOKWIK_ENABLED=1` and
+3. Run `migrations/20261009_gokwik.sql` once in the Supabase SQL Editor before
+   deploying the GoKwik-enabled application. It is idempotent and keeps schema
+   changes out of application startup.
+4. After deploying the server-side endpoints, use `GOKWIK_ENABLED=1` and
    `GOKWIK_STOREFRONT_ENABLED=0` while GoKwik validates the public APIs.
-4. Set `GOKWIK_STOREFRONT_ENABLED=1` only after the sandbox APIs and checkout
+5. Set `GOKWIK_STOREFRONT_ENABLED=1` only after the sandbox APIs and checkout
    flow pass end-to-end testing.
-5. Use `GOKWIK_ENV=sandbox` while testing. Production uses a different SDK URL
+6. Use `GOKWIK_ENV=sandbox` while testing. Production uses a different SDK URL
    and must only be enabled after GoKwik confirms the integration.
+
+On a persistent IPv4 VPS, use Supabase's Session pooler URL on port `5432` and
+include `sslmode=require`. Set `APP_ENV=production`, use a random `SECRET_KEY`
+of at least 32 characters, and set `TRUST_PROXY_HEADERS=1` only when Gunicorn is
+reachable exclusively through the single trusted Nginx proxy. Example systemd
+and Nginx configurations are under `deploy/`.
+
+Run the application with Gunicorn, not `python app.py` or `flask run`. The
+unauthenticated `/healthz` endpoint is intended for Nginx or an uptime monitor;
+it reports only `ok` or `unhealthy` and verifies database connectivity.
 
 The integration exposes the following authenticated merchant API base URL:
 
@@ -115,3 +147,27 @@ Before enabling checkout, ask GoKwik to confirm the endpoint base URL and
 payload contract for the merchant account. The implementation intentionally
 rejects unconfigured GoKwik fee lines so a discount or surcharge cannot alter
 the locally verified order total.
+
+## Shiprocket fulfillment
+
+Shiprocket is an optional fulfillment layer for native and GoKwik orders. Credentials
+must belong to a dedicated Shiprocket API user and stay in the deployment environment.
+Apply `migrations/20261010_shiprocket.sql`, then configure the variables documented in
+`.env.example`. Keep `SHIPROCKET_ENABLED=0` until the migration and pickup location are
+ready.
+
+After enabling it, run:
+
+```bash
+flask --app app shiprocket-readiness --verify-api
+```
+
+The command authenticates but does not create a shipment. In Shiprocket, configure the
+tracking webhook as `https://<store-domain>/api/fulfillment/webhook`, set its security
+token to the exact `SHIPROCKET_WEBHOOK_TOKEN` value, and enable it. The URL deliberately
+does not contain Shiprocket-reserved keywords.
+
+Admins create the Shiprocket order and AWB from **Admin > Orders**. Pickup can be
+scheduled explicitly or automatically through **Admin > Settings**. After pickup,
+authenticated webhook events update the local shipped/delivered status and synchronize
+GoKwik orders. Customers see courier, live status, and a tracking link in their account.

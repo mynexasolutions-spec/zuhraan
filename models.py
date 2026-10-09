@@ -108,6 +108,13 @@ class Order(db.Model):
     gokwik_transaction_id = db.Column(db.String(150))
     shipping_provider = db.Column(db.String(100))
     awb_number = db.Column(db.String(150))
+    shiprocket_order_id = db.Column(db.String(64), unique=True)
+    shiprocket_shipment_id = db.Column(db.String(64), unique=True)
+    shiprocket_status = db.Column(db.String(100))
+    shiprocket_status_id = db.Column(db.Integer)
+    shiprocket_pickup_scheduled = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
+    shiprocket_tracking_url = db.Column(db.String(500))
+    shiprocket_tracking_updated_at = db.Column(db.DateTime)
     coupon_id = db.Column(db.Integer, db.ForeignKey('coupon.id'), nullable=True) # To safely increment usage
     
     items = db.relationship('OrderItem', backref='order', lazy=True)

@@ -4,13 +4,25 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from functools import wraps
-from models import db, Product, Category, ProductVariant, Order, User, Setting, Review, Coupon, OfferBanner, OrderItem, AboutPage, ContactMessage
+from models import db, Product, Category, ProductVariant, Order, User, Setting, Review, Coupon, OfferBanner, OrderItem, AboutPage, ContactMessage, utcnow_naive
 import cloudinary.uploader
 from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 import re
+from sqlalchemy.exc import SQLAlchemyError
 from about_cms import ASSET_SPECS, MAX_IMAGE_MB, delete_asset_from_cloudinary, get_assets, get_content, save_assets, save_content, upload_asset
 from gokwik_client import GoKwikRequestError, is_gokwik_payment_method, sync_gokwik_order
+from routes.main import release_order_inventory
+from routes.shiprocket import apply_shiprocket_tracking
+from shiprocket_client import (
+    COD_PAYMENT_METHODS,
+    ShiprocketClient,
+    ShiprocketRequestError,
+    build_shiprocket_order_payload,
+    extract_awb_data,
+    extract_tracking_data,
+    parcel_dimensions,
+)
 
 
 HOME_STORY_IMAGES_KEY = 'home_story_images'
@@ -111,7 +123,10 @@ def _sync_product_variants(product_id):
 
     for variant_id, variant in existing_variants.items():
         if variant_id not in submitted_ids:
-            OrderItem.query.filter_by(variant_id=variant_id).delete(synchronize_session=False)
+            if OrderItem.query.filter_by(variant_id=variant_id).first():
+                raise ValueError(
+                    f'Variant "{variant.size}" belongs to an existing order and cannot be deleted.'
+                )
             db.session.delete(variant)
 
 
@@ -138,7 +153,10 @@ def _sync_single_product_variant(product_id):
     variant.stock_quantity = stock_value
     db.session.add(variant)
     for extra_variant in variants[1:]:
-        OrderItem.query.filter_by(variant_id=extra_variant.id).delete(synchronize_session=False)
+        if OrderItem.query.filter_by(variant_id=extra_variant.id).first():
+            raise ValueError(
+                f'Variant "{extra_variant.size}" belongs to an existing order and cannot be deleted.'
+            )
         db.session.delete(extra_variant)
 
 
@@ -433,19 +451,19 @@ def delete_product_image(product_id, image_index):
     flash('Product image deleted successfully.', 'success')
     return redirect(url_for('admin.edit_product', product_id=product.id))
 
-@admin_bp.route('/product/<int:product_id>/delete')
+@admin_bp.route('/product/<int:product_id>/delete', methods=['POST'])
 @admin_required
 def delete_product(product_id):
     product = Product.query.get_or_404(product_id)
-    
-    # First, get all variant IDs for this product
     variant_ids = [v.id for v in product.variants]
-    
-    # Delete order items that reference these variants
-    if variant_ids:
-        OrderItem.query.filter(OrderItem.variant_id.in_(variant_ids)).delete(synchronize_session=False)
-    
-    # Now delete the product (cascade will delete variants due to cascade="all, delete-orphan")
+    if variant_ids and OrderItem.query.filter(OrderItem.variant_id.in_(variant_ids)).first():
+        flash(
+            'This product belongs to an existing order and cannot be deleted. '
+            'It must be kept to preserve order history.',
+            'error',
+        )
+        return redirect(url_for('admin.manage_products'))
+
     db.session.delete(product)
     db.session.commit()
     flash(f'{product.name} deleted successfully.', 'success')
@@ -550,7 +568,31 @@ def edit_category(category_id):
 @admin_required
 def manage_orders():
     orders = Order.query.order_by(Order.created_at.desc()).all()
-    return render_template('admin/orders.html', orders=orders)
+    settings = {setting.key: setting.value for setting in Setting.query.all()}
+    shiprocket_defaults = {
+        'weight': settings.get(
+            'shiprocket_default_weight_kg',
+            current_app.config.get('SHIPROCKET_DEFAULT_WEIGHT_KG', '0.5'),
+        ),
+        'length': settings.get(
+            'shiprocket_default_length_cm',
+            current_app.config.get('SHIPROCKET_DEFAULT_LENGTH_CM', '10'),
+        ),
+        'breadth': settings.get(
+            'shiprocket_default_breadth_cm',
+            current_app.config.get('SHIPROCKET_DEFAULT_BREADTH_CM', '10'),
+        ),
+        'height': settings.get(
+            'shiprocket_default_height_cm',
+            current_app.config.get('SHIPROCKET_DEFAULT_HEIGHT_CM', '10'),
+        ),
+    }
+    return render_template(
+        'admin/orders.html',
+        orders=orders,
+        shiprocket_enabled=current_app.config.get('SHIPROCKET_ENABLED'),
+        shiprocket_defaults=shiprocket_defaults,
+    )
 
 @admin_bp.route('/orders/<int:order_id>/status', methods=['POST'])
 @admin_required
@@ -560,6 +602,16 @@ def update_order_status(order_id):
     valid_statuses = {'pending', 'processing', 'shipped', 'delivered', 'cancelled'}
     if new_status not in valid_statuses:
         flash('Invalid order status.', 'error')
+        return redirect(url_for('admin.manage_orders'))
+    if order.status == 'cancelled' and new_status != 'cancelled':
+        flash('A cancelled order cannot be reopened because its inventory was restored.', 'error')
+        return redirect(url_for('admin.manage_orders'))
+    if (
+        order.shiprocket_shipment_id
+        and new_status in {'shipped', 'delivered'}
+        and new_status != order.status
+    ):
+        flash('Shiprocket controls shipped and delivered statuses. Refresh tracking instead.', 'error')
         return redirect(url_for('admin.manage_orders'))
 
     shipping_provider = request.form.get('shipping_provider', '').strip()
@@ -572,10 +624,37 @@ def update_order_status(order_id):
             flash('GoKwik shipped/delivered orders require a shipping provider and AWB number.', 'error')
             return redirect(url_for('admin.manage_orders'))
 
-    order.status = new_status
-    order.shipping_provider = shipping_provider or order.shipping_provider
-    order.awb_number = awb_number or order.awb_number
-    db.session.commit()
+    old_status = order.status
+    if (
+        new_status == 'cancelled'
+        and old_status != 'cancelled'
+        and order.shiprocket_order_id
+        and current_app.config.get('SHIPROCKET_ENABLED')
+    ):
+        try:
+            ShiprocketClient().cancel_order(order.shiprocket_order_id)
+        except ShiprocketRequestError:
+            current_app.logger.exception(
+                'Shiprocket cancellation failed; local order was not cancelled.',
+                extra={'order_id': order.id},
+            )
+            flash('Shiprocket rejected the cancellation. The local order was not changed.', 'error')
+            return redirect(url_for('admin.manage_orders'))
+    try:
+        if new_status == 'cancelled' and old_status != 'cancelled':
+            release_order_inventory(order)
+        order.status = new_status
+        order.shipping_provider = shipping_provider or order.shipping_provider
+        order.awb_number = awb_number or order.awb_number
+        db.session.commit()
+    except (RuntimeError, SQLAlchemyError):
+        db.session.rollback()
+        current_app.logger.exception(
+            'Unable to update order status.',
+            extra={'order_id': order_id, 'requested_status': new_status},
+        )
+        flash('The order could not be updated safely. Please try again.', 'error')
+        return redirect(url_for('admin.manage_orders'))
 
     if is_gokwik_payment_method(order.payment_method):
         try:
@@ -602,6 +681,226 @@ def update_order_status(order_id):
     flash(f'Order #{order_id} status updated to {new_status}.', 'success')
     return redirect(url_for('admin.manage_orders'))
 
+
+def _shiprocket_operational_settings() -> dict[str, str]:
+    stored = {
+        setting.key: setting.value
+        for setting in Setting.query.filter(Setting.key.like('shiprocket_%')).all()
+    }
+    return {
+        'pickup_location': stored.get(
+            'shiprocket_pickup_location',
+            current_app.config.get('SHIPROCKET_PICKUP_LOCATION', ''),
+        ),
+        'weight': stored.get(
+            'shiprocket_default_weight_kg',
+            current_app.config.get('SHIPROCKET_DEFAULT_WEIGHT_KG', '0.5'),
+        ),
+        'length': stored.get(
+            'shiprocket_default_length_cm',
+            current_app.config.get('SHIPROCKET_DEFAULT_LENGTH_CM', '10'),
+        ),
+        'breadth': stored.get(
+            'shiprocket_default_breadth_cm',
+            current_app.config.get('SHIPROCKET_DEFAULT_BREADTH_CM', '10'),
+        ),
+        'height': stored.get(
+            'shiprocket_default_height_cm',
+            current_app.config.get('SHIPROCKET_DEFAULT_HEIGHT_CM', '10'),
+        ),
+        'auto_pickup': stored.get(
+            'shiprocket_auto_pickup',
+            '1' if current_app.config.get('SHIPROCKET_AUTO_PICKUP') else '0',
+        ),
+    }
+
+
+def _shiprocket_available() -> bool:
+    if current_app.config.get('SHIPROCKET_ENABLED'):
+        return True
+    flash('Shiprocket is disabled in the server environment.', 'error')
+    return False
+
+
+@admin_bp.post('/orders/<int:order_id>/shiprocket/create')
+@admin_required
+def create_shiprocket_shipment(order_id):
+    if not _shiprocket_available():
+        return redirect(url_for('admin.manage_orders'))
+
+    order = Order.query.filter_by(id=order_id).with_for_update().first_or_404()
+    if order.status in {'cancelled', 'delivered'}:
+        flash('Cancelled or delivered orders cannot create a new shipment.', 'error')
+        return redirect(url_for('admin.manage_orders'))
+    if order.payment_method not in COD_PAYMENT_METHODS and order.payment_status != 'paid':
+        flash('A prepaid order must be paid before it can be shipped.', 'error')
+        return redirect(url_for('admin.manage_orders'))
+
+    settings = _shiprocket_operational_settings()
+    try:
+        dimensions = parcel_dimensions(
+            request.form.get('weight', settings['weight']),
+            request.form.get('length', settings['length']),
+            request.form.get('breadth', settings['breadth']),
+            request.form.get('height', settings['height']),
+        )
+        courier_value = request.form.get('courier_id', '').strip()
+        courier_id = int(courier_value) if courier_value else None
+        if courier_id is not None and courier_id <= 0:
+            raise ValueError('Courier ID must be a positive integer.')
+    except ValueError as error:
+        flash(str(error), 'error')
+        return redirect(url_for('admin.manage_orders'))
+
+    client = ShiprocketClient()
+    try:
+        if not order.shiprocket_shipment_id:
+            payload = build_shiprocket_order_payload(
+                order,
+                settings['pickup_location'],
+                dimensions,
+            )
+            created = client.create_order(payload)
+            shiprocket_order_id = str(created.get('order_id') or '').strip()
+            shipment_id = str(created.get('shipment_id') or '').strip()
+            if not shiprocket_order_id or not shipment_id:
+                raise ShiprocketRequestError(
+                    'Shiprocket created no usable order or shipment identifier.'
+                )
+            order.shiprocket_order_id = shiprocket_order_id
+            order.shiprocket_shipment_id = shipment_id
+            order.shiprocket_status = str(created.get('status') or 'ORDER CREATED')[:100]
+            order.status = 'processing'
+            created_awb = extract_awb_data(created)
+            order.awb_number = created_awb['awb_number'] or order.awb_number
+            order.shipping_provider = created_awb['courier_name'] or order.shipping_provider
+            order.shiprocket_tracking_updated_at = utcnow_naive()
+            db.session.commit()
+
+        if not order.awb_number:
+            assigned = client.assign_awb(order.shiprocket_shipment_id, courier_id)
+            awb_data = extract_awb_data(assigned)
+            if not awb_data['awb_number']:
+                raise ShiprocketRequestError('Shiprocket did not assign an AWB number.')
+            order.awb_number = awb_data['awb_number']
+            order.shipping_provider = awb_data['courier_name'] or order.shipping_provider
+            order.shiprocket_status = 'AWB ASSIGNED'
+            order.shiprocket_tracking_updated_at = utcnow_naive()
+            db.session.commit()
+
+        if settings['auto_pickup'] == '1' and not order.shiprocket_pickup_scheduled:
+            client.schedule_pickup(order.shiprocket_shipment_id)
+            order.shiprocket_pickup_scheduled = True
+            order.shiprocket_status = 'PICKUP SCHEDULED'
+            order.shiprocket_tracking_updated_at = utcnow_naive()
+            db.session.commit()
+    except (ShiprocketRequestError, ValueError):
+        db.session.rollback()
+        current_app.logger.exception(
+            'Unable to advance Shiprocket fulfillment.',
+            extra={'order_id': order_id},
+        )
+        flash(
+            'Shiprocket could not complete this step. Any saved Shiprocket IDs are preserved; retry the action.',
+            'error',
+        )
+        return redirect(url_for('admin.manage_orders'))
+
+    if is_gokwik_payment_method(order.payment_method):
+        try:
+            sync_gokwik_order(
+                order.id,
+                order.status,
+                order.shipping_provider,
+                order.awb_number,
+            )
+        except GoKwikRequestError:
+            current_app.logger.exception(
+                'Shiprocket shipment was created but GoKwik synchronization failed.',
+                extra={'order_id': order.id},
+            )
+            flash('Shipment created, but GoKwik synchronization failed.', 'error')
+            return redirect(url_for('admin.manage_orders'))
+
+    flash(f'Shiprocket shipment for order #{order.id} is ready.', 'success')
+    return redirect(url_for('admin.manage_orders'))
+
+
+@admin_bp.post('/orders/<int:order_id>/shiprocket/pickup')
+@admin_required
+def schedule_shiprocket_pickup(order_id):
+    if not _shiprocket_available():
+        return redirect(url_for('admin.manage_orders'))
+    order = Order.query.get_or_404(order_id)
+    if not order.shiprocket_shipment_id or not order.awb_number:
+        flash('Create the shipment and assign an AWB before scheduling pickup.', 'error')
+        return redirect(url_for('admin.manage_orders'))
+    if order.shiprocket_pickup_scheduled:
+        flash('Pickup is already scheduled for this shipment.', 'success')
+        return redirect(url_for('admin.manage_orders'))
+    try:
+        ShiprocketClient().schedule_pickup(order.shiprocket_shipment_id)
+        order.shiprocket_pickup_scheduled = True
+        order.shiprocket_status = 'PICKUP SCHEDULED'
+        order.shiprocket_tracking_updated_at = utcnow_naive()
+        db.session.commit()
+    except ShiprocketRequestError:
+        db.session.rollback()
+        current_app.logger.exception(
+            'Unable to schedule Shiprocket pickup.',
+            extra={'order_id': order_id},
+        )
+        flash('Shiprocket could not schedule the pickup. Try again.', 'error')
+        return redirect(url_for('admin.manage_orders'))
+    flash(f'Pickup scheduled for order #{order.id}.', 'success')
+    return redirect(url_for('admin.manage_orders'))
+
+
+@admin_bp.post('/orders/<int:order_id>/shiprocket/refresh')
+@admin_required
+def refresh_shiprocket_tracking(order_id):
+    if not _shiprocket_available():
+        return redirect(url_for('admin.manage_orders'))
+    order = Order.query.get_or_404(order_id)
+    if not order.awb_number:
+        flash('This order has no Shiprocket AWB to track.', 'error')
+        return redirect(url_for('admin.manage_orders'))
+    try:
+        tracking = extract_tracking_data(ShiprocketClient().track_awb(order.awb_number))
+        status_changed = apply_shiprocket_tracking(order, {
+            'current_status': tracking['status'],
+            'current_status_id': tracking['status_id'],
+            'courier_name': tracking['courier_name'],
+            'awb': tracking['awb_number'] or order.awb_number,
+            'track_url': tracking['tracking_url'],
+        })
+        db.session.commit()
+    except ShiprocketRequestError:
+        db.session.rollback()
+        current_app.logger.exception(
+            'Unable to refresh Shiprocket tracking.',
+            extra={'order_id': order_id},
+        )
+        flash('Shiprocket tracking could not be refreshed. Try again.', 'error')
+        return redirect(url_for('admin.manage_orders'))
+    if status_changed and is_gokwik_payment_method(order.payment_method):
+        try:
+            sync_gokwik_order(
+                order.id,
+                order.status,
+                order.shipping_provider,
+                order.awb_number,
+            )
+        except GoKwikRequestError:
+            current_app.logger.exception(
+                'Shiprocket tracking was refreshed but GoKwik synchronization failed.',
+                extra={'order_id': order.id},
+            )
+            flash('Tracking refreshed, but GoKwik synchronization failed.', 'error')
+            return redirect(url_for('admin.manage_orders'))
+    flash(f'Tracking refreshed for order #{order.id}.', 'success')
+    return redirect(url_for('admin.manage_orders'))
+
 # SETTINGS (Shipping, etc)
 def _parse_shipping_amount(value, label):
     try:
@@ -618,13 +917,51 @@ def _parse_shipping_amount(value, label):
 @admin_bp.route('/settings', methods=['GET', 'POST'])
 @admin_required
 def manage_settings():
-    ALLOWED_SETTINGS = {'shipping_charge', 'free_shipping_threshold', 'payment_cod_enabled', 'payment_online_enabled'}
+    ALLOWED_SETTINGS = {
+        'shipping_charge',
+        'free_shipping_threshold',
+        'payment_cod_enabled',
+        'payment_online_enabled',
+        'shiprocket_pickup_location',
+        'shiprocket_default_weight_kg',
+        'shiprocket_default_length_cm',
+        'shiprocket_default_breadth_cm',
+        'shiprocket_default_height_cm',
+        'shiprocket_auto_pickup',
+    }
     if request.method == 'POST':
+        current_shiprocket_settings = _shiprocket_operational_settings()
         try:
             shipping_settings = {
                 'shipping_charge': _parse_shipping_amount(request.form.get('shipping_charge'), 'Standard shipping charge'),
                 'free_shipping_threshold': _parse_shipping_amount(request.form.get('free_shipping_threshold'), 'Free shipping threshold'),
             }
+            shiprocket_dimensions = parcel_dimensions(
+                request.form.get(
+                    'shiprocket_default_weight_kg',
+                    current_shiprocket_settings['weight'],
+                ),
+                request.form.get(
+                    'shiprocket_default_length_cm',
+                    current_shiprocket_settings['length'],
+                ),
+                request.form.get(
+                    'shiprocket_default_breadth_cm',
+                    current_shiprocket_settings['breadth'],
+                ),
+                request.form.get(
+                    'shiprocket_default_height_cm',
+                    current_shiprocket_settings['height'],
+                ),
+            )
+            pickup_location = request.form.get(
+                'shiprocket_pickup_location',
+                current_shiprocket_settings['pickup_location'],
+            ).strip()
+            if len(pickup_location) > 100:
+                raise ValueError('Shiprocket pickup location must not exceed 100 characters.')
+            if current_app.config.get('SHIPROCKET_ENABLED') and not pickup_location:
+                raise ValueError('Shiprocket pickup location is required while Shiprocket is enabled.')
         except ValueError as error:
             flash(str(error), 'error')
             return redirect(url_for('admin.manage_settings'))
@@ -633,6 +970,12 @@ def manage_settings():
             **shipping_settings,
             'payment_cod_enabled': '1' if request.form.get('payment_cod_enabled') == '1' else '0',
             'payment_online_enabled': '1' if request.form.get('payment_online_enabled') == '1' else '0',
+            'shiprocket_pickup_location': pickup_location,
+            'shiprocket_default_weight_kg': str(shiprocket_dimensions['weight']),
+            'shiprocket_default_length_cm': str(shiprocket_dimensions['length']),
+            'shiprocket_default_breadth_cm': str(shiprocket_dimensions['breadth']),
+            'shiprocket_default_height_cm': str(shiprocket_dimensions['height']),
+            'shiprocket_auto_pickup': '1' if request.form.get('shiprocket_auto_pickup') == '1' else '0',
         }
         for key, value in submitted_settings.items():
             if key in ALLOWED_SETTINGS:
@@ -645,6 +988,13 @@ def manage_settings():
         flash('Settings updated', 'success')
         
     all_settings = {s.key: s.value for s in Setting.query.all()}
+    shiprocket_defaults = _shiprocket_operational_settings()
+    all_settings.setdefault('shiprocket_pickup_location', shiprocket_defaults['pickup_location'])
+    all_settings.setdefault('shiprocket_default_weight_kg', shiprocket_defaults['weight'])
+    all_settings.setdefault('shiprocket_default_length_cm', shiprocket_defaults['length'])
+    all_settings.setdefault('shiprocket_default_breadth_cm', shiprocket_defaults['breadth'])
+    all_settings.setdefault('shiprocket_default_height_cm', shiprocket_defaults['height'])
+    all_settings.setdefault('shiprocket_auto_pickup', shiprocket_defaults['auto_pickup'])
     return render_template('admin/settings.html', settings=all_settings)
 
 @admin_bp.route('/reviews')
@@ -653,7 +1003,7 @@ def manage_reviews():
     reviews = Review.query.order_by(Review.created_at.desc()).all()
     return render_template('admin/reviews.html', reviews=reviews)
 
-@admin_bp.route('/review/<int:review_id>/delete')
+@admin_bp.route('/review/<int:review_id>/delete', methods=['POST'])
 @admin_required
 def delete_review(review_id):
     review = Review.query.get_or_404(review_id)
@@ -761,7 +1111,7 @@ def manage_offers():
     offers = OfferBanner.query.order_by(OfferBanner.created_at.desc()).all()
     return render_template('admin/offers.html', offers=offers)
 
-@admin_bp.route('/offers/<int:offer_id>/delete')
+@admin_bp.route('/offers/<int:offer_id>/delete', methods=['POST'])
 @admin_required
 def delete_offer(offer_id):
     offer = OfferBanner.query.get_or_404(offer_id)

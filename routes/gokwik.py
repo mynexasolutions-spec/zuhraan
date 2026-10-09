@@ -11,7 +11,7 @@ from flask_login import current_user
 from sqlalchemy.exc import SQLAlchemyError
 
 from models import Coupon, GoKwikCheckoutSession, Order, OrderItem, ProductVariant, Setting, User, db
-from routes.main import _validate_coupon, calculate_shipping
+from routes.main import _validate_coupon, calculate_shipping, release_order_inventory
 
 
 gokwik_storefront_bp = Blueprint('gokwik_storefront', __name__)
@@ -711,11 +711,27 @@ def update_order_status():
     if not merchant_order_id or order_status not in {'pending', 'processing', 'shipped', 'delivered', 'cancelled'}:
         raise GoKwikAPIError('gc_invalid_order_status', 'Invalid order status provided.', 400)
 
-    order = Order.query.filter_by(id=merchant_order_id).first()
+    order = Order.query.filter_by(id=merchant_order_id).with_for_update().first()
     checkout = GoKwikCheckoutSession.query.filter_by(order_id=merchant_order_id).first()
     if not order or not checkout:
         raise GoKwikAPIError('gc_order_not_found', 'Order not found.', 404)
     old_status = order.status
+    if old_status == 'cancelled' and order_status != 'cancelled':
+        raise GoKwikAPIError(
+            'gc_invalid_order_transition',
+            'A cancelled order cannot be reopened because its inventory was restored.',
+            409,
+        )
+    if order_status == 'cancelled' and old_status != 'cancelled':
+        try:
+            release_order_inventory(order)
+        except RuntimeError as error:
+            db.session.rollback()
+            raise GoKwikAPIError(
+                'gc_inventory_restore_failed',
+                'Order inventory could not be restored safely.',
+                409,
+            ) from error
     order.status = order_status
     db.session.commit()
     return jsonify({
