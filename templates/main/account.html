@@ -152,31 +152,257 @@
         background: var(--amber);
     }
     
-    /* Table Styles */
-    .order-table {
-        width: 100%;
-        border-collapse: collapse;
-        text-align: left;
+    .order-list {
+        display: grid;
+        gap: 24px;
     }
-    .order-table th {
-        padding: 15px 0;
-        font-size: 0.75rem;
+    .mobile-orders-intro {
+        display: none;
+    }
+    .customer-order-card {
+        border: 1px solid #eadfcb;
+        border-radius: 16px;
+        overflow: hidden;
+        background: #fffdf9;
+    }
+    .customer-order-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 24px;
+        padding: 24px;
+        border-bottom: 1px solid #eee3d2;
+    }
+    .customer-order-id {
+        color: var(--amber);
+        font-size: 0.82rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
         text-transform: uppercase;
+    }
+    .customer-order-status {
+        margin: 5px 0;
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 1.8rem;
+        line-height: 1;
+    }
+    .customer-order-date {
+        color: #6b7280;
+        font-size: 0.9rem;
+    }
+    .customer-order-total {
+        font-size: 1.2rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+    .customer-order-items {
+        display: grid;
+        gap: 12px;
+        padding: 20px 24px 0;
+    }
+    .customer-order-item {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+    .customer-order-item img,
+    .customer-order-item-placeholder {
+        width: 58px;
+        height: 58px;
+        border-radius: 10px;
+        border: 1px solid #eee3d2;
+        object-fit: cover;
+        background: #f7f2e8;
+    }
+    .customer-order-item-placeholder {
+        display: grid;
+        place-items: center;
+        color: var(--amber);
+        font-size: 1.25rem;
+    }
+    .customer-order-item strong,
+    .customer-order-item span {
+        display: block;
+    }
+    .customer-order-item span {
+        color: #6b7280;
+        font-size: 0.88rem;
+    }
+    .fulfillment-panel,
+    .shipment-panel {
+        margin: 20px 24px 24px;
+        padding: 20px;
+        border: 1px solid #eadfcb;
+        border-radius: 12px;
+        background: #fff;
+    }
+    .fulfillment-heading,
+    .shipment-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 22px;
+    }
+    .fulfillment-heading h3,
+    .shipment-heading h3 {
+        margin: 0;
+        color: var(--amber);
+        font-size: 0.78rem;
         letter-spacing: 0.1em;
-        color: var(--muted);
-        border-bottom: 1px solid #eee;
-    }
-    .order-table td {
-        padding: 20px 0;
-        border-bottom: 1px solid #f9f9f9;
-    }
-    .status-badge {
-        background: #f1f1f1;
-        padding: 6px 14px;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 600;
         text-transform: uppercase;
+    }
+    .fulfillment-badge {
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: #f4ead6;
+        color: #8a5b12;
+        font-size: 0.72rem;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+    .fulfillment-badge.cancelled {
+        background: #fee2e2;
+        color: #b91c1c;
+    }
+    .fulfillment-progress {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(84px, 1fr));
+        overflow-x: auto;
+        padding: 4px 0 2px;
+    }
+    .fulfillment-step {
+        position: relative;
+        min-width: 84px;
+        padding: 25px 10px 0 0;
+    }
+    .fulfillment-step::before {
+        content: '';
+        position: absolute;
+        top: 7px;
+        left: 8px;
+        right: 0;
+        height: 2px;
+        background: #dedede;
+    }
+    .fulfillment-step:last-child::before {
+        display: none;
+    }
+    .fulfillment-dot {
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 1;
+        width: 16px;
+        height: 16px;
+        border: 3px solid #fff;
+        border-radius: 50%;
+        box-shadow: 0 0 0 1px #cfcfcf;
+        background: #cfcfcf;
+    }
+    .fulfillment-step.complete::before,
+    .fulfillment-step.complete .fulfillment-dot {
+        background: var(--amber);
+    }
+    .fulfillment-step.current .fulfillment-dot {
+        box-shadow: 0 0 0 4px rgba(193, 134, 48, 0.18);
+    }
+    .fulfillment-step strong {
+        display: block;
+        font-size: 0.78rem;
+        line-height: 1.25;
+    }
+    .fulfillment-step small {
+        display: block;
+        margin-top: 5px;
+        color: #8a8a8a;
+        font-size: 0.68rem;
+        line-height: 1.3;
+    }
+    .shipment-brand {
+        margin: 4px 0 0;
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 1.45rem;
+        font-weight: 700;
+    }
+    .live-badge {
+        padding: 6px 11px;
+        border-radius: 999px;
+        background: #dcfce7;
+        color: #166534;
+        font-size: 0.72rem;
+        font-weight: 800;
+    }
+    .live-badge.pending {
+        background: #f3f4f6;
+        color: #6b7280;
+    }
+    .shipment-status-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 16px;
+        padding: 14px;
+        border-radius: 10px;
+        background: #faf8f3;
+    }
+    .shipment-status-row strong {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+    }
+    .shipment-status-row small {
+        display: block;
+        color: #777;
+        text-align: right;
+    }
+    .shipment-details {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+    .shipment-detail {
+        padding: 14px;
+        border: 1px solid #ece7dd;
+        border-radius: 10px;
+        background: #fcfcfa;
+    }
+    .shipment-detail span {
+        display: block;
+        margin-bottom: 5px;
+        color: #777;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+    .shipment-detail strong {
+        overflow-wrap: anywhere;
+        font-size: 0.9rem;
+    }
+    .track-shipment-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 16px;
+        padding: 10px 16px;
+        border-radius: 999px;
+        background: #111;
+        color: #fff;
+        font-size: 0.82rem;
+        font-weight: 700;
+        text-decoration: none;
+    }
+    .track-shipment-link:hover {
+        background: var(--amber);
+    }
+    .tracking-pending-note {
+        margin-top: 16px;
+        padding: 14px 16px;
+        border: 1px solid #ece7dd;
+        border-radius: 10px;
+        color: #6b7280;
+        font-size: 0.86rem;
+        line-height: 1.5;
     }
 
     @media (max-width: 900px) {
@@ -186,6 +412,248 @@
         }
         .form-grid {
             grid-template-columns: 1fr;
+        }
+        .shipment-details {
+            grid-template-columns: 1fr;
+        }
+    }
+    @media (max-width: 600px) {
+        .account-wrapper.orders-mobile-view {
+            display: block;
+            max-width: none;
+            margin: 0;
+            padding: 44px 16px 64px;
+            background: transparent;
+        }
+        .orders-mobile-view .account-sidebar {
+            display: none;
+        }
+        .orders-mobile-view .account-content {
+            padding: 0;
+            border-radius: 0;
+            background: transparent;
+            box-shadow: none;
+            color: var(--text-color);
+        }
+        .orders-mobile-view #orders .section-title {
+            display: none;
+        }
+        .mobile-orders-intro {
+            display: block;
+            margin-bottom: 26px;
+            text-align: center;
+        }
+        .mobile-orders-intro span {
+            display: block;
+            margin-bottom: 7px;
+            color: var(--amber);
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+        }
+        .mobile-orders-intro h1 {
+            margin: 0;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 2.65rem;
+            font-weight: 600;
+            line-height: 1;
+        }
+        .mobile-orders-intro p {
+            max-width: 310px;
+            margin: 8px auto 0;
+            color: #666;
+            font-size: 0.88rem;
+            line-height: 1.45;
+        }
+        .orders-mobile-view .order-list {
+            gap: 34px;
+        }
+        .orders-mobile-view .customer-order-card {
+            overflow: visible;
+            border: 0;
+            border-radius: 0;
+            background: transparent;
+        }
+        .orders-mobile-view .customer-order-header,
+        .orders-mobile-view .customer-order-items,
+        .orders-mobile-view .fulfillment-panel,
+        .orders-mobile-view .shipment-panel,
+        .orders-mobile-view .tracking-pending-note {
+            border: 1px solid #eadfcb;
+            border-radius: 14px;
+            background: #fff;
+        }
+        .orders-mobile-view .customer-order-header {
+            align-items: flex-start;
+            padding: 22px;
+        }
+        .orders-mobile-view .customer-order-id {
+            color: var(--amber);
+            font-size: 0.72rem;
+            letter-spacing: 0.04em;
+        }
+        .orders-mobile-view .customer-order-status {
+            margin: 5px 0 8px;
+            color: var(--text-color);
+            font-family: 'Jost', sans-serif;
+            font-size: 1.75rem;
+            font-weight: 700;
+        }
+        .orders-mobile-view .customer-order-date {
+            color: #666;
+        }
+        .orders-mobile-view .customer-order-total {
+            color: var(--amber);
+            font-size: 1.25rem;
+        }
+        .orders-mobile-view .customer-order-items {
+            margin-top: 14px;
+            padding: 12px 20px;
+        }
+        .orders-mobile-view .customer-order-item + .customer-order-item {
+            padding-top: 12px;
+            border-top: 1px solid #eee;
+        }
+        .orders-mobile-view .customer-order-item img,
+        .orders-mobile-view .customer-order-item-placeholder {
+            width: 78px;
+            height: 78px;
+            flex: 0 0 78px;
+            border-color: #eee3d2;
+            background: #f7f2e8;
+        }
+        .orders-mobile-view .customer-order-item strong {
+            color: var(--text-color);
+            font-size: 1.05rem;
+            line-height: 1.25;
+        }
+        .orders-mobile-view .customer-order-item span {
+            margin-top: 3px;
+            color: #666;
+        }
+        .orders-mobile-view .fulfillment-panel,
+        .orders-mobile-view .shipment-panel {
+            margin: 14px 0 0;
+            padding: 22px;
+        }
+        .orders-mobile-view .fulfillment-heading,
+        .orders-mobile-view .shipment-heading {
+            align-items: flex-start;
+            margin-bottom: 26px;
+        }
+        .orders-mobile-view .fulfillment-heading h3,
+        .orders-mobile-view .shipment-heading h3 {
+            max-width: 155px;
+            color: var(--amber);
+            font-size: 0.84rem;
+            line-height: 1.15;
+        }
+        .orders-mobile-view .fulfillment-badge {
+            max-width: 110px;
+            padding: 7px 11px;
+            background: #f4ead6;
+            color: #8a5b12;
+            line-height: 1.15;
+            text-align: center;
+        }
+        .orders-mobile-view .fulfillment-progress {
+            display: block;
+            overflow: visible;
+            padding: 0;
+        }
+        .orders-mobile-view .fulfillment-step {
+            min-width: 0;
+            min-height: 66px;
+            padding: 0 0 22px 34px;
+        }
+        .orders-mobile-view .fulfillment-step:last-child {
+            min-height: 0;
+            padding-bottom: 0;
+        }
+        .orders-mobile-view .fulfillment-step::before {
+            top: 15px;
+            bottom: -1px;
+            left: 7px;
+            right: auto;
+            width: 2px;
+            height: auto;
+        }
+        .orders-mobile-view .fulfillment-dot {
+            top: 2px;
+            left: 0;
+            border-color: #fff;
+            background: #cfcfcf;
+            box-shadow: none;
+        }
+        .orders-mobile-view .fulfillment-step.complete::before,
+        .orders-mobile-view .fulfillment-step.complete .fulfillment-dot {
+            background: var(--amber);
+        }
+        .orders-mobile-view .fulfillment-step.current .fulfillment-dot {
+            box-shadow: 0 0 0 4px rgba(193, 134, 48, 0.18);
+        }
+        .orders-mobile-view .fulfillment-step strong {
+            color: var(--text-color);
+            font-size: 0.85rem;
+        }
+        .orders-mobile-view .fulfillment-step small {
+            margin-top: 4px;
+            color: #777;
+            font-size: 0.74rem;
+        }
+        .orders-mobile-view .shipment-brand {
+            max-width: 180px;
+            color: var(--text-color);
+            font-family: 'Jost', sans-serif;
+            font-size: 1.35rem;
+            line-height: 1.05;
+        }
+        .orders-mobile-view .live-badge {
+            background: #dcfce7;
+            color: #166534;
+            text-transform: uppercase;
+        }
+        .orders-mobile-view .shipment-status-row {
+            align-items: flex-start;
+            flex-direction: column;
+            padding: 14px;
+            border: 1px solid #ece7dd;
+            background: #faf8f3;
+        }
+        .orders-mobile-view .shipment-status-row strong {
+            padding: 7px 11px;
+            border-radius: 999px;
+            background: #f4ead6;
+            color: #8a5b12;
+        }
+        .orders-mobile-view .shipment-status-row small {
+            color: #777;
+            text-align: left;
+        }
+        .orders-mobile-view .shipment-details {
+            grid-template-columns: 1fr;
+        }
+        .orders-mobile-view .shipment-detail {
+            border-color: #ece7dd;
+            background: #fcfcfa;
+        }
+        .orders-mobile-view .shipment-detail span {
+            color: #777;
+        }
+        .orders-mobile-view .shipment-detail strong {
+            color: var(--text-color);
+        }
+        .orders-mobile-view .track-shipment-link {
+            width: 100%;
+            justify-content: center;
+            background: #111;
+            color: #fff;
+        }
+        .orders-mobile-view .tracking-pending-note {
+            margin: 14px 0 0;
+            padding: 18px 20px;
+            color: #666;
         }
     }
 </style>
@@ -261,43 +729,127 @@
 
         <!-- MY ORDERS -->
         <div id="orders" class="content-section">
+            <div class="mobile-orders-intro">
+                <span>Your purchases</span>
+                <h1>My Orders</h1>
+                <p>Track your purchases and view delivery updates from Shiprocket.</p>
+            </div>
             <h1 class="section-title">Order History</h1>
             {% if not orders %}
                 <p style="color: var(--muted); padding: 40px 0; text-align: center; border: 1px dashed #eee; border-radius: 12px;">Your fragrance journey is just beginning. No orders yet.</p>
             {% else %}
-                <table class="order-table">
-                    <thead>
-                        <tr>
-                            <th>Order ID</th>
-                            <th>Date</th>
-                            <th>Total</th>
-                            <th>Status</th>
-                            <th>Tracking</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for order in orders %}
-                        <tr>
-                            <td style="font-weight: 600;">#{{ order.id }}</td>
-                            <td style="color: #666;">{{ order.created_at.strftime('%b %d, %Y') }}</td>
-                            <td style="font-weight: 600;">₹{{ "{:,.2f}".format(order.total_amount) }}</td>
-                            <td>
-                                <span class="status-badge">{{ order.status }}</span>
-                            </td>
-                            <td>
-                                {% if order.awb_number %}
-                                <div>{{ order.shiprocket_status or 'Shipment created' }}</div>
-                                <a href="{{ order.shiprocket_tracking_url or ('https://shiprocket.co/tracking/' ~ order.awb_number) }}" target="_blank" rel="noopener noreferrer">
-                                    Track {{ order.shipping_provider or 'shipment' }}
-                                </a>
+                <div class="order-list">
+                    {% for order in orders %}
+                    {% set fulfillment = fulfillment_by_order[order.id] %}
+                    <article class="customer-order-card">
+                        <header class="customer-order-header">
+                            <div>
+                                <div class="customer-order-id">Order #{{ order.id }}</div>
+                                <h2 class="customer-order-status">{{ fulfillment.status }}</h2>
+                                <div class="customer-order-date">Placed {{ order.created_at.strftime('%d %b %Y') }}</div>
+                            </div>
+                            <div class="customer-order-total">&#8377;{{ "{:,.2f}".format(order.total_amount) }}</div>
+                        </header>
+
+                        <div class="customer-order-items">
+                            {% for item in order.items %}
+                            <div class="customer-order-item">
+                                {% if item.variant and item.variant.product and item.variant.product.images %}
+                                    {% set product_image = item.variant.product.images.split(',')[0].strip() %}
+                                    <img src="{{ get_image_url(product_image) }}" alt="{{ item.variant.product.name }}">
                                 {% else %}
-                                <span style="color:#888;">Not shipped</span>
+                                    <div class="customer-order-item-placeholder"><i class="fa-solid fa-box"></i></div>
                                 {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                                <div>
+                                    <strong>{{ item.variant.product.name if item.variant and item.variant.product else 'Product' }}</strong>
+                                    <span>
+                                        Quantity {{ item.quantity }}
+                                        {% if item.variant and item.variant.size %}&middot; {{ item.variant.size }}{% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <section class="fulfillment-panel" aria-label="Fulfillment progress for order {{ order.id }}">
+                            <div class="fulfillment-heading">
+                                <h3>Live fulfillment progress</h3>
+                                <span class="fulfillment-badge{% if fulfillment.cancelled %} cancelled{% endif %}">
+                                    {{ fulfillment.status }}
+                                </span>
+                            </div>
+                            <div class="fulfillment-progress">
+                                {% for step in fulfillment.steps %}
+                                <div class="fulfillment-step{% if step.complete and not fulfillment.cancelled %} complete{% endif %}{% if step.current and not fulfillment.cancelled %} current{% endif %}">
+                                    <span class="fulfillment-dot" aria-hidden="true"></span>
+                                    <strong>{{ step.label }}</strong>
+                                    <small>{{ step.detail }}</small>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </section>
+
+                        <section class="shipment-panel" aria-label="Shipment tracking for order {{ order.id }}">
+                            <div class="shipment-heading">
+                                <div>
+                                    <h3>Shipment tracking</h3>
+                                    <div class="shipment-brand">Powered by Shiprocket</div>
+                                </div>
+                                <span class="live-badge{% if not fulfillment.live %} pending{% endif %}">
+                                    {{ 'Live' if fulfillment.live else 'Pending' }}
+                                </span>
+                            </div>
+
+                            <div class="shipment-status-row">
+                                <strong>{{ fulfillment.status }}</strong>
+                                <small>
+                                    {% if fulfillment.latest_update %}
+                                        Updated {{ fulfillment.latest_update.strftime('%d %b %Y, %I:%M %p') }}
+                                    {% elif fulfillment.live %}
+                                        Awaiting carrier scan
+                                    {% else %}
+                                        Shipment has not been created yet
+                                    {% endif %}
+                                </small>
+                            </div>
+
+                            <div class="shipment-details">
+                                <div class="shipment-detail">
+                                    <span>Shiprocket order ID</span>
+                                    <strong>{{ order.shiprocket_order_id or 'Pending assignment' }}</strong>
+                                </div>
+                                <div class="shipment-detail">
+                                    <span>Shipment ID</span>
+                                    <strong>{{ order.shiprocket_shipment_id or 'Pending assignment' }}</strong>
+                                </div>
+                                <div class="shipment-detail">
+                                    <span>Courier</span>
+                                    <strong>{{ order.shipping_provider or 'Pending assignment' }}</strong>
+                                </div>
+                                <div class="shipment-detail">
+                                    <span>AWB number</span>
+                                    <strong>{{ order.awb_number or 'Pending assignment' }}</strong>
+                                </div>
+                            </div>
+
+                            {% if order.awb_number %}
+                            <a class="track-shipment-link" href="{{ order.shiprocket_tracking_url or ('https://shiprocket.co/tracking/' ~ order.awb_number) }}" target="_blank" rel="noopener noreferrer">
+                                <i class="fa-solid fa-location-dot"></i>
+                                Track shipment
+                            </a>
+                            {% endif %}
+                        </section>
+                        {% if not order.awb_number %}
+                            <div class="tracking-pending-note">
+                                Tracking will be available once Shiprocket assigns an AWB number.
+                            </div>
+                        {% endif %}
+                    </article>
+                    {% endfor %}
+                </div>
+                {#
+                            <td style="font-weight: 600;">₹{{ "{:,.2f}".format(order.total_amount) }}</td>
+                #}
             {% endif %}
         </div>
 
@@ -365,6 +917,7 @@
     document.addEventListener('DOMContentLoaded', () => {
         const links = document.querySelectorAll('.nav-link');
         const sections = document.querySelectorAll('.content-section');
+        const accountWrapper = document.querySelector('.account-wrapper');
 
         // Check hash to open specific tab, default to dashboard
         const hash = window.location.hash || '#dashboard';
@@ -396,6 +949,10 @@
                 links[0].classList.add('active');
                 sections[0].classList.add('active');
             }
+            accountWrapper?.classList.toggle(
+                'orders-mobile-view',
+                activeSection?.id === 'orders',
+            );
         }
     });
 </script>

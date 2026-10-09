@@ -22,6 +22,90 @@ INVENTORY_TRACKED_PAYMENT_METHODS = frozenset({
     'cod',
     'gokwik_prepaid',
 })
+FULFILLMENT_STEPS = (
+    'Order placed',
+    'Confirmed',
+    'Packed',
+    'Shipped',
+    'Out for delivery',
+    'Delivered',
+)
+
+
+def _fulfillment_stage(order: Order) -> int:
+    """Return the furthest customer-facing fulfillment stage reached by an order."""
+    local_status = str(order.status or '').strip().upper()
+    carrier_status = str(order.shiprocket_status or '').strip().upper()
+
+    if (
+        local_status == 'DELIVERED'
+        or ('DELIVERED' in carrier_status and 'RTO' not in carrier_status)
+    ):
+        return 5
+    if 'OUT FOR DELIVERY' in carrier_status:
+        return 4
+    if local_status == 'SHIPPED' or any(
+        marker in carrier_status
+        for marker in (
+            'PICKED UP',
+            'IN TRANSIT',
+            'SHIPPED',
+            'REACHED DESTINATION',
+            'DISPATCHED',
+            'RTO',
+        )
+    ):
+        return 3
+    if order.awb_number or order.shiprocket_pickup_scheduled or any(
+        marker in carrier_status
+        for marker in ('PACKED', 'MANIFEST', 'READY TO SHIP', 'PICKUP SCHEDULED', 'AWB')
+    ):
+        return 2
+    if order.shiprocket_shipment_id or local_status == 'PROCESSING' or any(
+        marker in carrier_status
+        for marker in ('NEW', 'ORDER CREATED', 'CONFIRMED', 'PROCESSING')
+    ):
+        return 1
+    return 0
+
+
+def _fulfillment_view(order: Order) -> dict[str, object]:
+    """Build accurate presentation data for the authenticated customer's order card."""
+    active_stage = _fulfillment_stage(order)
+    latest_update = order.shiprocket_tracking_updated_at
+    steps: list[dict[str, object]] = []
+    for index, label in enumerate(FULFILLMENT_STEPS):
+        if index == 0:
+            detail = order.created_at.strftime('%d %b %Y, %I:%M %p')
+        elif index < active_stage:
+            detail = 'Completed'
+        elif index == active_stage:
+            detail = (
+                latest_update.strftime('%d %b %Y, %I:%M %p')
+                if latest_update
+                else 'Current stage'
+            )
+        else:
+            detail = 'Awaiting update'
+        steps.append({
+            'label': label,
+            'detail': detail,
+            'complete': index <= active_stage,
+            'current': index == active_stage,
+        })
+
+    raw_status = str(order.shiprocket_status or order.status or 'Order placed').strip()
+    display_status = raw_status.replace('_', ' ').title()
+    if raw_status.upper() in {'AWB ASSIGNED', 'RTO'}:
+        display_status = raw_status.upper()
+
+    return {
+        'steps': steps,
+        'status': display_status,
+        'cancelled': str(order.status or '').lower() == 'cancelled',
+        'live': bool(order.shiprocket_shipment_id),
+        'latest_update': latest_update,
+    }
 
 
 def safe_internal_redirect(value):
@@ -617,7 +701,12 @@ def account():
         return redirect(url_for('main.account'))
 
     orders = Order.query.filter_by(user_id=current_user.id).order_by(Order.created_at.desc()).all()
-    return render_template('main/account.html', orders=orders)
+    fulfillment_by_order = {order.id: _fulfillment_view(order) for order in orders}
+    return render_template(
+        'main/account.html',
+        orders=orders,
+        fulfillment_by_order=fulfillment_by_order,
+    )
 
 # --- CHECKOUT ---
 import razorpay

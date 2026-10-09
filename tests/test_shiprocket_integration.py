@@ -154,3 +154,66 @@ def test_admin_can_create_awb_and_schedule_pickup(client, monkeypatch):
         assert order.shiprocket_pickup_scheduled is True
         assert order.shiprocket_status == 'PICKUP SCHEDULED'
         assert order.status == 'processing'
+
+
+def test_customer_account_displays_shiprocket_fulfillment_details(client):
+    with app.app_context():
+        _, order_id = create_fulfillable_order()
+        customer = User(
+            email='customer-account@example.test',
+            password='test-password',
+            role='user',
+        )
+        db.session.add(customer)
+        db.session.flush()
+        customer_id = customer.id
+
+        order = db.session.get(Order, order_id)
+        order.user_id = customer_id
+        order.shiprocket_order_id = '12345'
+        order.shiprocket_shipment_id = '67890'
+        order.awb_number = 'AWB123'
+        order.shipping_provider = 'Test Courier'
+        order.shiprocket_status = 'IN TRANSIT'
+        order.status = 'shipped'
+        db.session.commit()
+
+    with client.session_transaction() as session:
+        session['_user_id'] = str(customer_id)
+        session['_fresh'] = True
+
+    response = client.get('/account')
+
+    assert response.status_code == 200
+    assert b'Your purchases' in response.data
+    assert b'Track your purchases and view delivery updates from Shiprocket.' in response.data
+    assert b'Live fulfillment progress' in response.data
+    assert b'Powered by Shiprocket' in response.data
+    assert b'12345' in response.data
+    assert b'67890' in response.data
+    assert b'AWB123' in response.data
+    assert b'Test Courier' in response.data
+    assert b'In Transit' in response.data
+
+
+def test_admin_orders_render_expandable_product_and_fulfillment_details(client, monkeypatch):
+    monkeypatch.setitem(app.config, 'SHIPROCKET_ENABLED', True)
+    with app.app_context():
+        admin_id, order_id = create_fulfillable_order()
+        order = db.session.get(Order, order_id)
+        order.shiprocket_order_id = '12345'
+        order.shiprocket_shipment_id = '67890'
+        order.shiprocket_status = 'NEW'
+        db.session.commit()
+    add_admin_session(client, admin_id)
+
+    response = client.get('/admin/orders')
+
+    assert response.status_code == 200
+    assert f'id="order-{order_id}"'.encode() in response.data
+    assert b'<summary class="order-summary">' in response.data
+    assert b'Ordered products' in response.data
+    assert b'Test Perfume' in response.data
+    assert b'Order management' in response.data
+    assert b'Shiprocket fulfillment' in response.data
+    assert b'Assign AWB' in response.data
