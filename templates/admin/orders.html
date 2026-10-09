@@ -53,8 +53,14 @@
                 </td>
                 <td>
                     <div style="font-weight: 600; margin-bottom: 6px; font-size: 1.05rem; color: var(--dark);">
-                        {% if order.razorpay_order_id %}
-                            <i class="fa-solid fa-credit-card" style="margin-right: 4px;"></i> Online
+                        {% if order.payment_method == 'gokwik_prepaid' %}
+                            <i class="fa-solid fa-credit-card" style="margin-right: 4px;"></i> GoKwik Prepaid
+                        {% elif order.payment_method == 'wallet' %}
+                            <i class="fa-solid fa-wallet" style="margin-right: 4px;"></i> GoKwik Wallet
+                        {% elif order.payment_method == 'cod' %}
+                            <i class="fa-solid fa-money-bill-wave" style="margin-right: 4px;"></i> GoKwik COD
+                        {% elif order.razorpay_order_id %}
+                            <i class="fa-solid fa-credit-card" style="margin-right: 4px;"></i> Razorpay
                         {% else %}
                             <i class="fa-solid fa-money-bill-wave" style="margin-right: 4px;"></i> COD
                         {% endif %}
@@ -62,20 +68,25 @@
                     <span class="badge {% if order.payment_status == 'paid' %}badge-paid{% else %}badge-unpaid{% endif %}">
                         {{ order.payment_status | upper }}
                     </span>
-                    {% if order.razorpay_payment_id %}
-                    <div style="font-size: 0.9rem; color: #aaa; margin-top: 4px;" title="{{ order.razorpay_payment_id }}">Txn ID saved</div>
+                    {% if order.razorpay_payment_id or order.gokwik_transaction_id %}
+                    <div style="font-size: 0.9rem; color: #aaa; margin-top: 4px;">Txn ID saved</div>
                     {% endif %}
                 </td>
                 <td>
-                    <form action="{{ url_for('admin.update_order_status', order_id=order.id) }}" method="POST" style="margin:0;">
+                    <form action="{{ url_for('admin.update_order_status', order_id=order.id) }}" method="POST" style="margin:0; display:grid; gap:6px; min-width:170px;">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <select name="status" onchange="this.form.submit()" style="padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); font-family: 'Jost', sans-serif; font-size: 1.0rem; outline: none; background: #fff; cursor: pointer;">
+                        <select name="status" style="padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); font-family: 'Jost', sans-serif; font-size: 1.0rem; outline: none; background: #fff; cursor: pointer;">
                             <option value="pending" {% if order.status == 'pending' %}selected{% endif %}>Pending</option>
                             <option value="processing" {% if order.status == 'processing' %}selected{% endif %}>Processing</option>
                             <option value="shipped" {% if order.status == 'shipped' %}selected{% endif %}>Shipped</option>
                             <option value="delivered" {% if order.status == 'delivered' %}selected{% endif %}>Delivered</option>
                             <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
                         </select>
+                        {% if order.payment_method in ['cod', 'gokwik_prepaid', 'wallet'] %}
+                        <input name="shipping_provider" value="{{ order.shipping_provider or '' }}" placeholder="Shipping provider" style="padding:6px; border:1px solid var(--border); border-radius:6px;">
+                        <input name="awb_number" value="{{ order.awb_number or '' }}" placeholder="AWB / tracking number" style="padding:6px; border:1px solid var(--border); border-radius:6px;">
+                        {% endif %}
+                        <button type="submit" style="padding:6px 10px; border:0; border-radius:6px; cursor:pointer;">Save</button>
                     </form>
                 </td>
                 <td style="font-size: 1.05rem; color: var(--text-muted);">{{ order.created_at.strftime('%b %d, %Y') }}</td>

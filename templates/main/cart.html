@@ -484,7 +484,7 @@
                 <span class="t-val">₹{{ "{:,.2f}".format(total) }}</span>
             </div>
 
-            <a href="{{ url_for('main.checkout') }}" class="btn-chk">
+            <a href="{{ url_for('main.checkout') }}" class="btn-chk"{% if config.GOKWIK_STOREFRONT_ENABLED %} id="gokwikCheckoutButton"{% endif %}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                 Proceed to Secure Checkout
             </a>
@@ -506,4 +506,99 @@
     {% endif %}
 
 </div>
+
+{% if config.GOKWIK_STOREFRONT_ENABLED %}
+<script src="{{ config.GOKWIK_SDK_URL }}"></script>
+<script>
+    (() => {
+        const checkoutButton = document.getElementById('gokwikCheckoutButton');
+        if (!checkoutButton) return;
+
+        const nativeCheckoutUrl = checkoutButton.href;
+        const csrfToken = "{{ csrf_token() }}";
+        let checkoutId = null;
+        let checkoutStarted = false;
+
+        const openNativeCheckout = () => {
+            window.location.assign(nativeCheckoutUrl);
+        };
+
+        const setLoading = (loading) => {
+            checkoutButton.setAttribute('aria-disabled', loading ? 'true' : 'false');
+            checkoutButton.style.pointerEvents = loading ? 'none' : '';
+            checkoutButton.style.opacity = loading ? '0.7' : '';
+        };
+
+        checkoutButton.addEventListener('click', async (event) => {
+            event.preventDefault();
+            if (checkoutStarted) return;
+            checkoutStarted = true;
+            setLoading(true);
+
+            try {
+                const response = await fetch("{{ url_for('gokwik_storefront.create_checkout_session') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    }
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.message || 'Unable to create checkout session.');
+                }
+                if (!window.gokwikSdk || typeof window.gokwikSdk.initCheckout !== 'function') {
+                    throw new Error('GoKwik SDK is unavailable.');
+                }
+
+                checkoutId = data.checkout_id;
+                window.gokwikSdk.initCheckout({
+                    environment: data.environment,
+                    type: 'merchantInfo',
+                    mid: data.merchant_id,
+                    merchantParams: {
+                        merchantCheckoutId: data.checkout_id
+                    }
+                });
+            } catch (error) {
+                console.error('GoKwik checkout initialization failed.', error);
+                openNativeCheckout();
+            } finally {
+                setLoading(false);
+                checkoutStarted = false;
+            }
+        });
+
+        if (!window.gokwikSdk || typeof window.gokwikSdk.on !== 'function') return;
+
+        window.gokwikSdk.on('order-complete', async (order) => {
+            if (!checkoutId) return;
+            try {
+                const response = await fetch("{{ url_for('gokwik_storefront.complete_checkout') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        checkout_id: checkoutId,
+                        merchant_order_id: order && order.merchant_order_id
+                    })
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.message || 'Unable to complete checkout.');
+                }
+                window.location.assign(data.redirect_url);
+            } catch (error) {
+                console.error('GoKwik order completion failed.', error);
+                window.location.assign("{{ url_for('main.index') }}");
+            }
+        });
+
+        window.gokwikSdk.on('checkout-initiation-failure', openNativeCheckout);
+    })();
+</script>
+{% endif %}
 {% endblock %}

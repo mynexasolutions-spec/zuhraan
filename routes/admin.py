@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 import re
 from about_cms import ASSET_SPECS, MAX_IMAGE_MB, delete_asset_from_cloudinary, get_assets, get_content, save_assets, save_content, upload_asset
+from gokwik_client import GoKwikRequestError, is_gokwik_payment_method, sync_gokwik_order
 
 
 HOME_STORY_IMAGES_KEY = 'home_story_images'
@@ -556,10 +557,49 @@ def manage_orders():
 def update_order_status(order_id):
     order = Order.query.get_or_404(order_id)
     new_status = request.form.get('status')
-    if new_status in ['pending', 'processing', 'shipped', 'delivered', 'cancelled']:
-        order.status = new_status
-        db.session.commit()
-        flash(f'Order #{order_id} status updated to {new_status}.', 'success')
+    valid_statuses = {'pending', 'processing', 'shipped', 'delivered', 'cancelled'}
+    if new_status not in valid_statuses:
+        flash('Invalid order status.', 'error')
+        return redirect(url_for('admin.manage_orders'))
+
+    shipping_provider = request.form.get('shipping_provider', '').strip()
+    awb_number = request.form.get('awb_number', '').strip()
+    if bool(shipping_provider) != bool(awb_number):
+        flash('Shipping provider and AWB number must be supplied together.', 'error')
+        return redirect(url_for('admin.manage_orders'))
+    if is_gokwik_payment_method(order.payment_method) and new_status in {'shipped', 'delivered'}:
+        if not shipping_provider or not awb_number:
+            flash('GoKwik shipped/delivered orders require a shipping provider and AWB number.', 'error')
+            return redirect(url_for('admin.manage_orders'))
+
+    order.status = new_status
+    order.shipping_provider = shipping_provider or order.shipping_provider
+    order.awb_number = awb_number or order.awb_number
+    db.session.commit()
+
+    if is_gokwik_payment_method(order.payment_method):
+        try:
+            synced = sync_gokwik_order(
+                order.id,
+                order.status,
+                order.shipping_provider,
+                order.awb_number,
+            )
+        except GoKwikRequestError:
+            current_app.logger.exception(
+                'Order was updated locally but GoKwik synchronization failed.',
+                extra={'gokwik_order_id': order.id},
+            )
+            flash(
+                f'Order #{order_id} was updated locally, but GoKwik synchronization failed. Retry it.',
+                'error',
+            )
+            return redirect(url_for('admin.manage_orders'))
+        if not synced and current_app.config.get('GOKWIK_ENABLED'):
+            flash(f'Order #{order_id} updated; no GoKwik status mapping was required.', 'success')
+            return redirect(url_for('admin.manage_orders'))
+
+    flash(f'Order #{order_id} status updated to {new_status}.', 'success')
     return redirect(url_for('admin.manage_orders'))
 
 # SETTINGS (Shipping, etc)

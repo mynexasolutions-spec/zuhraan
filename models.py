@@ -1,8 +1,13 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
-from datetime import datetime
+from datetime import datetime, timezone
 
 db = SQLAlchemy()
+
+
+def utcnow_naive():
+    """Return naive UTC for compatibility with the existing database columns."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
@@ -99,10 +104,27 @@ class Order(db.Model):
     payment_status = db.Column(db.String(50), default='unpaid') # unpaid, paid
     razorpay_order_id = db.Column(db.String(100))
     razorpay_payment_id = db.Column(db.String(100))
+    payment_method = db.Column(db.String(50))
+    gokwik_transaction_id = db.Column(db.String(150))
+    shipping_provider = db.Column(db.String(100))
+    awb_number = db.Column(db.String(150))
     coupon_id = db.Column(db.Integer, db.ForeignKey('coupon.id'), nullable=True) # To safely increment usage
     
     items = db.relationship('OrderItem', backref='order', lazy=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class GoKwikCheckoutSession(db.Model):
+    id = db.Column(db.String(64), primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    cart_data = db.Column(db.Text, nullable=False)
+    customer_data = db.Column(db.Text, nullable=False, default='{}')
+    coupon_code = db.Column(db.String(50), nullable=True)
+    status = db.Column(db.String(20), nullable=False, default='pending')
+    order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=True, unique=True)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=utcnow_naive)
+    updated_at = db.Column(db.DateTime, nullable=False, default=utcnow_naive, onupdate=utcnow_naive)
 
 
 class OrderItem(db.Model):

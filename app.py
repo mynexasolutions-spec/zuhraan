@@ -9,9 +9,10 @@ from flask_wtf.csrf import CSRFProtect
 import bleach
 from sqlalchemy import inspect, text
 
-from models import db, Category, User, Setting, AboutPage, ContactMessage
+from models import db, Category, User, Setting, AboutPage, ContactMessage, GoKwikCheckoutSession
 from routes.main import main_bp
 from routes.admin import admin_bp
+from routes.gokwik import gokwik_api_bp, gokwik_storefront_bp
 from flask_login import LoginManager
 from werkzeug.security import generate_password_hash
 import cloudinary
@@ -52,6 +53,46 @@ app.config['SUPABASE_SERVICE_ROLE_KEY'] = os.environ.get('SUPABASE_SERVICE_ROLE_
 app.config['RAZORPAY_KEY_ID'] = os.environ.get('RAZORPAY_KEY_ID')
 app.config['RAZORPAY_KEY_SECRET'] = os.environ.get('RAZORPAY_KEY_SECRET')
 app.config['RAZORPAY_WEBHOOK_SECRET'] = os.environ.get('RAZORPAY_WEBHOOK_SECRET')
+
+gokwik_environment = os.environ.get('GOKWIK_ENV', 'sandbox').strip().lower()
+gokwik_sdk_urls = {
+    'sandbox': 'https://sandbox.pdp.gokwik.co/v4/build/gokwik.js',
+    'production': 'https://pdp.gokwik.co/v4/build/gokwik.js',
+}
+gokwik_api_base_urls = {
+    'sandbox': 'https://api-gw-v4.dev.gokwik.io/sandbox/',
+    'production': 'https://gkx.gokwik.co/',
+}
+if gokwik_environment not in gokwik_sdk_urls:
+    raise RuntimeError('GOKWIK_ENV must be either sandbox or production.')
+
+app.config['GOKWIK_ENABLED'] = os.environ.get('GOKWIK_ENABLED', '0') == '1'
+app.config['GOKWIK_STOREFRONT_ENABLED'] = os.environ.get('GOKWIK_STOREFRONT_ENABLED', '0') == '1'
+app.config['GOKWIK_ENV'] = gokwik_environment
+app.config['GOKWIK_SDK_URL'] = gokwik_sdk_urls[gokwik_environment]
+app.config['GOKWIK_API_BASE_URL'] = gokwik_api_base_urls[gokwik_environment]
+app.config['GOKWIK_MERCHANT_ID'] = os.environ.get('GOKWIK_MERCHANT_ID')
+app.config['GOKWIK_APP_ID'] = os.environ.get('GOKWIK_APP_ID')
+app.config['GOKWIK_APP_SECRET'] = os.environ.get('GOKWIK_APP_SECRET')
+
+if app.config['GOKWIK_STOREFRONT_ENABLED'] and not app.config['GOKWIK_ENABLED']:
+    raise RuntimeError('GOKWIK_STOREFRONT_ENABLED requires GOKWIK_ENABLED=1.')
+
+if app.config['GOKWIK_ENABLED']:
+    required_gokwik_settings = (
+        'GOKWIK_MERCHANT_ID',
+        'GOKWIK_APP_ID',
+        'GOKWIK_APP_SECRET',
+    )
+    missing_gokwik_settings = [
+        name for name in required_gokwik_settings if not app.config.get(name)
+    ]
+    if missing_gokwik_settings:
+        raise RuntimeError(
+            'GoKwik is enabled but required configuration is missing: '
+            + ', '.join(missing_gokwik_settings)
+        )
+
 app.config['BREVO_API_KEY'] = os.environ.get('BREVO_API_KEY')
 app.config['BREVO_SENDER_EMAIL'] = os.environ.get('BREVO_SENDER_EMAIL')
 app.config['BREVO_SENDER_NAME'] = os.environ.get('BREVO_SENDER_NAME', 'Zuhraan')
@@ -117,6 +158,87 @@ def ensure_product_optional_columns():
 
 ensure_product_optional_columns()
 
+
+def ensure_gokwik_schema():
+    """Create GoKwik persistence and extend legacy order tables safely."""
+    order_columns = {
+        'payment_method': 'VARCHAR(50)',
+        'gokwik_transaction_id': 'VARCHAR(150)',
+        'shipping_provider': 'VARCHAR(100)',
+        'awb_number': 'VARCHAR(150)',
+    }
+    with app.app_context():
+        inspector = inspect(db.engine)
+        if inspector.has_table('order'):
+            existing_columns = {column['name'] for column in inspector.get_columns('order')}
+            missing_columns = {
+                name: definition
+                for name, definition in order_columns.items()
+                if name not in existing_columns
+            }
+            try:
+                for name, definition in missing_columns.items():
+                    db.session.execute(text(f'ALTER TABLE "order" ADD COLUMN {name} {definition}'))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                app.logger.exception('Failed to add GoKwik order columns.')
+                raise
+
+        if inspector.has_table('order'):
+            GoKwikCheckoutSession.__table__.create(bind=db.engine, checkfirst=True)
+
+
+ensure_gokwik_schema()
+
+
+@app.cli.command('gokwik-readiness')
+def gokwik_readiness():
+    """Verify local GoKwik configuration, schema, and authenticated routing."""
+    checks = {
+        'environment': app.config['GOKWIK_ENV'] in {'sandbox', 'production'},
+        'merchant_id': bool(app.config.get('GOKWIK_MERCHANT_ID')),
+        'app_id': bool(app.config.get('GOKWIK_APP_ID')),
+        'app_secret': bool(app.config.get('GOKWIK_APP_SECRET')),
+        'server_integration_enabled': bool(app.config.get('GOKWIK_ENABLED')),
+    }
+
+    inspector = inspect(db.engine)
+    checks['checkout_session_table'] = inspector.has_table('go_kwik_checkout_session')
+    if inspector.has_table('order'):
+        order_columns = {column['name'] for column in inspector.get_columns('order')}
+        checks['order_columns'] = {
+            'payment_method',
+            'gokwik_transaction_id',
+            'shipping_provider',
+            'awb_number',
+        }.issubset(order_columns)
+    else:
+        checks['order_columns'] = False
+
+    if app.config.get('GOKWIK_ENABLED'):
+        response = app.test_client().get(
+            '/api/gokwik/v1/cart/health-check',
+            headers={
+                'appid': app.config['GOKWIK_APP_ID'],
+                'appsecret': app.config['GOKWIK_APP_SECRET'],
+            },
+        )
+        checks['authenticated_health_route'] = response.status_code == 200
+    else:
+        checks['authenticated_health_route'] = False
+
+    for name, passed in checks.items():
+        click.echo(f"[{'PASS' if passed else 'FAIL'}] {name}")
+    click.echo(
+        '[INFO] storefront_enabled='
+        + str(bool(app.config.get('GOKWIK_STOREFRONT_ENABLED')))
+    )
+    if not all(checks.values()):
+        raise click.ClickException(
+            'GoKwik is not ready. Resolve the failed checks; no credential values were printed.'
+        )
+
 # Login Manager
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -143,11 +265,14 @@ def clean_html(text):
 # Register Blueprints
 app.register_blueprint(main_bp)
 app.register_blueprint(admin_bp)
+app.register_blueprint(gokwik_storefront_bp)
+app.register_blueprint(gokwik_api_bp)
 
 # Exempt webhook route and AJAX API routes from CSRF
 csrf.exempt("routes.main.payment_webhook")
 csrf.exempt("routes.main.api_validate_coupon")
 csrf.exempt("routes.admin.validate_coupon_api")
+csrf.exempt(gokwik_api_bp)
 
 # CREATE DB CLI COMMAND
 @app.cli.command('init-db')
