@@ -6,12 +6,19 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from functools import wraps
 from typing import Any, Callable
 
-from flask import Blueprint, current_app, jsonify, request, session, url_for
+from flask import Blueprint, current_app, flash, jsonify, request, session, url_for
 from flask_login import current_user
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from models import Coupon, GoKwikCheckoutSession, Order, OrderItem, ProductVariant, Setting, User, db
-from routes.main import _validate_coupon, calculate_shipping, release_order_inventory
+from routes.main import (
+    _auto_create_shiprocket_shipment,
+    _link_guest_orders_to_user,
+    _remember_guest_order,
+    _validate_coupon,
+    calculate_shipping,
+    release_order_inventory,
+)
 
 
 gokwik_storefront_bp = Blueprint('gokwik_storefront', __name__)
@@ -114,7 +121,11 @@ def _checkout_by_id(checkout_id: str, lock: bool) -> GoKwikCheckoutSession:
     checkout = query.first()
     if not checkout:
         raise GoKwikAPIError('gc_cart_not_found', 'Checkout session was not found.', 404)
-    if checkout.status == 'expired' or checkout.expires_at <= _utcnow():
+    if checkout.status == 'failed':
+        raise GoKwikAPIError('gc_checkout_failed', 'Checkout has failed. Please start again.', 409)
+    if checkout.status == 'expired' or (
+        checkout.status != 'completed' and checkout.expires_at <= _utcnow()
+    ):
         raise GoKwikAPIError('gc_cart_expired', 'Checkout session has expired.', 410)
     return checkout
 
@@ -306,7 +317,7 @@ def _initial_customer_data() -> dict[str, Any]:
 
 @gokwik_storefront_bp.route('/api/gokwik/checkout-session', methods=['POST'])
 def create_checkout_session():
-    if not current_app.config.get('GOKWIK_STOREFRONT_ENABLED'):
+    if not current_app.config.get('GOKWIK_ENABLED'):
         raise GoKwikAPIError('gc_checkout_disabled', 'GoKwik Checkout is disabled.', 503)
 
     browser_cart = session.get('cart', {})
@@ -365,9 +376,59 @@ def complete_checkout():
     if merchant_order_id and merchant_order_id != str(checkout.order_id):
         raise GoKwikAPIError('gc_order_mismatch', 'Order does not match this checkout.', 409)
 
+    order = db.session.get(Order, checkout.order_id)
+    if not order:
+        raise GoKwikAPIError('gc_order_not_found', 'Order was not found.', 404)
+    if order.payment_method == 'gokwik_prepaid' and order.payment_status != 'paid':
+        raise GoKwikAPIError(
+            'gc_payment_not_confirmed',
+            'GoKwik has not confirmed payment for this order.',
+            409,
+        )
+    _remember_guest_order(order)
+    if current_user.is_authenticated:
+        _link_guest_orders_to_user(current_user)
+
     session['cart'] = {}
-    redirect_url = url_for('main.account') if current_user.is_authenticated else url_for('main.index')
+    flash('Order placed successfully through GoKwik.', 'success')
+    redirect_url = (
+        url_for('main.account', _anchor='orders')
+        if current_user.is_authenticated
+        else url_for('main.index')
+    )
     return jsonify({'status': 'success', 'redirect_url': redirect_url})
+
+
+@gokwik_storefront_bp.route('/api/gokwik/checkout-failed', methods=['POST'])
+def fail_checkout():
+    payload = _request_payload()
+    checkout_id = str(payload.get('checkout_id') or '').strip()
+    failure_reason = str(payload.get('reason') or 'Checkout was not completed.').strip()[:500]
+    if not checkout_id:
+        raise GoKwikAPIError('gc_missing_session_key', 'Session key is missing.', 400)
+
+    checkout = GoKwikCheckoutSession.query.filter_by(id=checkout_id).with_for_update().first()
+    if not checkout:
+        raise GoKwikAPIError('gc_cart_not_found', 'Checkout session was not found.', 404)
+    if checkout.status == 'completed':
+        return jsonify({'status': 'completed'}), 200
+    try:
+        checkout.status = 'failed'
+        checkout.failure_reason = failure_reason
+        checkout.updated_at = _utcnow()
+        db.session.commit()
+    except SQLAlchemyError as error:
+        db.session.rollback()
+        current_app.logger.exception(
+            'Unable to record GoKwik checkout failure.',
+            extra={'gokwik_checkout_id': checkout_id},
+        )
+        raise GoKwikAPIError(
+            'gc_checkout_session_error',
+            'Unable to record checkout status. Please retry.',
+            500,
+        ) from error
+    return jsonify({'status': 'failed'}), 200
 
 
 @gokwik_api_bp.route('/cart/health-check', methods=['GET', 'POST'])
@@ -576,9 +637,13 @@ def place_order():
             400,
         )
 
+    transaction_id: str | None = None
     try:
         checkout = _checkout_by_id(checkout_id, True)
         if checkout.order_id:
+            existing_order = db.session.get(Order, checkout.order_id)
+            if existing_order:
+                _auto_create_shiprocket_shipment(existing_order)
             return jsonify({'id': checkout.order_id}), 200
 
         customer = _decoded_json_object(checkout.customer_data, 'customer data')
@@ -598,12 +663,30 @@ def place_order():
             )
 
         transaction_id = str(payload.get('transaction_id') or '').strip() or None
+        if transaction_id and len(transaction_id) > 150:
+            raise GoKwikAPIError(
+                'gc_invalid_transaction_id',
+                'GoKwik transaction ID is too long.',
+                400,
+            )
         paid = payment_method == 'gokwik_prepaid' and _is_truthy(payload.get('set_paid'))
+        if payment_method == 'gokwik_prepaid' and not paid:
+            raise GoKwikAPIError(
+                'gc_payment_not_confirmed',
+                'Prepaid payment has not been confirmed by GoKwik.',
+                402,
+            )
         if paid and not transaction_id:
             raise GoKwikAPIError(
                 'gc_missing_transaction_id',
                 'A paid order requires a transaction ID.',
                 400,
+            )
+        if transaction_id and Order.query.filter_by(gokwik_transaction_id=transaction_id).first():
+            raise GoKwikAPIError(
+                'gc_duplicate_transaction',
+                'This GoKwik transaction has already been used.',
+                409,
             )
 
         customer_name = ' '.join(
@@ -671,10 +754,28 @@ def place_order():
         checkout.status = 'completed'
         checkout.updated_at = _utcnow()
         db.session.commit()
+        _auto_create_shiprocket_shipment(order)
         return jsonify({'id': order.id}), 200
     except GoKwikAPIError:
         db.session.rollback()
         raise
+    except IntegrityError as error:
+        db.session.rollback()
+        if transaction_id and Order.query.filter_by(gokwik_transaction_id=transaction_id).first():
+            raise GoKwikAPIError(
+                'gc_duplicate_transaction',
+                'This GoKwik transaction has already been used.',
+                409,
+            ) from error
+        current_app.logger.exception(
+            'GoKwik order violated a database integrity constraint.',
+            extra={'gokwik_checkout_id': checkout_id},
+        )
+        raise GoKwikAPIError(
+            'gc_cart_place_order_error',
+            'Unable to create order. Please retry.',
+            500,
+        ) from error
     except SQLAlchemyError as error:
         db.session.rollback()
         current_app.logger.exception(

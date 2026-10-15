@@ -3,6 +3,7 @@
 {% block head %}
 <style>
     .media-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; align-items: start; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
     .media-card { min-height: 100%; overflow: hidden; background: #fff; border: 1px solid var(--border); border-radius: 18px; box-shadow: 0 12px 28px -22px rgba(15, 23, 42, 0.45); }
     .media-card-header { display: flex; gap: 14px; align-items: flex-start; padding: 24px 24px 20px; border-bottom: 1px solid #eef2f7; }
     .media-icon { width: 44px; height: 44px; flex: 0 0 44px; display: grid; place-items: center; color: var(--primary); background: #eff6ff; border-radius: 12px; font-size: 1.25rem; }
@@ -43,9 +44,32 @@
     .btn-delete-media { padding: 10px 14px; color: #b91c1c; background: #fff; border: 1px solid #fecaca; }
     .btn-delete-media:hover { background: #fef2f2; }
     .delete-form { margin: 14px 0 0; }
+    .reels-media-card { grid-column: 1 / -1; }
+    .admin-reels-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
+    .admin-reel-item { min-width: 0; overflow: hidden; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; }
+    .admin-reel-preview { position: relative; overflow: hidden; background: #0f172a; }
+    .admin-reel-preview video { display: block; width: 100%; aspect-ratio: 9 / 16; object-fit: cover; }
+    .admin-reel-empty { display: grid; aspect-ratio: 9 / 16; place-content: center; gap: 8px; color: #94a3b8; background: #f8fafc; text-align: center; }
+    .admin-reel-empty i { font-size: 1.6rem; }
+    .admin-reel-empty span { font-size: .78rem; font-weight: 600; }
+    .admin-reel-details { padding: 11px; }
+    .admin-reel-title { min-height: 40px; margin: 0 0 10px; color: #334155; font-size: .86rem; font-weight: 600; line-height: 1.35; }
+    .reel-title-form { margin-bottom: 10px; }
+    .reel-title-input { width: 100%; min-height: 38px; padding: 8px 9px; color: #334155; background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; font: 600 .78rem/1.3 inherit; }
+    .reel-title-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, .1); outline: none; }
+    .btn-save-reel-title { width: 100%; min-height: 34px; margin-top: 7px; padding: 6px 9px; color: var(--primary); background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; font-family: inherit; font-size: .76rem; font-weight: 600; cursor: pointer; }
+    .btn-save-reel-title:hover { background: #dbeafe; }
+    .reel-file-picker { position: relative; display: grid; min-height: 54px; place-content: center; padding: 8px; cursor: pointer; color: #64748b; background: #fff; border: 1px dashed #cbd5e1; border-radius: 9px; text-align: center; }
+    .reel-file-picker:hover, .reel-file-picker:focus-within { color: var(--primary); border-color: var(--primary); }
+    .reel-file-picker input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+    .reel-file-picker span { max-width: 145px; overflow: hidden; font-size: .75rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+    .admin-reel-actions { display: grid; gap: 7px; margin-top: 8px; }
+    .admin-reel-actions .btn-upload, .admin-reel-actions .btn-delete-media { width: 100%; min-height: 36px; padding: 7px 9px; font-size: .78rem; }
+    .admin-reel-actions form { margin: 0; }
 
-    @media (max-width: 900px) { .media-grid { grid-template-columns: 1fr; } }
-    @media (max-width: 480px) { .media-card-header, .media-card-body { padding-right: 18px; padding-left: 18px; } .media-card-header { gap: 11px; } .story-image-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 1200px) { .admin-reels-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    @media (max-width: 900px) { .media-grid { grid-template-columns: 1fr; } .admin-reels-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 480px) { .media-card-header, .media-card-body { padding-right: 18px; padding-left: 18px; } .media-card-header { gap: 11px; } .story-image-grid, .admin-reels-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; } .admin-reel-details { padding: 8px; } }
 </style>
 {% endblock %}
 
@@ -90,6 +114,66 @@
                 </div>
                 <div class="media-actions"><button type="submit" class="btn-upload"><i class="fa-solid fa-upload"></i> Upload Multimedia</button></div>
             </form>
+        </div>
+    </section>
+
+    <section class="media-card reels-media-card">
+        <div class="media-card-header">
+            <div class="media-icon"><i class="fa-solid fa-film"></i></div>
+            <div><h3>Homepage Reels</h3><p class="desc">Upload, replace, or remove the five portrait videos shown after Our Best Sellers. Videos are stored in Cloudinary and their links in Supabase.</p></div>
+        </div>
+        <div class="media-card-body">
+            <span class="status-badge {% if homepage_reel_count %}status-active{% endif %}"><i class="fa-solid fa-circle"></i> {{ homepage_reel_count }} of {{ max_homepage_reels }} live</span>
+            <div class="admin-reels-grid">
+                {% for reel_index in range(max_homepage_reels) %}
+                {% set reel = homepage_reels[reel_index] %}
+                <article class="admin-reel-item">
+                    <div class="admin-reel-preview">
+                        {% if reel %}
+                        <video src="{{ reel.url }}" autoplay muted loop playsinline preload="metadata" aria-label="Reel {{ reel_index + 1 }} preview"></video>
+                        {% else %}
+                        <div class="admin-reel-empty"><i class="fa-regular fa-circle-play"></i><span>Empty reel slot</span></div>
+                        {% endif %}
+                    </div>
+                    <div class="admin-reel-details">
+                        <p class="admin-reel-title">{{ '%02d'|format(reel_index + 1) }} · {{ reel.title if reel else 'Available slot' }}</p>
+                        {% if reel %}
+                        <form method="POST" class="reel-title-form">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="action" value="update_reel_title">
+                            <input type="hidden" name="reel_index" value="{{ reel_index }}">
+                            <label for="reelTitle{{ reel_index }}" class="sr-only">Reel {{ reel_index + 1 }} text</label>
+                            <input id="reelTitle{{ reel_index }}" class="reel-title-input" type="text" name="reel_title" value="{{ reel.title }}" maxlength="80" required>
+                            <button type="submit" class="btn-save-reel-title"><i class="fa-solid fa-floppy-disk"></i> Save Text</button>
+                        </form>
+                        {% endif %}
+                        <form method="POST" enctype="multipart/form-data">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="action" value="upload_reel">
+                            <input type="hidden" name="reel_index" value="{{ reel_index }}">
+                            <label class="reel-file-picker">
+                                <span id="reelFileName{{ reel_index }}">Choose video</span>
+                                <input type="file" name="reel_video" accept="video/mp4,video/webm,video/quicktime" required onchange="document.getElementById('reelFileName{{ reel_index }}').textContent = this.files[0]?.name || 'Choose video'">
+                            </label>
+                            <div class="admin-reel-actions">
+                                <button type="submit" class="btn-upload"><i class="fa-solid fa-arrow-up-from-bracket"></i> {{ 'Replace' if reel else 'Upload' }}</button>
+                            </div>
+                        </form>
+                        {% if reel %}
+                        <div class="admin-reel-actions">
+                            <form method="POST">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="action" value="delete_reel">
+                                <input type="hidden" name="reel_index" value="{{ reel_index }}">
+                                <button type="submit" class="btn-delete-media" onclick="return confirm('Remove reel {{ reel_index + 1 }} from the homepage?')"><i class="fa-solid fa-trash"></i> Remove</button>
+                            </form>
+                        </div>
+                        {% endif %}
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+            <p class="upload-hint">MP4, WEBM, or MOV · maximum 10 MB per video · portrait 9:16 recommended</p>
         </div>
     </section>
 

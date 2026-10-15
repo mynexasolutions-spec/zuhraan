@@ -48,7 +48,7 @@ def create_fulfillable_order() -> tuple[int, int]:
         country='India',
         total_amount=578.0,
         shipping_charges=79.0,
-        payment_method='native_cod',
+        payment_method='cod',
         payment_status='unpaid',
         status='pending',
     )
@@ -194,6 +194,31 @@ def test_customer_account_displays_shiprocket_fulfillment_details(client):
     assert b'AWB123' in response.data
     assert b'Test Courier' in response.data
     assert b'In Transit' in response.data
+
+
+def test_customer_account_claims_matching_guest_orders(client):
+    with app.app_context():
+        _, order_id = create_fulfillable_order()
+        customer = User(
+            email='customer@example.test',
+            password='test-password',
+            role='user',
+        )
+        db.session.add(customer)
+        db.session.commit()
+        customer_id = customer.id
+
+    with client.session_transaction() as session:
+        session['_user_id'] = str(customer_id)
+        session['_fresh'] = True
+
+    response = client.get('/account')
+
+    assert response.status_code == 200
+    assert f'Order #{order_id}'.encode() in response.data
+    assert b'Test Perfume' in response.data
+    with app.app_context():
+        assert db.session.get(Order, order_id).user_id == customer_id
 
 
 def test_admin_orders_render_expandable_product_and_fulfillment_details(client, monkeypatch):

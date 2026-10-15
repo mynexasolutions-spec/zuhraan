@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS public.go_kwik_checkout_session (
     customer_data TEXT NOT NULL DEFAULT '{}',
     coupon_code VARCHAR(50),
     status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    failure_reason VARCHAR(500),
     order_id INTEGER UNIQUE REFERENCES public."order"(id) ON DELETE SET NULL,
     expires_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT (timezone('utc', now())),
@@ -29,6 +30,10 @@ CREATE TABLE IF NOT EXISTS public.go_kwik_checkout_session (
 
 CREATE INDEX IF NOT EXISTS ix_go_kwik_checkout_session_expires_at
     ON public.go_kwik_checkout_session (expires_at);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_order_gokwik_transaction_id
+    ON public."order" (gokwik_transaction_id)
+    WHERE gokwik_transaction_id IS NOT NULL;
 
 ALTER TABLE public.go_kwik_checkout_session ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.go_kwik_checkout_session FROM anon, authenticated;

@@ -491,10 +491,11 @@
                 <span class="t-val">₹{{ "{:,.2f}".format(total) }}</span>
             </div>
 
-            <a href="{{ url_for('main.checkout') }}" class="btn-chk"{% if config.GOKWIK_STOREFRONT_ENABLED %} id="gokwikCheckoutButton"{% endif %}>
+            <a href="#" class="btn-chk" id="gokwikCheckoutButton"{% if not config.GOKWIK_ENABLED %} aria-disabled="true"{% endif %}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                Proceed to Secure Checkout
+                Checkout securely with GoKwik
             </a>
+            <p id="gokwikCheckoutMessage" role="status" aria-live="polite" style="display:none; margin:12px 0 0; color:#fecaca; font-size:.78rem; line-height:1.45;"></p>
 
             <div class="trust-section">
                 <div class="trust-label">
@@ -514,20 +515,21 @@
 
 </div>
 
-{% if config.GOKWIK_STOREFRONT_ENABLED %}
+{% if config.GOKWIK_ENABLED %}
 <script src="{{ config.GOKWIK_SDK_URL }}"></script>
 <script>
     (() => {
         const checkoutButton = document.getElementById('gokwikCheckoutButton');
         if (!checkoutButton) return;
 
-        const nativeCheckoutUrl = checkoutButton.href;
+        const checkoutMessage = document.getElementById('gokwikCheckoutMessage');
         const csrfToken = "{{ csrf_token() }}";
         let checkoutId = null;
         let checkoutStarted = false;
 
-        const openNativeCheckout = () => {
-            window.location.assign(nativeCheckoutUrl);
+        const showCheckoutError = (message) => {
+            checkoutMessage.textContent = message;
+            checkoutMessage.style.display = 'block';
         };
 
         const setLoading = (loading) => {
@@ -536,13 +538,41 @@
             checkoutButton.style.opacity = loading ? '0.7' : '';
         };
 
+        const reportCheckoutFailure = async (reason) => {
+            if (!checkoutId) return;
+            try {
+                await fetch("{{ url_for('gokwik_storefront.fail_checkout') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ checkout_id: checkoutId, reason })
+                });
+            } catch (error) {
+                console.error('Unable to record GoKwik checkout failure.', error);
+            }
+        };
+
+        const handleCheckoutFailure = (message, reason) => {
+            showCheckoutError(message);
+            setLoading(false);
+            checkoutStarted = false;
+            reportCheckoutFailure(reason || message);
+        };
+
         checkoutButton.addEventListener('click', async (event) => {
             event.preventDefault();
             if (checkoutStarted) return;
             checkoutStarted = true;
             setLoading(true);
+            checkoutMessage.style.display = 'none';
 
             try {
+                if (!window.gokwikSdk || typeof window.gokwikSdk.initCheckout !== 'function') {
+                    throw new Error('GoKwik checkout is temporarily unavailable. Please try again shortly.');
+                }
                 const response = await fetch("{{ url_for('gokwik_storefront.create_checkout_session') }}", {
                     method: 'POST',
                     headers: {
@@ -553,9 +583,6 @@
                 const data = await response.json();
                 if (!response.ok) {
                     throw new Error(data.message || 'Unable to create checkout session.');
-                }
-                if (!window.gokwikSdk || typeof window.gokwikSdk.initCheckout !== 'function') {
-                    throw new Error('GoKwik SDK is unavailable.');
                 }
 
                 checkoutId = data.checkout_id;
@@ -569,10 +596,7 @@
                 });
             } catch (error) {
                 console.error('GoKwik checkout initialization failed.', error);
-                openNativeCheckout();
-            } finally {
-                setLoading(false);
-                checkoutStarted = false;
+                handleCheckoutFailure(error.message || 'Unable to start checkout.', 'initialization_failed');
             }
         });
 
@@ -600,12 +624,37 @@
                 window.location.assign(data.redirect_url);
             } catch (error) {
                 console.error('GoKwik order completion failed.', error);
-                window.location.assign("{{ url_for('main.index') }}");
+                showCheckoutError('Your checkout response could not be confirmed. Please retry or contact support before paying again.');
+                setLoading(false);
+                checkoutStarted = false;
             }
         });
 
-        window.gokwikSdk.on('checkout-initiation-failure', openNativeCheckout);
+        window.gokwikSdk.on('checkout-initiation-failure', () => {
+            handleCheckoutFailure('GoKwik checkout could not be opened. Please try again.', 'checkout_initiation_failed');
+        });
+        window.gokwikSdk.on('payment-failed', () => {
+            handleCheckoutFailure('Payment was not completed. Your cart has been kept so you can retry.', 'payment_failed');
+        });
+        window.gokwikSdk.on('checkout-failed', () => {
+            handleCheckoutFailure('Checkout was not completed. Your cart has been kept so you can retry.', 'checkout_failed');
+        });
+        window.gokwikSdk.on('checkout-closed', () => {
+            handleCheckoutFailure('Checkout was closed. Your cart has been kept so you can continue shopping or retry.', 'checkout_closed');
+        });
+        window.gokwikSdk.on('payment-cancelled', () => {
+            handleCheckoutFailure('Payment was cancelled. Your cart has been kept so you can retry.', 'payment_cancelled');
+        });
     })();
+</script>
+{% else %}
+<script>
+    document.getElementById('gokwikCheckoutButton')?.addEventListener('click', (event) => {
+        event.preventDefault();
+        const message = document.getElementById('gokwikCheckoutMessage');
+        message.textContent = 'Secure checkout is temporarily unavailable. Please try again shortly.';
+        message.style.display = 'block';
+    });
 </script>
 {% endif %}
 {% endblock %}

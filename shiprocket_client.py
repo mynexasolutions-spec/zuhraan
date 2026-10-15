@@ -12,7 +12,7 @@ from models import Order
 
 
 SHIPROCKET_API_BASE_URL = 'https://apiv2.shiprocket.in/v1/external'
-COD_PAYMENT_METHODS = frozenset({'cod', 'native_cod'})
+COD_PAYMENT_METHODS = frozenset({'cod'})
 _token_lock = Lock()
 _cached_token: str | None = None
 _token_expires_at: datetime | None = None

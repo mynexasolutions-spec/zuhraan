@@ -1,6 +1,6 @@
 # Zuhraan Perfumes E-Commerce
 
-Welcome to the Zuhraan Perfumes application. This platform is a fully-featured, luxury e-commerce application powered by Python (Flask), SQLAlchemy, and Razorpay.
+Welcome to the Zuhraan Perfumes application. This platform is a fully-featured, luxury e-commerce application powered by Python (Flask), SQLAlchemy, and GoKwik Checkout.
 
 ## 👑 Admin Dashboard Manual
 
@@ -36,7 +36,7 @@ The administrative interface gives complete control over the store's operations.
 ## 💻 Tech Stack & Deployment Security
 
 - **Database:** Uses Supabase PostgreSQL through SQLAlchemy. Set `SUPABASE_DATABASE_URL` to the SQLAlchemy-formatted connection string from the Supabase Dashboard. URL-encode special characters in the database password and keep `?sslmode=require`.
-- **Security:** CSRF Validation globally. Sensitive tokens (`.env`) like Razorpay Key Secret/IDs strings are decoupled safely via environment variables and ignored from Git. NEVER commit your `.env` keys.
+- **Security:** CSRF validation globally. Sensitive GoKwik, Shiprocket, Supabase, and media credentials are supplied through environment variables and ignored by Git. Never commit `.env` credentials.
 - **Currency:** Fully localized format to `INR` (₹).
 
 > **Note**: For initial setup, make sure you configure `.env` mimicking whatever was stored securely offline, as the project deliberately lacks it on GitHub for defense architecture. 
@@ -64,21 +64,20 @@ does not create or alter production tables.
 
 ## GoKwik Checkout integration
 
-This custom Flask storefront uses a staged GoKwik integration. Keep the native
-Razorpay/COD checkout active until every GoKwik sandbox flow has passed.
+This custom Flask storefront uses GoKwik as its only checkout and payment
+integration. Both prepaid and COD orders must be created through authenticated
+GoKwik merchant callbacks.
 
 1. Complete GoKwik merchant onboarding and request the custom web integration
    specification, sandbox Merchant ID, App ID, and App Secret.
 2. Copy `.env.example` to `.env` and fill the GoKwik values locally. Never
    commit `.env` or send credentials through chat or email.
-3. Run `migrations/20261009_gokwik.sql` once in the Supabase SQL Editor before
-   deploying the GoKwik-enabled application. It is idempotent and keeps schema
-   changes out of application startup.
-4. After deploying the server-side endpoints, use `GOKWIK_ENABLED=1` and
-   `GOKWIK_STOREFRONT_ENABLED=0` while GoKwik validates the public APIs.
-5. Set `GOKWIK_STOREFRONT_ENABLED=1` only after the sandbox APIs and checkout
-   flow pass end-to-end testing.
-6. Use `GOKWIK_ENV=sandbox` while testing. Production uses a different SDK URL
+3. Run `migrations/20261009_gokwik.sql` and then
+   `migrations/20261015_gokwik_only_checkout.sql` in the Supabase SQL Editor.
+   They are idempotent and keep schema changes out of application startup.
+4. Deploy the server endpoints with `GOKWIK_ENABLED=1` while GoKwik validates
+   the public APIs and browser checkout in sandbox.
+5. Use `GOKWIK_ENV=sandbox` while testing. Production uses a different SDK URL
    and must only be enabled after GoKwik confirms the integration.
 
 On a persistent IPv4 VPS, use Supabase's Session pooler URL on port `5432` and
@@ -131,15 +130,14 @@ delivered orders require both a shipping provider and AWB/tracking number.
 This store has no wallet ledger, so the wallet balance endpoint reports zero
 and wallet deduction is rejected rather than creating an unverified paid order.
 
-Activation order:
+Production activation order:
 
-1. In sandbox, set `GOKWIK_ENABLED=1` and keep
-   `GOKWIK_STOREFRONT_ENABLED=0`.
+1. In sandbox, set `GOKWIK_ENABLED=1`.
 2. Deploy to a public HTTPS domain and give GoKwik the API base URL above.
 3. Have GoKwik validate the health, cart, coupon, address, shipping, and order
    endpoints with the sandbox App ID and App Secret.
-4. Set `GOKWIK_STOREFRONT_ENABLED=1`, restart, and complete COD, prepaid,
-   failed-payment, cancellation, and inventory tests.
+4. Complete COD, prepaid, failed-payment, cancellation, idempotency, and
+   inventory tests through the GoKwik checkout.
 5. Switch to `GOKWIK_ENV=production` only after GoKwik issues/activates
    production credentials and approves the sandbox test results.
 
@@ -150,7 +148,7 @@ the locally verified order total.
 
 ## Shiprocket fulfillment
 
-Shiprocket is an optional fulfillment layer for native and GoKwik orders. Credentials
+Shiprocket is an optional fulfillment layer for GoKwik orders. Credentials
 must belong to a dedicated Shiprocket API user and stay in the deployment environment.
 Apply `migrations/20261010_shiprocket.sql`, then configure the variables documented in
 `.env.example`. Keep `SHIPROCKET_ENABLED=0` until the migration and pickup location are
@@ -167,7 +165,10 @@ tracking webhook as `https://<store-domain>/api/fulfillment/webhook`, set its se
 token to the exact `SHIPROCKET_WEBHOOK_TOKEN` value, and enable it. The URL deliberately
 does not contain Shiprocket-reserved keywords.
 
-Admins create the Shiprocket order and AWB from **Admin > Orders**. Pickup can be
-scheduled explicitly or automatically through **Admin > Settings**. After pickup,
-authenticated webhook events update the local shipped/delivered status and synchronize
-GoKwik orders. Customers see courier, live status, and a tracking link in their account.
+Eligible COD orders are sent to Shiprocket immediately after checkout. Prepaid orders
+are sent after payment confirmation. Automatic checkout sync only creates the Shiprocket
+order, so it remains in Shiprocket's **New** queue. Admins assign an AWB and advance
+fulfillment from **Admin > Orders**; pickup can then be scheduled explicitly or
+automatically through **Admin > Settings**. After pickup, authenticated webhook events
+update the local shipped/delivered status and synchronize GoKwik orders. Customers see
+courier, live status, and a tracking link in their account.

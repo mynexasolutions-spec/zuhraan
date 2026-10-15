@@ -379,6 +379,33 @@
     </section>
 </div>
 
+<!-- REELS SECTION -->
+<section class="reels-section" aria-labelledby="reels-heading">
+    <div class="reels-heading-wrap">
+        <span class="reels-eyebrow">The Zuhraan Edit</span>
+        <h2 id="reels-heading" class="reels-heading">Fragrance in Motion</h2>
+        <p class="reels-description">
+            Step closer to the craft, character, and quiet luxury behind every Zuhraan scent.
+        </p>
+    </div>
+
+    <div class="reels-row" aria-label="Zuhraan fragrance reels">
+        {% for reel in reels %}
+        <article class="reel-card">
+            <video class="reel-video" src="{{ reel.url }}" autoplay muted loop playsinline preload="metadata"
+                aria-label="{{ reel.title }} fragrance reel">
+                Your browser does not support HTML video.
+            </video>
+            <div class="reel-card-shade" aria-hidden="true"></div>
+            <div class="reel-card-caption">
+                <span>0{{ loop.index }}</span>
+                <h3>{{ reel.title }}</h3>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+
 <!-- BOTTOM BANNER (replaces testimonials) -->
 {% if bottom_banner_url %}
 <section class="bottom-banner-section">

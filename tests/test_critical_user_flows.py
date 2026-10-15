@@ -1,21 +1,19 @@
 import os
-import hashlib
-import hmac
 import json
+from io import BytesIO
 
 os.environ['APP_ENV'] = 'testing'
 os.environ['SUPABASE_DATABASE_URL'] = 'sqlite:///:memory:'
 os.environ['SECRET_KEY'] = 'test-secret'
 os.environ['SHIPROCKET_ENABLED'] = '0'
-os.environ['RAZORPAY_KEY_ID'] = 'rzp_test_example'
-os.environ['RAZORPAY_KEY_SECRET'] = 'test-api-secret'
-os.environ['RAZORPAY_WEBHOOK_SECRET'] = 'test-webhook-secret'
 
 import pytest
+from werkzeug.security import generate_password_hash
 
 from app import app
 from models import Category, Coupon, Order, OrderItem, Product, ProductVariant, Setting, User, db
 from routes.main import calculate_shipping, safe_internal_redirect
+import routes.admin as admin_routes
 
 
 @pytest.fixture(autouse=True)
@@ -54,6 +52,106 @@ def add_admin_session(client, admin_id):
         session['_fresh'] = True
 
 
+def test_admin_can_replace_and_remove_homepage_reel(client, monkeypatch):
+    with app.app_context():
+        admin = User(email='reels-admin@example.test', password='test-password', role='admin')
+        db.session.add(admin)
+        db.session.commit()
+        admin_id = admin.id
+
+    uploaded_assets = iter([
+        {
+            'secure_url': 'https://res.cloudinary.com/example/video/upload/reel-one.mp4',
+            'public_id': 'zuhraan/homepage/reels/reel-one',
+        },
+        {
+            'secure_url': 'https://res.cloudinary.com/example/video/upload/reel-two.mp4',
+            'public_id': 'zuhraan/homepage/reels/reel-two',
+        },
+    ])
+    deleted_assets = []
+
+    def fake_upload(_file, **_options):
+        return next(uploaded_assets)
+
+    def fake_destroy(public_id, **options):
+        deleted_assets.append((public_id, options))
+        return {'result': 'ok'}
+
+    monkeypatch.setattr(admin_routes.cloudinary.uploader, 'upload', fake_upload)
+    monkeypatch.setattr(admin_routes.cloudinary.uploader, 'destroy', fake_destroy)
+    add_admin_session(client, admin_id)
+
+    admin_page = client.get('/admin/homepage-media')
+    assert admin_page.status_code == 200
+    assert admin_page.get_data(as_text=True).count('name="reel_video"') == 5
+    assert admin_page.get_data(as_text=True).count('name="reel_title"') == 5
+
+    title_response = client.post(
+        '/admin/homepage-media',
+        data={
+            'action': 'update_reel_title',
+            'reel_index': '0',
+            'reel_title': 'A Custom Fragrance Story',
+        },
+    )
+    assert title_response.status_code == 302
+
+    homepage_with_custom_title = client.get('/').get_data(as_text=True)
+    assert 'A Custom Fragrance Story' in homepage_with_custom_title
+
+    upload_response = client.post(
+        '/admin/homepage-media',
+        data={
+            'action': 'upload_reel',
+            'reel_index': '0',
+            'reel_video': (BytesIO(b'first-video'), 'first-reel.mp4'),
+        },
+        content_type='multipart/form-data',
+    )
+    assert upload_response.status_code == 302
+
+    with app.app_context():
+        saved_reels = json.loads(Setting.query.filter_by(key='homepage_reels').one().value)
+        assert saved_reels[0]['url'].endswith('/reel-one.mp4')
+        assert saved_reels[0]['public_id'] == 'zuhraan/homepage/reels/reel-one'
+        assert saved_reels[0]['title'] == 'A Custom Fragrance Story'
+        assert saved_reels[1]['url'].endswith('/static/videos/reel1.mp4')
+
+    homepage = client.get('/')
+    homepage_body = homepage.get_data(as_text=True)
+    assert homepage.status_code == 200
+    assert 'https://res.cloudinary.com/example/video/upload/reel-one.mp4' in homepage_body
+
+    replace_response = client.post(
+        '/admin/homepage-media',
+        data={
+            'action': 'upload_reel',
+            'reel_index': '0',
+            'reel_video': (BytesIO(b'second-video'), 'second-reel.webm'),
+        },
+        content_type='multipart/form-data',
+    )
+    assert replace_response.status_code == 302
+    assert deleted_assets[0][0] == 'zuhraan/homepage/reels/reel-one'
+    assert deleted_assets[0][1]['resource_type'] == 'video'
+
+    delete_response = client.post(
+        '/admin/homepage-media',
+        data={'action': 'delete_reel', 'reel_index': '0'},
+    )
+    assert delete_response.status_code == 302
+    assert deleted_assets[1][0] == 'zuhraan/homepage/reels/reel-two'
+
+    with app.app_context():
+        saved_reels = json.loads(Setting.query.filter_by(key='homepage_reels').one().value)
+        assert saved_reels[0] is None
+
+    homepage_after_delete = client.get('/').get_data(as_text=True)
+    assert 'https://res.cloudinary.com/example/video/upload/reel-two.mp4' not in homepage_after_delete
+    assert homepage_after_delete.count('class="reel-card"') == 4
+
+
 def test_cart_add_returns_success_message_and_updated_count(client):
     with app.app_context():
         variant_id = create_product(149.0)
@@ -75,13 +173,12 @@ def test_health_check_verifies_database_connection(client):
     assert response.get_json() == {'status': 'ok'}
 
 
-def test_shipping_settings_persist_and_checkout_adds_standard_charge(client):
+def test_shipping_settings_persist_and_calculate_standard_charge(client):
     with app.app_context():
         admin = User(email='admin@example.test', password='test-password', role='admin')
         db.session.add(admin)
-        db.session.flush()
+        db.session.commit()
         admin_id = admin.id
-        variant_id = create_product(149.0)
 
     add_admin_session(client, admin_id)
     response = client.post(
@@ -89,8 +186,6 @@ def test_shipping_settings_persist_and_checkout_adds_standard_charge(client):
         data={
             'shipping_charge': '79',
             'free_shipping_threshold': '999',
-            'payment_cod_enabled': '1',
-            'payment_online_enabled': '1',
         },
     )
 
@@ -99,36 +194,10 @@ def test_shipping_settings_persist_and_checkout_adds_standard_charge(client):
         assert Setting.query.filter_by(key='shipping_charge').one().value == '79.00'
         assert Setting.query.filter_by(key='free_shipping_threshold').one().value == '999.00'
 
-    with client.session_transaction() as session:
-        session['cart'] = {str(variant_id): 1}
-    checkout = client.get('/checkout')
-    checkout_body = checkout.get_data(as_text=True)
-
-    assert checkout.status_code == 200
-    assert '79.00' in checkout_body
-    assert '228.00' in checkout_body
-
-
-def test_checkout_shows_zero_shipping_and_subtotal_at_free_shipping_threshold(client):
-    with app.app_context():
-        variant_id = create_product(999.0)
-        db.session.add_all([
-            Setting(key='shipping_charge', value='79.00'),
-            Setting(key='free_shipping_threshold', value='999.00'),
-            Setting(key='payment_cod_enabled', value='1'),
-            Setting(key='payment_online_enabled', value='1'),
-        ])
-        db.session.commit()
-
-    with client.session_transaction() as session:
-        session['cart'] = {str(variant_id): 1}
-    checkout = client.get('/checkout')
-    checkout_body = checkout.get_data(as_text=True)
-
-    assert checkout.status_code == 200
-    assert 'id="shippingAmount"' in checkout_body
-    assert '&#8377;0.00' in checkout_body
-    assert '999.00' in checkout_body
+        assert calculate_shipping(149.0, {
+            'shipping_charge': '79.00',
+            'free_shipping_threshold': '999.00',
+        }) == 79.0
 
 
 @pytest.mark.parametrize(
@@ -141,242 +210,6 @@ def test_shipping_becomes_free_at_or_above_threshold(subtotal, expected_shipping
     assert calculate_shipping(subtotal, settings) == expected_shipping
 
 
-def create_webhook_signature(body):
-    return hmac.new(
-        app.config['RAZORPAY_WEBHOOK_SECRET'].encode(),
-        body.encode(),
-        hashlib.sha256,
-    ).hexdigest()
-
-
-def test_payment_captured_webhook_marks_matching_order_paid(client):
-    with app.app_context():
-        order = Order(total_amount=100.0, razorpay_order_id='order_webhook_test')
-        db.session.add(order)
-        db.session.commit()
-
-    payload = {
-        'event': 'payment.captured',
-        'payload': {
-            'payment': {
-                'entity': {
-                    'id': 'pay_webhook_test',
-                    'order_id': 'order_webhook_test',
-                    'status': 'captured',
-                }
-            }
-        },
-    }
-    body = json.dumps(payload, separators=(',', ':'))
-
-    response = client.post(
-        '/payment/webhook',
-        data=body,
-        content_type='application/json',
-        headers={'X-Razorpay-Signature': create_webhook_signature(body)},
-    )
-
-    assert response.status_code == 200
-    with app.app_context():
-        order = Order.query.filter_by(razorpay_order_id='order_webhook_test').one()
-        assert order.payment_status == 'paid'
-        assert order.status == 'processing'
-        assert order.razorpay_payment_id == 'pay_webhook_test'
-
-
-def test_order_paid_webhook_is_idempotent_for_coupon_usage(client):
-    with app.app_context():
-        coupon = Coupon(code='WEBHOOK', discount_type='fixed', discount_value=10.0)
-        db.session.add(coupon)
-        db.session.flush()
-        order = Order(total_amount=100.0, razorpay_order_id='order_paid_test', coupon_id=coupon.id)
-        db.session.add(order)
-        db.session.commit()
-
-    payload = {
-        'event': 'order.paid',
-        'payload': {
-            'order': {'entity': {'id': 'order_paid_test'}},
-            'payment': {'entity': {'id': 'pay_order_paid_test'}},
-        },
-    }
-    body = json.dumps(payload, separators=(',', ':'))
-    headers = {'X-Razorpay-Signature': create_webhook_signature(body)}
-
-    assert client.post('/payment/webhook', data=body, content_type='application/json', headers=headers).status_code == 200
-    assert client.post('/payment/webhook', data=body, content_type='application/json', headers=headers).status_code == 200
-
-    with app.app_context():
-        coupon = Coupon.query.filter_by(code='WEBHOOK').one()
-        assert coupon.used_count == 1
-
-
-def test_webhook_with_invalid_signature_is_rejected_without_changing_order(client):
-    with app.app_context():
-        order = Order(total_amount=100.0, razorpay_order_id='order_invalid_signature')
-        db.session.add(order)
-        db.session.commit()
-
-    body = json.dumps({
-        'event': 'payment.captured',
-        'payload': {'payment': {'entity': {'id': 'pay_invalid_signature', 'order_id': 'order_invalid_signature'}}},
-    })
-    response = client.post(
-        '/payment/webhook',
-        data=body,
-        content_type='application/json',
-        headers={'X-Razorpay-Signature': 'invalid'},
-    )
-
-    assert response.status_code == 400
-    with app.app_context():
-        order = Order.query.filter_by(razorpay_order_id='order_invalid_signature').one()
-        assert order.payment_status == 'unpaid'
-
-
-def test_payment_verification_marks_only_the_matching_captured_order_paid(client, monkeypatch):
-    class PaymentClient:
-        def fetch(self, payment_id):
-            return {
-                'id': payment_id,
-                'order_id': 'order_verification_test',
-                'amount': 10000,
-                'status': 'captured',
-            }
-
-    class RazorpayClient:
-        payment = PaymentClient()
-
-        class utility:
-            @staticmethod
-            def verify_payment_signature(parameters):
-                return True
-
-    monkeypatch.setattr('routes.main.get_razorpay_client', lambda: RazorpayClient())
-    with app.app_context():
-        order = Order(total_amount=100.0, razorpay_order_id='order_verification_test')
-        db.session.add(order)
-        db.session.commit()
-
-    response = client.post(
-        '/payment/verify',
-        data={
-            'razorpay_payment_id': 'pay_verification_test',
-            'razorpay_order_id': 'order_verification_test',
-            'razorpay_signature': 'valid-signature',
-        },
-    )
-
-    assert response.status_code == 302
-    with app.app_context():
-        order = Order.query.filter_by(razorpay_order_id='order_verification_test').one()
-        assert order.payment_status == 'paid'
-        assert order.razorpay_payment_id == 'pay_verification_test'
-
-
-def test_payment_verification_rejects_mismatched_amount(client, monkeypatch):
-    class PaymentClient:
-        def fetch(self, payment_id):
-            return {
-                'id': payment_id,
-                'order_id': 'order_amount_test',
-                'amount': 9900,
-                'status': 'captured',
-            }
-
-    class RazorpayClient:
-        payment = PaymentClient()
-
-        class utility:
-            @staticmethod
-            def verify_payment_signature(parameters):
-                return True
-
-    monkeypatch.setattr('routes.main.get_razorpay_client', lambda: RazorpayClient())
-    with app.app_context():
-        order = Order(total_amount=100.0, razorpay_order_id='order_amount_test')
-        db.session.add(order)
-        db.session.commit()
-
-    response = client.post(
-        '/payment/verify',
-        data={
-            'razorpay_payment_id': 'pay_amount_test',
-            'razorpay_order_id': 'order_amount_test',
-            'razorpay_signature': 'valid-signature',
-        },
-    )
-
-    assert response.status_code == 302
-    with app.app_context():
-        order = Order.query.filter_by(razorpay_order_id='order_amount_test').one()
-        assert order.payment_status == 'unpaid'
-
-
-def test_purge_legacy_razorpay_settings_command_removes_only_legacy_settings():
-    with app.app_context():
-        db.session.add_all([
-            Setting(key='razorpay_key', value='obsolete-key'),
-            Setting(key='razorpay_secret', value='obsolete-secret'),
-            Setting(key='shipping_charge', value='79.00'),
-        ])
-        db.session.commit()
-
-    result = app.test_cli_runner().invoke(args=['purge-legacy-razorpay-settings'])
-
-    assert result.exit_code == 0
-    with app.app_context():
-        assert Setting.query.filter_by(key='razorpay_key').first() is None
-        assert Setting.query.filter_by(key='razorpay_secret').first() is None
-        assert Setting.query.filter_by(key='shipping_charge').one().value == '79.00'
-
-
-def checkout_form(payment_method='cod'):
-    return {
-        'name': 'Test Customer',
-        'email': 'customer@example.test',
-        'phone': '9999999999',
-        'address_line1': '123 Test Street',
-        'address_line2': '',
-        'city': 'Mumbai',
-        'state': 'MH',
-        'pincode': '400001',
-        'country': 'India',
-        'payment_method': payment_method,
-    }
-
-
-def test_native_cod_checkout_locks_and_decrements_stock(client):
-    with app.app_context():
-        variant_id = create_product(149.0)
-        db.session.add(Setting(key='payment_cod_enabled', value='1'))
-        db.session.commit()
-    with client.session_transaction() as browser_session:
-        browser_session['cart'] = {str(variant_id): 2}
-
-    response = client.post('/checkout', data=checkout_form())
-
-    assert response.status_code == 302
-    with app.app_context():
-        order = Order.query.one()
-        assert order.payment_method == 'native_cod'
-        assert db.session.get(ProductVariant, variant_id).stock_quantity == 8
-
-
-def test_disabled_payment_method_is_rejected_without_creating_order(client):
-    with app.app_context():
-        variant_id = create_product(149.0)
-        db.session.add(Setting(key='payment_cod_enabled', value='0'))
-        db.session.commit()
-    with client.session_transaction() as browser_session:
-        browser_session['cart'] = {str(variant_id): 1}
-
-    response = client.post('/checkout', data=checkout_form('cod'))
-
-    assert response.status_code == 302
-    with app.app_context():
-        assert Order.query.count() == 0
-        assert db.session.get(ProductVariant, variant_id).stock_quantity == 10
 
 
 def test_cancelling_order_restores_stock_only_once(client):
@@ -388,7 +221,7 @@ def test_cancelling_order_restores_stock_only_once(client):
         variant_id = create_product(149.0)
         variant = db.session.get(ProductVariant, variant_id)
         variant.stock_quantity = 8
-        order = Order(total_amount=298.0, payment_method='native_cod', status='pending')
+        order = Order(total_amount=298.0, payment_method='cod', status='pending')
         db.session.add(order)
         db.session.flush()
         db.session.add(OrderItem(

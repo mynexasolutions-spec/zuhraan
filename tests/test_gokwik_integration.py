@@ -5,16 +5,16 @@ os.environ['SUPABASE_DATABASE_URL'] = 'sqlite:///:memory:'
 os.environ['SECRET_KEY'] = 'test-secret'
 os.environ['SHIPROCKET_ENABLED'] = '0'
 os.environ['GOKWIK_ENABLED'] = '1'
-os.environ['GOKWIK_STOREFRONT_ENABLED'] = '1'
 os.environ['GOKWIK_ENV'] = 'sandbox'
 os.environ['GOKWIK_MERCHANT_ID'] = 'test-merchant'
 os.environ['GOKWIK_APP_ID'] = 'test-app-id'
 os.environ['GOKWIK_APP_SECRET'] = 'test-app-secret'
 
 import pytest
+from werkzeug.security import generate_password_hash
 
 from app import app, get_database_engine_options, get_supabase_database_url
-from models import Category, Coupon, GoKwikCheckoutSession, Order, Product, ProductVariant, Setting, db
+from models import Category, Coupon, GoKwikCheckoutSession, Order, Product, ProductVariant, Setting, User, db
 
 
 @pytest.fixture(autouse=True)
@@ -23,7 +23,6 @@ def isolated_database():
         TESTING=True,
         WTF_CSRF_ENABLED=False,
         GOKWIK_ENABLED=True,
-        GOKWIK_STOREFRONT_ENABLED=True,
         GOKWIK_ENV='sandbox',
         GOKWIK_MERCHANT_ID='test-merchant',
         GOKWIK_APP_ID='test-app-id',
@@ -136,7 +135,95 @@ def test_cod_order_creation_is_idempotent_and_uses_authoritative_cart(client):
         assert db.session.get(GoKwikCheckoutSession, checkout_id).status == 'completed'
 
 
-def test_prepaid_order_rejects_tampered_total_and_missing_transaction(client):
+def test_guest_gokwik_order_appears_after_same_browser_login(client):
+    with app.app_context():
+        variant_id = create_cart_product()
+        customer = User(
+            email='account-owner@example.test',
+            password=generate_password_hash('test-password', method='pbkdf2:sha256'),
+            role='user',
+        )
+        db.session.add(customer)
+        db.session.commit()
+    checkout_id = create_checkout(client, variant_id, 1)
+    address = checkout_address()
+    placed = client.post(
+        '/api/gokwik/v1/cart/place-order',
+        json={
+            'session_key': checkout_id,
+            'payment_method': 'cod',
+            'order_total': 149.0,
+            'billing': address,
+            'shipping': address,
+            'fee_lines': [],
+        },
+        headers=gokwik_headers(),
+    )
+    order_id = placed.get_json()['id']
+
+    completed = client.post(
+        '/api/gokwik/checkout-complete',
+        json={'checkout_id': checkout_id, 'merchant_order_id': str(order_id)},
+    )
+    account_response = client.post(
+        '/account/login',
+        data={
+            'email': 'account-owner@example.test',
+            'password': 'test-password',
+        },
+        follow_redirects=True,
+    )
+
+    assert placed.status_code == 200
+    assert completed.status_code == 200
+    assert account_response.status_code == 200
+    assert f'Order #{order_id}'.encode() in account_response.data
+    assert b'Test Perfume' in account_response.data
+    with app.app_context():
+        order = db.session.get(Order, order_id)
+        customer = User.query.filter_by(email='account-owner@example.test').one()
+        assert order.user_id == customer.id
+
+
+def test_cod_order_is_automatically_created_in_shiprocket(client, monkeypatch):
+    class FakeShiprocketClient:
+        def create_order(self, payload):
+            assert payload['payment_method'] == 'COD'
+            return {'order_id': 12345, 'shipment_id': 67890, 'status': 'NEW'}
+
+    monkeypatch.setitem(app.config, 'SHIPROCKET_ENABLED', True)
+    monkeypatch.setitem(app.config, 'SHIPROCKET_PICKUP_LOCATION', 'Primary Warehouse')
+    monkeypatch.setattr('shiprocket_client.ShiprocketClient', FakeShiprocketClient)
+    with app.app_context():
+        variant_id = create_cart_product()
+    checkout_id = create_checkout(client, variant_id, 1)
+    address = checkout_address()
+
+    response = client.post(
+        '/api/gokwik/v1/cart/place-order',
+        json={
+            'session_key': checkout_id,
+            'payment_method': 'cod',
+            'order_total': 149.0,
+            'billing': address,
+            'shipping': address,
+            'fee_lines': [],
+        },
+        headers=gokwik_headers(),
+    )
+
+    assert response.status_code == 200
+    with app.app_context():
+        order = db.session.get(Order, response.get_json()['id'])
+        assert order.shiprocket_order_id == '12345'
+        assert order.shiprocket_shipment_id == '67890'
+        assert order.awb_number is None
+        assert order.shipping_provider is None
+        assert order.shiprocket_status == 'NEW'
+        assert order.shiprocket_pickup_scheduled is False
+
+
+def test_prepaid_order_requires_confirmed_payment_and_matching_total(client):
     with app.app_context():
         variant_id = create_cart_product()
     checkout_id = create_checkout(client, variant_id, 1)
@@ -160,6 +247,16 @@ def test_prepaid_order_rejects_tampered_total_and_missing_transaction(client):
     assert tampered.get_json()['code'] == 'gc_cart_total_mismatch'
 
     payload['order_total'] = 149.0
+    payload['set_paid'] = False
+    unconfirmed = client.post(
+        '/api/gokwik/v1/cart/place-order',
+        json=payload,
+        headers=gokwik_headers(),
+    )
+    assert unconfirmed.status_code == 402
+    assert unconfirmed.get_json()['code'] == 'gc_payment_not_confirmed'
+
+    payload['set_paid'] = True
     missing_transaction = client.post(
         '/api/gokwik/v1/cart/place-order',
         json=payload,
@@ -179,6 +276,94 @@ def test_prepaid_order_rejects_tampered_total_and_missing_transaction(client):
         order = db.session.get(Order, placed.get_json()['id'])
         assert order.payment_status == 'paid'
         assert order.gokwik_transaction_id == 'gokwik_test_transaction'
+
+
+def test_failed_checkout_keeps_cart_and_creates_no_order(client):
+    with app.app_context():
+        variant_id = create_cart_product()
+    checkout_id = create_checkout(client, variant_id, 1)
+
+    failed = client.post(
+        '/api/gokwik/checkout-failed',
+        json={'checkout_id': checkout_id, 'reason': 'payment_failed'},
+    )
+    attempted_order = client.post(
+        '/api/gokwik/v1/cart/place-order',
+        json={
+            'session_key': checkout_id,
+            'payment_method': 'gokwik_prepaid',
+            'order_total': 149.0,
+            'billing': checkout_address(),
+            'shipping': checkout_address(),
+            'fee_lines': [],
+            'set_paid': True,
+            'transaction_id': 'failed-checkout-transaction',
+        },
+        headers=gokwik_headers(),
+    )
+
+    assert failed.status_code == 200
+    assert attempted_order.status_code == 409
+    assert attempted_order.get_json()['code'] == 'gc_checkout_failed'
+    with client.session_transaction() as browser_session:
+        assert browser_session['cart'] == {str(variant_id): 1}
+    with app.app_context():
+        checkout = db.session.get(GoKwikCheckoutSession, checkout_id)
+        assert checkout.status == 'failed'
+        assert checkout.failure_reason == 'payment_failed'
+        assert Order.query.count() == 0
+
+
+def test_gokwik_transaction_cannot_be_reused(client):
+    with app.app_context():
+        variant_id = create_cart_product()
+    first_checkout_id = create_checkout(client, variant_id, 1)
+    second_checkout_id = create_checkout(client, variant_id, 1)
+    address = checkout_address()
+
+    def place_paid_order(checkout_id: str):
+        return client.post(
+            '/api/gokwik/v1/cart/place-order',
+            json={
+                'session_key': checkout_id,
+                'payment_method': 'gokwik_prepaid',
+                'order_total': 149.0,
+                'billing': address,
+                'shipping': address,
+                'fee_lines': [],
+                'set_paid': True,
+                'transaction_id': 'unique-gokwik-transaction',
+            },
+            headers=gokwik_headers(),
+        )
+
+    first = place_paid_order(first_checkout_id)
+    duplicate = place_paid_order(second_checkout_id)
+
+    assert first.status_code == 200
+    assert duplicate.status_code == 409
+    assert duplicate.get_json()['code'] == 'gc_duplicate_transaction'
+    with app.app_context():
+        assert Order.query.count() == 1
+
+
+def test_cart_uses_only_gokwik_checkout(client):
+    with app.app_context():
+        variant_id = create_cart_product()
+    with client.session_transaction() as browser_session:
+        browser_session['cart'] = {str(variant_id): 1}
+
+    cart_response = client.get('/cart')
+    legacy_get = client.get('/checkout')
+    legacy_post = client.post('/checkout')
+    cart_body = cart_response.get_data(as_text=True)
+
+    assert cart_response.status_code == 200
+    assert 'Checkout securely with GoKwik' in cart_body
+    assert app.config['GOKWIK_SDK_URL'] in cart_body
+    assert legacy_get.status_code == 302
+    assert legacy_get.headers['Location'].endswith('/cart')
+    assert legacy_post.status_code == 405
 
 
 def test_coupon_address_shipping_and_wallet_contract(client):

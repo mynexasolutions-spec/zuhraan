@@ -93,10 +93,6 @@ app.config['SUPABASE_URL'] = os.environ.get('NEXT_PUBLIC_SUPABASE_URL')
 app.config['SUPABASE_ANON_KEY'] = os.environ.get('NEXT_PUBLIC_SUPABASE_ANON_KEY')
 app.config['SUPABASE_SERVICE_ROLE_KEY'] = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
 
-app.config['RAZORPAY_KEY_ID'] = os.environ.get('RAZORPAY_KEY_ID')
-app.config['RAZORPAY_KEY_SECRET'] = os.environ.get('RAZORPAY_KEY_SECRET')
-app.config['RAZORPAY_WEBHOOK_SECRET'] = os.environ.get('RAZORPAY_WEBHOOK_SECRET')
-
 gokwik_environment = os.environ.get('GOKWIK_ENV', 'sandbox').strip().lower()
 gokwik_sdk_urls = {
     'sandbox': 'https://sandbox.pdp.gokwik.co/v4/build/gokwik.js',
@@ -109,8 +105,7 @@ gokwik_api_base_urls = {
 if gokwik_environment not in gokwik_sdk_urls:
     raise RuntimeError('GOKWIK_ENV must be either sandbox or production.')
 
-app.config['GOKWIK_ENABLED'] = os.environ.get('GOKWIK_ENABLED', '0') == '1'
-app.config['GOKWIK_STOREFRONT_ENABLED'] = os.environ.get('GOKWIK_STOREFRONT_ENABLED', '0') == '1'
+app.config['GOKWIK_ENABLED'] = environment_flag('GOKWIK_ENABLED', is_production_runtime())
 app.config['GOKWIK_ENV'] = gokwik_environment
 app.config['GOKWIK_SDK_URL'] = gokwik_sdk_urls[gokwik_environment]
 app.config['GOKWIK_API_BASE_URL'] = gokwik_api_base_urls[gokwik_environment]
@@ -118,8 +113,8 @@ app.config['GOKWIK_MERCHANT_ID'] = os.environ.get('GOKWIK_MERCHANT_ID')
 app.config['GOKWIK_APP_ID'] = os.environ.get('GOKWIK_APP_ID')
 app.config['GOKWIK_APP_SECRET'] = os.environ.get('GOKWIK_APP_SECRET')
 
-if app.config['GOKWIK_STOREFRONT_ENABLED'] and not app.config['GOKWIK_ENABLED']:
-    raise RuntimeError('GOKWIK_STOREFRONT_ENABLED requires GOKWIK_ENABLED=1.')
+if is_production_runtime() and not app.config['GOKWIK_ENABLED']:
+    raise RuntimeError('Production checkout requires GOKWIK_ENABLED=1.')
 
 if app.config['GOKWIK_ENABLED']:
     required_gokwik_settings = (
@@ -222,6 +217,19 @@ def gokwik_readiness():
 
     inspector = inspect(db.engine)
     checks['checkout_session_table'] = inspector.has_table('go_kwik_checkout_session')
+    if inspector.has_table('go_kwik_checkout_session'):
+        checkout_columns = {
+            column['name']
+            for column in inspector.get_columns('go_kwik_checkout_session')
+        }
+        checks['checkout_session_columns'] = {
+            'status',
+            'failure_reason',
+            'order_id',
+            'expires_at',
+        }.issubset(checkout_columns)
+    else:
+        checks['checkout_session_columns'] = False
     if inspector.has_table('order'):
         order_columns = {column['name'] for column in inspector.get_columns('order')}
         checks['order_columns'] = {
@@ -230,8 +238,23 @@ def gokwik_readiness():
             'shipping_provider',
             'awb_number',
         }.issubset(order_columns)
+        transaction_unique_constraints = {
+            column_name
+            for constraint in inspector.get_unique_constraints('order')
+            for column_name in constraint.get('column_names') or []
+        }
+        transaction_unique_indexes = {
+            column_name
+            for index in inspector.get_indexes('order')
+            if index.get('unique')
+            for column_name in index.get('column_names') or []
+        }
+        checks['transaction_id_unique'] = 'gokwik_transaction_id' in (
+            transaction_unique_constraints | transaction_unique_indexes
+        )
     else:
         checks['order_columns'] = False
+        checks['transaction_id_unique'] = False
 
     if inspector.has_table('product'):
         product_columns = {column['name'] for column in inspector.get_columns('product')}
@@ -260,10 +283,6 @@ def gokwik_readiness():
 
     for name, passed in checks.items():
         click.echo(f"[{'PASS' if passed else 'FAIL'}] {name}")
-    click.echo(
-        '[INFO] storefront_enabled='
-        + str(bool(app.config.get('GOKWIK_STOREFRONT_ENABLED')))
-    )
     if not all(checks.values()):
         raise click.ClickException(
             'GoKwik is not ready. Resolve the failed checks; no credential values were printed.'
@@ -396,18 +415,11 @@ def seed_db():
     settings = {
         'shipping_charge': '0',
         'free_shipping_threshold': '0',
-        'payment_cod_enabled': '0',
-        'payment_online_enabled': '1'
     }
     for k, v in settings.items():
         if not Setting.query.filter_by(key=k).first():
             db.session.add(Setting(key=k, value=v))
 
-    # Razorpay credentials are intentionally managed only through environment
-    # variables. Remove obsolete database values created by older releases.
-    for setting in Setting.query.filter(Setting.key.in_({'razorpay_key', 'razorpay_secret'})).all():
-        db.session.delete(setting)
-            
     # Seed About Page
     if not AboutPage.query.first():
         default_about = AboutPage(
@@ -442,17 +454,6 @@ def seed_db():
     db.session.commit()
     click.echo('Database initialized.')
 
-
-@app.cli.command('purge-legacy-razorpay-settings')
-def purge_legacy_razorpay_settings():
-    """Remove obsolete Razorpay credentials stored in the settings table."""
-    deleted_count = (
-        Setting.query
-        .filter(Setting.key.in_({'razorpay_key', 'razorpay_secret'}))
-        .delete(synchronize_session=False)
-    )
-    db.session.commit()
-    click.echo(f'Removed {deleted_count} obsolete Razorpay setting(s).')
 
 @app.cli.command('init-contact-messages')
 def init_contact_messages():

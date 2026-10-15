@@ -1732,6 +1732,184 @@
 }
 
 /* ── REVIEWS SECTION ── */
+/* REELS SECTION */
+.reels-section {
+    width: 100%;
+    padding: clamp(24px, 2.2vw, 34px) clamp(20px, 4vw, 64px) clamp(20px, 2vw, 30px);
+    overflow: hidden;
+    background:
+        radial-gradient(circle at 50% 0%, rgba(181, 138, 72, 0.14), transparent 34%),
+        linear-gradient(180deg, #fffdf8 0%, #f8f0df 100%);
+}
+
+.reels-heading-wrap {
+    max-width: 760px;
+    margin: 0 auto clamp(18px, 2vw, 26px);
+    text-align: center;
+}
+
+.reels-eyebrow {
+    display: inline-block;
+    margin-bottom: 6px;
+    color: #9a6f32;
+    font-family: 'Jost', sans-serif;
+    font-size: 0.76rem;
+    font-weight: 600;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+}
+
+.reels-heading {
+    margin: 0;
+    color: var(--dark);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(2.7rem, 5vw, 4.6rem);
+    font-weight: 500;
+    line-height: 0.98;
+}
+
+.reels-description {
+    max-width: 620px;
+    margin: 10px auto 0;
+    color: var(--muted);
+    font-family: 'Jost', sans-serif;
+    font-size: clamp(0.95rem, 1.2vw, 1.08rem);
+    line-height: 1.7;
+}
+
+.reels-row {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: clamp(12px, 1.5vw, 24px);
+    width: 100%;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+.reel-card {
+    position: relative;
+    min-width: 0;
+    aspect-ratio: 9 / 16;
+    overflow: hidden;
+    border: 1px solid rgba(154, 111, 50, 0.2);
+    border-radius: 0;
+    background: #191713;
+    box-shadow: 0 20px 44px rgba(61, 42, 18, 0.14);
+    isolation: isolate;
+    transition: transform 0.45s ease, box-shadow 0.45s ease, border-color 0.45s ease;
+}
+
+.reel-video {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), filter 0.45s ease;
+}
+
+.reel-card-shade {
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(180deg, transparent 52%, rgba(15, 12, 8, 0.82) 100%);
+}
+
+.reel-card-caption {
+    position: absolute;
+    z-index: 2;
+    right: clamp(14px, 1.4vw, 22px);
+    bottom: clamp(16px, 1.8vw, 26px);
+    left: clamp(14px, 1.4vw, 22px);
+    color: #fff;
+}
+
+.reel-card-caption span {
+    display: block;
+    margin-bottom: 5px;
+    color: #e5c58e;
+    font-family: 'Jost', sans-serif;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+}
+
+.reel-card-caption h3 {
+    margin: 0;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(1.15rem, 1.55vw, 1.65rem);
+    font-weight: 600;
+    line-height: 1.1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .reel-card:hover {
+        z-index: 2;
+        border-color: rgba(154, 111, 50, 0.52);
+        box-shadow: 0 30px 60px rgba(61, 42, 18, 0.22);
+        transform: translateY(-10px);
+    }
+
+    .reel-card:hover .reel-video {
+        filter: saturate(1.08) contrast(1.03);
+        transform: scale(1.045);
+    }
+}
+
+@media (max-width: 1024px) {
+    .reels-section {
+        padding-inline: 0;
+    }
+
+    .reels-heading-wrap {
+        padding-inline: 24px;
+    }
+
+    .reels-row {
+        grid-template-columns: none;
+        grid-auto-flow: column;
+        grid-auto-columns: clamp(210px, 31vw, 270px);
+        gap: 18px;
+        max-width: none;
+        padding: 4px 24px 10px;
+        overflow-x: auto;
+        overscroll-behavior-inline: contain;
+        scroll-padding-inline: 24px;
+        scroll-snap-type: inline mandatory;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(154, 111, 50, 0.45) transparent;
+    }
+
+    .reel-card {
+        scroll-snap-align: start;
+    }
+}
+
+@media (max-width: 600px) {
+    .reels-section {
+        padding-block: 22px 14px;
+    }
+
+    .reels-heading-wrap {
+        margin-bottom: 16px;
+        padding-inline: 20px;
+    }
+
+    .reels-row {
+        grid-auto-columns: min(72vw, 270px);
+        gap: 14px;
+        padding-inline: 20px;
+        scroll-padding-inline: 20px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .reel-card,
+    .reel-video {
+        transition: none;
+    }
+}
+
 .section-bg-reviews {
     background: #ffffff;
     width: 100%;

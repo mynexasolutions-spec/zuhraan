@@ -102,10 +102,8 @@ class Order(db.Model):
     shipping_charges = db.Column(db.Float, default=0.0)
     
     payment_status = db.Column(db.String(50), default='unpaid') # unpaid, paid
-    razorpay_order_id = db.Column(db.String(100))
-    razorpay_payment_id = db.Column(db.String(100))
     payment_method = db.Column(db.String(50))
-    gokwik_transaction_id = db.Column(db.String(150))
+    gokwik_transaction_id = db.Column(db.String(150), unique=True)
     shipping_provider = db.Column(db.String(100))
     awb_number = db.Column(db.String(150))
     shiprocket_order_id = db.Column(db.String(64), unique=True)
@@ -128,6 +126,7 @@ class GoKwikCheckoutSession(db.Model):
     customer_data = db.Column(db.Text, nullable=False, default='{}')
     coupon_code = db.Column(db.String(50), nullable=True)
     status = db.Column(db.String(20), nullable=False, default='pending')
+    failure_reason = db.Column(db.String(500), nullable=True)
     order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=True, unique=True)
     expires_at = db.Column(db.DateTime, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=utcnow_naive)

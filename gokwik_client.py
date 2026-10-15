@@ -5,7 +5,7 @@ import requests
 from flask import current_app
 
 
-GOKWIK_PAYMENT_METHODS = frozenset({'cod', 'gokwik_prepaid', 'wallet'})
+GOKWIK_PAYMENT_METHODS = frozenset({'cod', 'gokwik_prepaid'})
 GOKWIK_ORDER_STATUS_MAP = {
     'pending': 'Pending',
     'processing': 'Confirmed',

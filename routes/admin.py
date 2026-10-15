@@ -2,16 +2,19 @@ import json
 import os
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
+from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 from functools import wraps
 from models import db, Product, Category, ProductVariant, Order, User, Setting, Review, Coupon, OfferBanner, OrderItem, AboutPage, ContactMessage, utcnow_naive
 import cloudinary.uploader
+from cloudinary.exceptions import Error as CloudinaryError
 from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 import re
 from sqlalchemy.exc import SQLAlchemyError
 from about_cms import ASSET_SPECS, MAX_IMAGE_MB, delete_asset_from_cloudinary, get_assets, get_content, save_assets, save_content, upload_asset
 from gokwik_client import GoKwikRequestError, is_gokwik_payment_method, sync_gokwik_order
+from homepage_reels import MAX_HOMEPAGE_REELS, REEL_TITLES, get_homepage_reels, save_homepage_reels
 from routes.main import release_order_inventory
 from routes.shiprocket import apply_shiprocket_tracking
 from shiprocket_client import (
@@ -27,6 +30,8 @@ from shiprocket_client import (
 
 HOME_STORY_IMAGES_KEY = 'home_story_images'
 MAX_HOME_STORY_IMAGES = 5
+MAX_REEL_VIDEO_BYTES = 10 * 1024 * 1024
+ALLOWED_REEL_VIDEO_EXTENSIONS = frozenset({'mp4', 'webm', 'mov'})
 
 
 def get_home_story_images():
@@ -53,6 +58,46 @@ def save_home_story_images(images):
         db.session.add(Setting(key=HOME_STORY_IMAGES_KEY, value=value))
     else:
         setting.value = value
+
+
+def _reel_index_from_form() -> int:
+    try:
+        reel_index = int(request.form.get('reel_index', ''))
+    except ValueError as error:
+        raise ValueError('Select a valid reel slot.') from error
+    if reel_index < 0 or reel_index >= MAX_HOMEPAGE_REELS:
+        raise ValueError('Select a valid reel slot.')
+    return reel_index
+
+
+def _validate_reel_video(video_file: FileStorage | None) -> None:
+    if video_file is None or not video_file.filename:
+        raise ValueError('Choose a reel video to upload.')
+    extension = video_file.filename.rsplit('.', 1)[1].lower() if '.' in video_file.filename else ''
+    if extension not in ALLOWED_REEL_VIDEO_EXTENSIONS:
+        raise ValueError('Invalid reel format. Upload an MP4, WEBM, or MOV video.')
+    video_file.seek(0, os.SEEK_END)
+    file_size = video_file.tell()
+    video_file.seek(0)
+    if file_size <= 0:
+        raise ValueError('The selected reel video is empty.')
+    if file_size > MAX_REEL_VIDEO_BYTES:
+        raise ValueError('Reel video exceeds the 10 MB limit.')
+
+
+def _reel_title_from_form() -> str:
+    title = request.form.get('reel_title', '').strip()
+    if not title:
+        raise ValueError('Reel text is required.')
+    if len(title) > 80:
+        raise ValueError('Reel text must be 80 characters or fewer.')
+    return title
+
+
+def _delete_cloudinary_reel(public_id: str) -> None:
+    if not public_id:
+        return
+    cloudinary.uploader.destroy(public_id, resource_type='video', invalidate=True)
 
 def slugify(text):
     text = text.lower()
@@ -920,8 +965,6 @@ def manage_settings():
     ALLOWED_SETTINGS = {
         'shipping_charge',
         'free_shipping_threshold',
-        'payment_cod_enabled',
-        'payment_online_enabled',
         'shiprocket_pickup_location',
         'shiprocket_default_weight_kg',
         'shiprocket_default_length_cm',
@@ -968,8 +1011,6 @@ def manage_settings():
 
         submitted_settings = {
             **shipping_settings,
-            'payment_cod_enabled': '1' if request.form.get('payment_cod_enabled') == '1' else '0',
-            'payment_online_enabled': '1' if request.form.get('payment_online_enabled') == '1' else '0',
             'shiprocket_pickup_location': pickup_location,
             'shiprocket_default_weight_kg': str(shiprocket_dimensions['weight']),
             'shiprocket_default_length_cm': str(shiprocket_dimensions['length']),
@@ -1388,6 +1429,104 @@ def homepage_media():
                     flash('The Zuhraan Story image removed.', 'success')
                 else:
                     flash('The selected story image no longer exists.', 'error')
+
+        # --- Homepage Reels ---
+        elif action == 'upload_reel':
+            uploaded_public_id = ''
+            try:
+                reel_index = _reel_index_from_form()
+                reel_video = request.files.get('reel_video')
+                _validate_reel_video(reel_video)
+                reel_slots = get_homepage_reels(url_for('static', filename='videos/reel1.mp4'))
+                previous_reel = reel_slots[reel_index]
+                upload_result = cloudinary.uploader.upload(
+                    reel_video,
+                    folder='zuhraan/homepage/reels',
+                    resource_type='video',
+                    use_filename=True,
+                    unique_filename=True,
+                    overwrite=False,
+                )
+                uploaded_url = upload_result.get('secure_url')
+                uploaded_public_id = upload_result.get('public_id')
+                if not uploaded_url or not uploaded_public_id:
+                    raise RuntimeError('Cloudinary did not return a reel URL and public ID.')
+
+                reel_slots[reel_index] = {
+                    'url': uploaded_url,
+                    'public_id': uploaded_public_id,
+                    'title': previous_reel['title'] if previous_reel else REEL_TITLES[reel_index],
+                }
+                save_homepage_reels(reel_slots)
+                db.session.commit()
+
+                if previous_reel and previous_reel['public_id']:
+                    try:
+                        _delete_cloudinary_reel(previous_reel['public_id'])
+                    except CloudinaryError:
+                        current_app.logger.warning(
+                            'The previous homepage reel could not be deleted from Cloudinary.',
+                            extra={'reel_index': reel_index, 'public_id': previous_reel['public_id']},
+                            exc_info=True,
+                        )
+                flash(f'Reel {reel_index + 1} uploaded successfully.', 'success')
+            except (ValueError, RuntimeError, SQLAlchemyError, CloudinaryError) as error:
+                db.session.rollback()
+                if uploaded_public_id:
+                    try:
+                        _delete_cloudinary_reel(uploaded_public_id)
+                    except CloudinaryError:
+                        current_app.logger.warning(
+                            'A failed homepage reel upload could not be removed from Cloudinary.',
+                            extra={'public_id': uploaded_public_id},
+                            exc_info=True,
+                        )
+                flash(f'Reel upload error: {error}', 'error')
+
+        elif action == 'delete_reel':
+            try:
+                reel_index = _reel_index_from_form()
+                reel_slots = get_homepage_reels(url_for('static', filename='videos/reel1.mp4'))
+                removed_reel = reel_slots[reel_index]
+                if removed_reel is None:
+                    raise ValueError('The selected reel no longer exists.')
+                reel_slots[reel_index] = None
+                save_homepage_reels(reel_slots)
+                db.session.commit()
+
+                if removed_reel['public_id']:
+                    try:
+                        _delete_cloudinary_reel(removed_reel['public_id'])
+                    except CloudinaryError:
+                        current_app.logger.warning(
+                            'The homepage reel was removed from the site, but its Cloudinary asset could not be deleted.',
+                            extra={'reel_index': reel_index, 'public_id': removed_reel['public_id']},
+                            exc_info=True,
+                        )
+                flash(f'Reel {reel_index + 1} removed.', 'success')
+            except (ValueError, SQLAlchemyError) as error:
+                db.session.rollback()
+                flash(f'Unable to remove reel: {error}', 'error')
+
+        elif action == 'update_reel_title':
+            try:
+                reel_index = _reel_index_from_form()
+                reel_title = _reel_title_from_form()
+                reel_slots = get_homepage_reels(url_for('static', filename='videos/reel1.mp4'))
+                reel = reel_slots[reel_index]
+                if reel is None:
+                    raise ValueError('Upload the reel video before editing its text.')
+                reel_slots[reel_index] = {
+                    'url': reel['url'],
+                    'public_id': reel['public_id'],
+                    'title': reel_title,
+                }
+                save_homepage_reels(reel_slots)
+                db.session.commit()
+                flash(f'Reel {reel_index + 1} text updated.', 'success')
+            except (ValueError, SQLAlchemyError) as error:
+                db.session.rollback()
+                flash(f'Unable to update reel text: {error}', 'error')
         
         return redirect(url_for('admin.homepage_media'))
     
@@ -1399,7 +1538,19 @@ def homepage_media():
     home_story_images = get_home_story_images()
     if not home_story_images and about_page and about_page.home_about_image:
         home_story_images = [{'url': about_page.home_about_image, 'public_id': about_page.home_about_image_pub_id or ''}]
-    return render_template('admin/homepage_media.html', media_url=media_url, media_type=media_type, banner_url=banner_url, hero_about_image_url=hero_about_image_url, home_story_images=home_story_images, max_home_story_images=MAX_HOME_STORY_IMAGES)
+    homepage_reels = get_homepage_reels(url_for('static', filename='videos/reel1.mp4'))
+    return render_template(
+        'admin/homepage_media.html',
+        media_url=media_url,
+        media_type=media_type,
+        banner_url=banner_url,
+        hero_about_image_url=hero_about_image_url,
+        home_story_images=home_story_images,
+        max_home_story_images=MAX_HOME_STORY_IMAGES,
+        homepage_reels=homepage_reels,
+        homepage_reel_count=sum(reel is not None for reel in homepage_reels),
+        max_homepage_reels=MAX_HOMEPAGE_REELS,
+    )
 
 def _about_text(field_name, maximum, required=False):
     value = request.form.get(field_name, '').strip()
