@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 import click
 from urllib.parse import parse_qs, urlparse
 
@@ -11,6 +12,7 @@ from flask_wtf.csrf import CSRFProtect
 import bleach
 from sqlalchemy import inspect, text
 from sqlalchemy.exc import SQLAlchemyError
+from waitress import serve
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from models import db, Category, User, Setting, AboutPage, ContactMessage, GoKwikCheckoutSession
@@ -18,6 +20,7 @@ from routes.main import main_bp
 from routes.admin import admin_bp
 from routes.gokwik import gokwik_api_bp, gokwik_storefront_bp
 from routes.shiprocket import shiprocket_bp
+from gokwik_client import GoKwikRequestError, verify_gokwik_merchant
 from flask_login import LoginManager
 from werkzeug.security import generate_password_hash
 import cloudinary
@@ -25,6 +28,7 @@ import cloudinary.uploader
 import cloudinary.api
 
 app = Flask(__name__)
+app.logger.setLevel(logging.INFO)
 csrf = CSRFProtect(app)
 
 
@@ -107,6 +111,7 @@ if gokwik_environment not in gokwik_sdk_urls:
 
 app.config['GOKWIK_ENABLED'] = environment_flag('GOKWIK_ENABLED', is_production_runtime())
 app.config['GOKWIK_ENV'] = gokwik_environment
+app.config['GOKWIK_PRODUCTION_APPROVED'] = environment_flag('GOKWIK_PRODUCTION_APPROVED')
 app.config['GOKWIK_SDK_URL'] = gokwik_sdk_urls[gokwik_environment]
 app.config['GOKWIK_API_BASE_URL'] = gokwik_api_base_urls[gokwik_environment]
 app.config['GOKWIK_MERCHANT_ID'] = os.environ.get('GOKWIK_MERCHANT_ID')
@@ -205,7 +210,8 @@ def health_check():
     return {'status': 'ok'}, 200
 
 @app.cli.command('gokwik-readiness')
-def gokwik_readiness():
+@click.option('--verify-api', is_flag=True, help='Check merchant registration with GoKwik without creating an order.')
+def gokwik_readiness(verify_api: bool):
     """Verify local GoKwik configuration, schema, and authenticated routing."""
     checks = {
         'environment': app.config['GOKWIK_ENV'] in {'sandbox', 'production'},
@@ -214,6 +220,13 @@ def gokwik_readiness():
         'app_secret': bool(app.config.get('GOKWIK_APP_SECRET')),
         'server_integration_enabled': bool(app.config.get('GOKWIK_ENABLED')),
     }
+    click.echo(f"GoKwik environment: {app.config['GOKWIK_ENV']}")
+    if verify_api:
+        try:
+            verify_gokwik_merchant()
+        except GoKwikRequestError as error:
+            raise click.ClickException(str(error)) from error
+        click.echo('[PASS] remote_merchant_registration (does not verify App ID/App Secret or callbacks)')
 
     inspector = inspect(db.engine)
     checks['checkout_session_table'] = inspector.has_table('go_kwik_checkout_session')
@@ -462,8 +475,11 @@ def init_contact_messages():
     print('Contact message table is ready.')
 
 if __name__ == '__main__':
-    app.run(
-        port=int(os.environ.get('PORT', '5005')),
-        host=os.environ.get('FLASK_RUN_HOST', '127.0.0.1'),
-        debug=environment_flag('FLASK_DEBUG'),
+    server_host: str = os.environ.get('FLASK_RUN_HOST', '127.0.0.1')
+    server_port: int = int(os.environ.get('PORT', '5005'))
+    click.echo(f'Waitress serving Zuhraan on http://{server_host}:{server_port}')
+    serve(
+        app,
+        host=server_host,
+        port=server_port,
     )

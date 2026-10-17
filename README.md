@@ -62,6 +62,10 @@ Do not run `python app.py` or `flask run` as the public server. Schema changes
 must be applied as migrations before restarting Gunicorn; application startup
 does not create or alter production tables.
 
+On Windows, `python app.py` starts the application locally with Waitress on
+`http://127.0.0.1:5005`. The production Linux service continues to use Gunicorn
+behind Nginx.
+
 ## GoKwik Checkout integration
 
 This custom Flask storefront uses GoKwik as its only checkout and payment
@@ -120,17 +124,36 @@ Run the credential-safe local readiness check after changing environment
 variables and restarting the application:
 
 ```text
-flask --app app gokwik-readiness
+flask --app app gokwik-readiness --verify-api
 ```
 
 The command checks configuration, database columns, the checkout-session table,
-and the authenticated health route. It never prints credential values. Admin
+and the authenticated health route. `--verify-api` also checks merchant registration
+in the selected GoKwik environment. A production merchant ID cannot be used with
+the sandbox SDK: GoKwik returns `Merchant not found`. Sandbox testing requires
+separate sandbox credentials issued by GoKwik. Remote merchant registration does
+not verify App ID/App Secret acceptance or callback delivery by GoKwik.
+
+GoKwik must have a public HTTPS API base URL registered for this custom merchant.
+`127.0.0.1` cannot receive GoKwik server callbacks. For local testing, register a
+public HTTPS tunnel pointing to port 5005 with GoKwik, or use a deployed backend
+with the same database and configuration. The browser origin must be approved
+by GoKwik where required. Do not add permissive CORS to expose merchant secrets;
+the authenticated merchant endpoints are called server-to-server.
+
+The readiness command never prints credential values. Admin
 status changes for GoKwik orders are synchronized to GoKwik; shipped and
 delivered orders require both a shipping provider and AWB/tracking number.
 This store has no wallet ledger, so the wallet balance endpoint reports zero
 and wallet deduction is rejected rather than creating an unverified paid order.
 
 Production activation order:
+
+New production checkout sessions require `GOKWIK_PRODUCTION_APPROVED=1`.
+Leave this unset or `0` until GoKwik confirms custom-platform onboarding and
+real sandbox purchase/callback tests pass. Existing order callbacks remain
+available for reconciliation. Passing local tests or merchant registration
+checks alone is not production acceptance.
 
 1. In sandbox, set `GOKWIK_ENABLED=1`.
 2. Deploy to a public HTTPS domain and give GoKwik the API base URL above.

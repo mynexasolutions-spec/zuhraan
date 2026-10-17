@@ -120,10 +120,19 @@
     <section class="media-card reels-media-card">
         <div class="media-card-header">
             <div class="media-icon"><i class="fa-solid fa-film"></i></div>
-            <div><h3>Homepage Reels</h3><p class="desc">Upload, replace, or remove the five portrait videos shown after Our Best Sellers. Videos are stored in Cloudinary and their links in Supabase.</p></div>
+            <div><h3>Homepage Reels</h3><p class="desc">Upload, replace, or remove portrait videos shown after Our Best Sellers. Videos are stored in Cloudinary and their links in Supabase.</p></div>
         </div>
         <div class="media-card-body">
             <span class="status-badge {% if homepage_reel_count %}status-active{% endif %}"><i class="fa-solid fa-circle"></i> {{ homepage_reel_count }} of {{ max_homepage_reels }} live</span>
+            <form method="POST" style="margin: 12px 0 18px;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="update_max_reels">
+                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    <label for="maxReelsInput" style="font-size: 0.9rem; font-weight: 600; color: #334155;">Max Reel Slots:</label>
+                    <input id="maxReelsInput" type="number" name="max_reels" min="1" max="20" value="{{ max_homepage_reels }}" style="width: 80px; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; font-weight: 600;">
+                    <button type="submit" class="btn-upload" style="min-height: 38px; padding: 8px 14px; font-size: 0.85rem;"><i class="fa-solid fa-save"></i> Update</button>
+                </div>
+            </form>
             <div class="admin-reels-grid">
                 {% for reel_index in range(max_homepage_reels) %}
                 {% set reel = homepage_reels[reel_index] %}

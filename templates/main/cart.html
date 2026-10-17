@@ -633,13 +633,13 @@
         window.gokwikSdk.on('checkout-initiation-failure', () => {
             handleCheckoutFailure('GoKwik checkout could not be opened. Please try again.', 'checkout_initiation_failed');
         });
-        window.gokwikSdk.on('payment-failed', () => {
+        window.gokwikSdk.on('payment-failure', () => {
             handleCheckoutFailure('Payment was not completed. Your cart has been kept so you can retry.', 'payment_failed');
         });
         window.gokwikSdk.on('checkout-failed', () => {
             handleCheckoutFailure('Checkout was not completed. Your cart has been kept so you can retry.', 'checkout_failed');
         });
-        window.gokwikSdk.on('checkout-closed', () => {
+        window.gokwikSdk.on('checkout-close', () => {
             handleCheckoutFailure('Checkout was closed. Your cart has been kept so you can continue shopping or retry.', 'checkout_closed');
         });
         window.gokwikSdk.on('payment-cancelled', () => {

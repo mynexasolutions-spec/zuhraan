@@ -388,20 +388,36 @@
         </p>
     </div>
 
-    <div class="reels-row" aria-label="Zuhraan fragrance reels">
-        {% for reel in reels %}
-        <article class="reel-card">
-            <video class="reel-video" src="{{ reel.url }}" autoplay muted loop playsinline preload="metadata"
-                aria-label="{{ reel.title }} fragrance reel">
-                Your browser does not support HTML video.
-            </video>
-            <div class="reel-card-shade" aria-hidden="true"></div>
-            <div class="reel-card-caption">
-                <span>0{{ loop.index }}</span>
-                <h3>{{ reel.title }}</h3>
+    <div class="reels-carousel-shell">
+        <div class="reels-swiper swiper" aria-label="Zuhraan fragrance reels">
+            <div class="reels-swiper-wrapper swiper-wrapper">
+                {% for reel in reels %}
+                <article class="reel-card swiper-slide">
+                    <video class="reel-video" src="{{ reel.url }}" autoplay muted loop playsinline preload="metadata"
+                        aria-label="{{ reel.title }} fragrance reel">
+                        Your browser does not support HTML video.
+                    </video>
+                    <div class="reel-card-shade" aria-hidden="true"></div>
+                    <div class="reel-card-caption">
+                        <span>0{{ loop.index }}</span>
+                        <h3>{{ reel.title }}</h3>
+                    </div>
+                </article>
+                {% endfor %}
             </div>
-        </article>
-        {% endfor %}
+        </div>
+        <div class="reels-swiper-nav">
+            <button type="button" class="reels-swiper-prev" aria-label="Previous reel">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M15 5 8 12l7 7" />
+                </svg>
+            </button>
+            <button type="button" class="reels-swiper-next" aria-label="Next reel">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="m9 5 7 7-7 7" />
+                </svg>
+            </button>
+        </div>
     </div>
 </section>
 
@@ -485,6 +501,57 @@
                     clickable: true,
                 },
             });
+        }
+
+        const reelsCarousel = document.querySelector('.reels-carousel-shell');
+        const reelsSwiperEl = reelsCarousel?.querySelector('.reels-swiper');
+        if (reelsSwiperEl) {
+            const reelsWrapper = reelsSwiperEl.querySelector('.reels-swiper-wrapper');
+            const reelSlides = Array.from(reelsWrapper.children);
+            const nextBtn = reelsCarousel.querySelector('.reels-swiper-next');
+            const prevBtn = reelsCarousel.querySelector('.reels-swiper-prev');
+            const canNavigate = reelSlides.length > 1;
+            const maxVisibleReels = Math.min(5, reelSlides.length);
+
+            // Swiper needs more slides than the visible group for a valid loop.
+            // Duplicate only in the browser so five source reels can stay visible
+            // while the arrows rotate them continuously.
+            if (canNavigate && reelSlides.length <= maxVisibleReels) {
+                reelSlides.forEach((slide) => {
+                    const duplicate = slide.cloneNode(true);
+                    duplicate.setAttribute('aria-hidden', 'true');
+                    reelsWrapper.appendChild(duplicate);
+                });
+            }
+
+            nextBtn.hidden = !canNavigate;
+            prevBtn.hidden = !canNavigate;
+
+            const reelsSwiper = new Swiper(reelsSwiperEl, {
+                loop: canNavigate,
+                loopAdditionalSlides: 1,
+                grabCursor: true,
+                speed: 650,
+                spaceBetween: 20,
+                slidesPerView: 1,
+                breakpoints: {
+                    640: {
+                        slidesPerView: Math.min(2, reelSlides.length),
+                        spaceBetween: 20,
+                    },
+                    768: {
+                        slidesPerView: Math.min(3, reelSlides.length),
+                        spaceBetween: 22,
+                    },
+                    1025: {
+                        slidesPerView: maxVisibleReels,
+                        spaceBetween: 24,
+                    }
+                }
+            });
+
+            nextBtn.addEventListener('click', () => reelsSwiper.slideNext());
+            prevBtn.addEventListener('click', () => reelsSwiper.slidePrev());
         }
     });
 </script>

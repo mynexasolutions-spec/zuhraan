@@ -149,7 +149,7 @@ def test_admin_can_replace_and_remove_homepage_reel(client, monkeypatch):
 
     homepage_after_delete = client.get('/').get_data(as_text=True)
     assert 'https://res.cloudinary.com/example/video/upload/reel-two.mp4' not in homepage_after_delete
-    assert homepage_after_delete.count('class="reel-card"') == 4
+    assert homepage_after_delete.count('class="reel-card swiper-slide"') == 4
 
 
 def test_cart_add_returns_success_message_and_updated_count(client):

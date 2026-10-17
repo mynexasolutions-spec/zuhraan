@@ -1735,7 +1735,7 @@
 /* REELS SECTION */
 .reels-section {
     width: 100%;
-    padding: clamp(24px, 2.2vw, 34px) clamp(20px, 4vw, 64px) clamp(20px, 2vw, 30px);
+    padding: clamp(24px, 2.2vw, 34px) 32px clamp(20px, 2vw, 30px);
     overflow: hidden;
     background:
         radial-gradient(circle at 50% 0%, rgba(181, 138, 72, 0.14), transparent 34%),
@@ -1777,13 +1777,19 @@
     line-height: 1.7;
 }
 
-.reels-row {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: clamp(12px, 1.5vw, 24px);
+.reels-carousel-shell {
+    position: relative;
     width: 100%;
     max-width: 1600px;
     margin: 0 auto;
+}
+
+.reels-swiper {
+    width: 100%;
+}
+
+.reels-swiper-wrapper {
+    width: 100%;
 }
 
 .reel-card {
@@ -1792,7 +1798,7 @@
     aspect-ratio: 9 / 16;
     overflow: hidden;
     border: 1px solid rgba(154, 111, 50, 0.2);
-    border-radius: 0;
+    border-radius: 16px;
     background: #191713;
     box-shadow: 0 20px 44px rgba(61, 42, 18, 0.14);
     isolation: isolate;
@@ -1856,50 +1862,108 @@
     }
 }
 
+/* Reels Swiper Navigation Buttons */
+.reels-swiper-nav {
+    position: absolute;
+    top: 50%;
+    right: -22px;
+    left: -22px;
+    transform: translateY(-50%);
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none;
+    z-index: 20;
+}
+
+.reels-swiper-prev,
+.reels-swiper-next {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border: 2px solid rgba(229, 197, 142, 0.9);
+    border-radius: 50%;
+    background: #211a12;
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 20;
+    box-shadow: 0 8px 24px rgba(61, 42, 18, 0.42);
+}
+
+.reels-swiper-prev svg,
+.reels-swiper-next svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.reels-swiper-prev:hover,
+.reels-swiper-next:hover {
+    border-color: #e5c58e;
+    background: rgba(154, 111, 50, 0.9);
+    color: #fff;
+    transform: scale(1.1);
+    box-shadow: 0 12px 32px rgba(154, 111, 50, 0.4);
+}
+
+.reels-swiper-prev:focus,
+.reels-swiper-next:focus {
+    outline: none;
+    border-color: #e5c58e;
+    box-shadow: 0 0 0 3px rgba(229, 197, 142, 0.4);
+}
+
+.reels-swiper-prev.swiper-button-disabled,
+.reels-swiper-next.swiper-button-disabled {
+    cursor: default;
+    opacity: 0.35;
+    transform: none;
+}
+
+/* Keep the carousel controls available alongside touch swiping. */
 @media (max-width: 1024px) {
-    .reels-section {
-        padding-inline: 0;
+    .reels-carousel-shell {
+        max-width: none;
     }
 
     .reels-heading-wrap {
-        padding-inline: 24px;
-    }
-
-    .reels-row {
-        grid-template-columns: none;
-        grid-auto-flow: column;
-        grid-auto-columns: clamp(210px, 31vw, 270px);
-        gap: 18px;
-        max-width: none;
-        padding: 4px 24px 10px;
-        overflow-x: auto;
-        overscroll-behavior-inline: contain;
-        scroll-padding-inline: 24px;
-        scroll-snap-type: inline mandatory;
-        scrollbar-width: thin;
-        scrollbar-color: rgba(154, 111, 50, 0.45) transparent;
-    }
-
-    .reel-card {
-        scroll-snap-align: start;
+        padding-inline: 0;
     }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
     .reels-section {
+        padding-inline: 16px;
         padding-block: 22px 14px;
     }
 
     .reels-heading-wrap {
         margin-bottom: 16px;
-        padding-inline: 20px;
     }
 
-    .reels-row {
-        grid-auto-columns: min(72vw, 270px);
-        gap: 14px;
-        padding-inline: 20px;
-        scroll-padding-inline: 20px;
+    .reels-swiper-nav {
+        right: -14px;
+        left: -14px;
+    }
+
+    .reels-swiper-prev,
+    .reels-swiper-next {
+        width: 36px;
+        height: 36px;
+    }
+
+    .reels-swiper-prev svg,
+    .reels-swiper-next svg {
+        width: 18px;
+        height: 18px;
     }
 }
 

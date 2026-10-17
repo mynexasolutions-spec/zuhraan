@@ -17,6 +17,37 @@ class GoKwikRequestError(RuntimeError):
     """Raised when an authenticated GoKwik API request cannot be completed."""
 
 
+def verify_gokwik_merchant() -> None:
+    """Verify that the merchant exists in the configured GoKwik environment."""
+    environment = current_app.config['GOKWIK_ENV']
+    url = current_app.config['GOKWIK_API_BASE_URL'] + 'v3/checkout/guest/get-merchant-config'
+    try:
+        response = requests.get(
+            url,
+            headers={'gk-merchant-id': current_app.config['GOKWIK_MERCHANT_ID']},
+            timeout=15,
+        )
+    except requests.RequestException as error:
+        raise GoKwikRequestError(
+            f'Unable to reach the GoKwik {environment} merchant configuration endpoint.'
+        ) from error
+    if 'Merchant not found' in response.text:
+        raise GoKwikRequestError(
+            f'GoKwik {environment}: Merchant not found (HTTP {response.status_code}). '
+            'Use a merchant ID issued for this environment and its matching App ID/App Secret.'
+        )
+    if response.status_code != 200:
+        raise GoKwikRequestError(
+            f'GoKwik {environment} merchant configuration returned HTTP {response.status_code}.'
+        )
+    try:
+        payload = response.json()
+    except ValueError as error:
+        raise GoKwikRequestError('GoKwik merchant configuration returned invalid JSON.') from error
+    if not isinstance(payload, dict) or not payload.get('success') or not isinstance(payload.get('data'), dict):
+        raise GoKwikRequestError('GoKwik merchant configuration did not confirm success.')
+
+
 def is_gokwik_payment_method(payment_method: str | None) -> bool:
     return payment_method in GOKWIK_PAYMENT_METHODS
 

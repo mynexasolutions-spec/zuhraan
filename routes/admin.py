@@ -14,7 +14,7 @@ import re
 from sqlalchemy.exc import SQLAlchemyError
 from about_cms import ASSET_SPECS, MAX_IMAGE_MB, delete_asset_from_cloudinary, get_assets, get_content, save_assets, save_content, upload_asset
 from gokwik_client import GoKwikRequestError, is_gokwik_payment_method, sync_gokwik_order
-from homepage_reels import MAX_HOMEPAGE_REELS, REEL_TITLES, get_homepage_reels, save_homepage_reels
+from homepage_reels import REEL_TITLES, get_homepage_reels, save_homepage_reels, set_max_reels, _get_max_reels
 from routes.main import release_order_inventory
 from routes.shiprocket import apply_shiprocket_tracking
 from shiprocket_client import (
@@ -65,7 +65,8 @@ def _reel_index_from_form() -> int:
         reel_index = int(request.form.get('reel_index', ''))
     except ValueError as error:
         raise ValueError('Select a valid reel slot.') from error
-    if reel_index < 0 or reel_index >= MAX_HOMEPAGE_REELS:
+    max_reels = _get_max_reels()
+    if reel_index < 0 or reel_index >= max_reels:
         raise ValueError('Select a valid reel slot.')
     return reel_index
 
@@ -1528,8 +1529,25 @@ def homepage_media():
                 db.session.rollback()
                 flash(f'Unable to update reel text: {error}', 'error')
         
+        # --- Update Max Reels ---
+        elif action == 'update_max_reels':
+            try:
+                new_max = int(request.form.get('max_reels', ''))
+                if new_max < 1 or new_max > 20:
+                    raise ValueError('Max reels must be between 1 and 20.')
+                current_max = _get_max_reels()
+                if new_max != current_max:
+                    set_max_reels(new_max)
+                    db.session.commit()
+                    flash(f'Maximum reel slots updated to {new_max}.', 'success')
+                else:
+                    flash('No change in maximum reel slots.', 'info')
+            except (ValueError, SQLAlchemyError) as error:
+                db.session.rollback()
+                flash(f'Unable to update max reels: {error}', 'error')
+
         return redirect(url_for('admin.homepage_media'))
-    
+
     media_url = (Setting.query.filter_by(key='homepage_media_url').first() or Setting(value='')).value
     media_type = (Setting.query.filter_by(key='homepage_media_type').first() or Setting(value='')).value
     banner_url = (Setting.query.filter_by(key='bottom_banner_url').first() or Setting(value='')).value
@@ -1549,7 +1567,7 @@ def homepage_media():
         max_home_story_images=MAX_HOME_STORY_IMAGES,
         homepage_reels=homepage_reels,
         homepage_reel_count=sum(reel is not None for reel in homepage_reels),
-        max_homepage_reels=MAX_HOMEPAGE_REELS,
+        max_homepage_reels=_get_max_reels(),
     )
 
 def _about_text(field_name, maximum, required=False):

@@ -4,9 +4,10 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from functools import wraps
+from time import monotonic
 from typing import Any, Callable
 
-from flask import Blueprint, current_app, flash, jsonify, request, session, url_for
+from flask import Blueprint, current_app, flash, g, jsonify, request, session, url_for
 from flask_login import current_user
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
@@ -43,9 +44,31 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
+@gokwik_api_bp.before_request
+@gokwik_storefront_bp.before_request
+def start_gokwik_request() -> None:
+    g.gokwik_started_at = monotonic()
+
+
+@gokwik_api_bp.after_request
+@gokwik_storefront_bp.after_request
+def log_gokwik_response(response):
+    current_app.logger.info(
+        'GoKwik request method=%s route=%s status=%s duration_ms=%s environment=%s',
+        request.method, request.path, response.status_code,
+        round((monotonic() - g.gokwik_started_at) * 1000),
+        current_app.config['GOKWIK_ENV'],
+    )
+    return response
+
+
 @gokwik_api_bp.errorhandler(GoKwikAPIError)
 @gokwik_storefront_bp.errorhandler(GoKwikAPIError)
 def handle_gokwik_api_error(error: GoKwikAPIError):
+    current_app.logger.warning(
+        'GoKwik request rejected code=%s status=%s route=%s',
+        error.code, error.status_code, request.path,
+    )
     return jsonify({'code': error.code, 'message': error.message}), error.status_code
 
 
@@ -121,8 +144,8 @@ def _checkout_by_id(checkout_id: str, lock: bool) -> GoKwikCheckoutSession:
     checkout = query.first()
     if not checkout:
         raise GoKwikAPIError('gc_cart_not_found', 'Checkout session was not found.', 404)
-    if checkout.status == 'failed':
-        raise GoKwikAPIError('gc_checkout_failed', 'Checkout has failed. Please start again.', 409)
+    # Browser failures are advisory: the SDK can retry payment in the same
+    # session, and a verified order callback can arrive after the modal closes.
     if checkout.status == 'expired' or (
         checkout.status != 'completed' and checkout.expires_at <= _utcnow()
     ):
@@ -320,6 +343,16 @@ def create_checkout_session():
     if not current_app.config.get('GOKWIK_ENABLED'):
         raise GoKwikAPIError('gc_checkout_disabled', 'GoKwik Checkout is disabled.', 503)
 
+    if (
+        current_app.config['GOKWIK_ENV'] == 'production'
+        and not current_app.config.get('GOKWIK_PRODUCTION_APPROVED')
+    ):
+        raise GoKwikAPIError(
+            'gc_production_not_approved',
+            'Checkout is temporarily unavailable while payment activation is completed.',
+            503,
+        )
+
     browser_cart = session.get('cart', {})
     if not isinstance(browser_cart, dict) or not browser_cart:
         raise GoKwikAPIError('gc_cart_has_no_items', 'Cart is empty.', 400)
@@ -417,6 +450,7 @@ def fail_checkout():
         checkout.failure_reason = failure_reason
         checkout.updated_at = _utcnow()
         db.session.commit()
+        current_app.logger.info('GoKwik browser failure recorded; authenticated callbacks remain enabled.')
     except SQLAlchemyError as error:
         db.session.rollback()
         current_app.logger.exception(
@@ -752,6 +786,7 @@ def place_order():
 
         checkout.order_id = order.id
         checkout.status = 'completed'
+        checkout.failure_reason = None
         checkout.updated_at = _utcnow()
         db.session.commit()
         _auto_create_shiprocket_shipment(order)

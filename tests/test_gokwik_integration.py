@@ -1,4 +1,5 @@
 import os
+from types import SimpleNamespace
 
 os.environ['APP_ENV'] = 'testing'
 os.environ['SUPABASE_DATABASE_URL'] = 'sqlite:///:memory:'
@@ -14,16 +15,26 @@ import pytest
 from werkzeug.security import generate_password_hash
 
 from app import app, get_database_engine_options, get_supabase_database_url
+from gokwik_client import verify_gokwik_merchant, GoKwikRequestError
 from models import Category, Coupon, GoKwikCheckoutSession, Order, Product, ProductVariant, Setting, User, db
 
 
-@pytest.fixture(autouse=True)
-def isolated_database():
+@pytest.fixture(autouse=True, params=['sandbox', 'production'])
+def isolated_database(request):
     app.config.update(
         TESTING=True,
         WTF_CSRF_ENABLED=False,
         GOKWIK_ENABLED=True,
-        GOKWIK_ENV='sandbox',
+        GOKWIK_ENV=request.param,
+        GOKWIK_PRODUCTION_APPROVED=True,
+        GOKWIK_SDK_URL=(
+            'https://sandbox.pdp.gokwik.co/v4/build/gokwik.js' if request.param == 'sandbox'
+            else 'https://pdp.gokwik.co/v4/build/gokwik.js'
+        ),
+        GOKWIK_API_BASE_URL=(
+            'https://api-gw-v4.dev.gokwik.io/sandbox/' if request.param == 'sandbox'
+            else 'https://gkx.gokwik.co/'
+        ),
         GOKWIK_MERCHANT_ID='test-merchant',
         GOKWIK_APP_ID='test-app-id',
         GOKWIK_APP_SECRET='test-app-secret',
@@ -90,6 +101,36 @@ def test_health_check_requires_valid_gokwik_credentials(client):
     assert unauthorized.status_code == 401
     assert authorized.status_code == 200
     assert authorized.get_json()['status'] == 'success'
+
+
+def test_production_gate_preserves_cart_without_creating_checkout(client, monkeypatch):
+    monkeypatch.setitem(app.config, 'GOKWIK_ENV', 'production')
+    monkeypatch.setitem(app.config, 'GOKWIK_PRODUCTION_APPROVED', False)
+    with app.app_context():
+        variant_id = create_cart_product()
+    with client.session_transaction() as browser_session:
+        browser_session['cart'] = {str(variant_id): 1}
+    response = client.post('/api/gokwik/checkout-session')
+    assert response.status_code == 503
+    assert response.get_json()['code'] == 'gc_production_not_approved'
+    with app.app_context():
+        assert GoKwikCheckoutSession.query.count() == 0
+        assert Order.query.count() == 0
+    with client.session_transaction() as browser_session:
+        assert browser_session['cart'] == {str(variant_id): 1}
+
+
+def test_remote_merchant_mismatch_is_actionable_and_does_not_expose_secrets(monkeypatch):
+    def merchant_response(url, headers, timeout):
+        assert url == app.config['GOKWIK_API_BASE_URL'] + 'v3/checkout/guest/get-merchant-config'
+        assert headers == {'gk-merchant-id': 'test-merchant'}
+        return SimpleNamespace(status_code=500, text='Merchant not found')
+
+    monkeypatch.setattr('gokwik_client.requests.get', merchant_response)
+    with app.app_context(), pytest.raises(GoKwikRequestError, match='Merchant not found') as error:
+        verify_gokwik_merchant()
+    assert 'test-app-secret' not in str(error.value)
+    assert app.config['GOKWIK_ENV'] in str(error.value)
 
 
 def test_cod_order_creation_is_idempotent_and_uses_authoritative_cart(client):
@@ -287,6 +328,19 @@ def test_failed_checkout_keeps_cart_and_creates_no_order(client):
         '/api/gokwik/checkout-failed',
         json={'checkout_id': checkout_id, 'reason': 'payment_failed'},
     )
+    assert failed.status_code == 200
+    with client.session_transaction() as browser_session:
+        assert browser_session['cart'] == {str(variant_id): 1}
+    with app.app_context():
+        checkout = db.session.get(GoKwikCheckoutSession, checkout_id)
+        assert checkout.status == 'failed'
+        assert checkout.failure_reason == 'payment_failed'
+        assert Order.query.count() == 0
+
+    unconfirmed = client.post('/api/gokwik/checkout-complete', json={'checkout_id': checkout_id})
+    assert unconfirmed.status_code == 409
+
+    # A retry inside the SDK or a delayed authenticated callback can still succeed.
     attempted_order = client.post(
         '/api/gokwik/v1/cart/place-order',
         json={
@@ -302,16 +356,16 @@ def test_failed_checkout_keeps_cart_and_creates_no_order(client):
         headers=gokwik_headers(),
     )
 
-    assert failed.status_code == 200
-    assert attempted_order.status_code == 409
-    assert attempted_order.get_json()['code'] == 'gc_checkout_failed'
-    with client.session_transaction() as browser_session:
-        assert browser_session['cart'] == {str(variant_id): 1}
+    assert attempted_order.status_code == 200
+    completed = client.post('/api/gokwik/checkout-complete', json={'checkout_id': checkout_id})
+    assert completed.status_code == 200
+    late_failure = client.post('/api/gokwik/checkout-failed', json={'checkout_id': checkout_id})
+    assert late_failure.get_json()['status'] == 'completed'
     with app.app_context():
         checkout = db.session.get(GoKwikCheckoutSession, checkout_id)
-        assert checkout.status == 'failed'
-        assert checkout.failure_reason == 'payment_failed'
-        assert Order.query.count() == 0
+        assert checkout.status == 'completed'
+        assert checkout.failure_reason is None
+        assert Order.query.count() == 1
 
 
 def test_gokwik_transaction_cannot_be_reused(client):
