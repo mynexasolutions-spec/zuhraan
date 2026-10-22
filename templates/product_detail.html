@@ -527,6 +527,16 @@
 </style>
 
 <script>
+const metaPixelProduct = {
+    content_ids: [{{ product.id|string|tojson }}],
+    content_name: {{ product.name|tojson }},
+    content_type: 'product',
+    currency: 'INR',
+    value: {{ product.variants[0].price if product.variants else 0 }}
+};
+
+window.ZuhraanPixel?.track('ViewContent', metaPixelProduct, 'view-content-{{ product.id }}');
+
 let imageTransitionTimeout;
 
 function updateMainImage(src, thumb) {
@@ -621,7 +631,8 @@ function adjustQty(amount) {
 
 // AJAX Add to Cart
 const addToCartForm = document.getElementById('addToCartForm');
-if (addToCartForm) {
+if (addToCartForm && addToCartForm.dataset.metaPixelBound !== 'true') {
+addToCartForm.dataset.metaPixelBound = 'true';
 addToCartForm.addEventListener('submit', function(e) {
     e.preventDefault();
     const form = this;
@@ -640,6 +651,20 @@ addToCartForm.addEventListener('submit', function(e) {
     .then(async response => {
         const data = await response.json().catch(() => ({}));
         if (response.ok) {
+            const quantity = Number(formData.get('quantity')) || 1;
+            const variantPrice = Number(document.getElementById('currentPrice').textContent.replace(/[^0-9.]/g, '')) || metaPixelProduct.value;
+            window.ZuhraanPixel?.track('AddToCart', {
+                content_ids: metaPixelProduct.content_ids,
+                content_name: metaPixelProduct.content_name,
+                content_type: 'product',
+                currency: 'INR',
+                value: variantPrice * quantity,
+                contents: [{
+                    id: metaPixelProduct.content_ids[0],
+                    quantity,
+                    item_price: variantPrice
+                }]
+            });
             btn.innerText = "Added to Bag";
             btn.style.background = "#22c55e"; // Green check
 

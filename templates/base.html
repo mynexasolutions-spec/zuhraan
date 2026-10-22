@@ -39,6 +39,56 @@
         rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
     {% block extra_css %}{% endblock %}
+
+    <!-- Meta Pixel: initialized once for the whole storefront. -->
+    <script>
+        (function () {
+            const pixelId = {{ config.META_PIXEL_ID|tojson }};
+            if (!pixelId) return;
+
+            if (!window.fbq) {
+                !function (f, b, e, v, n, t, s) {
+                    if (f.fbq) return;
+                    n = f.fbq = function () {
+                        n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
+                    };
+                    if (!f._fbq) f._fbq = n;
+                    n.push = n;
+                    n.loaded = true;
+                    n.version = '2.0';
+                    n.queue = [];
+                    t = b.createElement(e);
+                    t.async = true;
+                    t.src = v;
+                    s = b.getElementsByTagName(e)[0];
+                    s.parentNode.insertBefore(t, s);
+                }(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
+            }
+
+            window.__zuhraanMetaPixelInitialized = window.__zuhraanMetaPixelInitialized || false;
+            if (!window.__zuhraanMetaPixelInitialized) {
+                window.fbq('init', pixelId);
+                window.fbq('track', 'PageView');
+                window.__zuhraanMetaPixelInitialized = true;
+            }
+
+            window.__zuhraanMetaPixelEvents = window.__zuhraanMetaPixelEvents || new Set();
+            window.ZuhraanPixel = window.ZuhraanPixel || {
+                track(eventName, parameters, dedupeKey) {
+                    if (typeof window.fbq !== 'function') return;
+                    if (dedupeKey) {
+                        if (window.__zuhraanMetaPixelEvents.has(dedupeKey)) return;
+                        window.__zuhraanMetaPixelEvents.add(dedupeKey);
+                    }
+                    window.fbq('track', eventName, parameters || {});
+                }
+            };
+        }());
+    </script>
+    <noscript>
+        <img height="1" width="1" style="display:none" alt=""
+            src="https://www.facebook.com/tr?id={{ config.META_PIXEL_ID }}&ev=PageView&noscript=1">
+    </noscript>
 </head>
 
 <body class="reveal-ready">
@@ -90,6 +140,16 @@
             window.setTimeout(() => toast.remove(), 4000);
         };
     </script>
+    {% if meta_pixel_purchase %}
+    <script>
+        (() => {
+            const purchase = {{ meta_pixel_purchase|tojson }};
+            const eventId = purchase.event_id;
+            delete purchase.event_id;
+            window.ZuhraanPixel?.track('Purchase', purchase, eventId);
+        })();
+    </script>
+    {% endif %}
 </body>
 
 </html>

@@ -93,6 +93,10 @@ app.config['SESSION_COOKIE_SECURE'] = environment_flag(
     'SESSION_COOKIE_SECURE',
     is_production_runtime(),
 )
+app.config['META_PIXEL_ID'] = os.environ.get(
+    'META_PIXEL_ID',
+    '2200260290560993',
+).strip()
 app.config['SUPABASE_URL'] = os.environ.get('NEXT_PUBLIC_SUPABASE_URL')
 app.config['SUPABASE_ANON_KEY'] = os.environ.get('NEXT_PUBLIC_SUPABASE_ANON_KEY')
 app.config['SUPABASE_SERVICE_ROLE_KEY'] = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
@@ -376,6 +380,12 @@ def inject_cart_count():
     cart = session.get('cart', {})
     total_items = sum(cart.values()) if cart else 0
     return dict(cart_count=total_items)
+
+
+@app.context_processor
+def inject_meta_pixel_purchase():
+    """Expose and consume the one-time browser purchase event payload."""
+    return dict(meta_pixel_purchase=session.pop('meta_pixel_purchase', None))
 
 @app.template_filter('clean_html')
 def clean_html(text):

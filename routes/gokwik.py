@@ -422,6 +422,23 @@ def complete_checkout():
     if current_user.is_authenticated:
         _link_guest_orders_to_user(current_user)
 
+    purchase_contents = [
+        {
+            'id': str(item.variant.product_id),
+            'quantity': item.quantity,
+            'item_price': float(item.price_at_time),
+        }
+        for item in order.items
+    ]
+    session['meta_pixel_purchase'] = {
+        'event_id': f'purchase-{order.id}',
+        'value': float(order.total_amount),
+        'currency': 'INR',
+        'content_ids': [item['id'] for item in purchase_contents],
+        'contents': purchase_contents,
+        'content_type': 'product',
+        'num_items': sum(item['quantity'] for item in purchase_contents),
+    }
     session['cart'] = {}
     flash('Order placed successfully through GoKwik.', 'success')
     redirect_url = (

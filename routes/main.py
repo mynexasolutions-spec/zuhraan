@@ -477,6 +477,8 @@ def add_to_cart():
 def cart():
     cart = session.get('cart', {})
     cart_items = []
+    pixel_contents = []
+    pixel_num_items = 0
     total = 0
     for v_id, qty in cart.items():
         variant = ProductVariant.query.get(int(v_id))
@@ -484,7 +486,19 @@ def cart():
             item_total = variant.price * qty
             total += item_total
             cart_items.append({'variant': variant, 'quantity': qty, 'total': item_total})
-    return render_template('main/cart.html', cart_items=cart_items, total=total)
+            pixel_contents.append({
+                'id': str(variant.product_id),
+                'quantity': qty,
+                'item_price': float(variant.price),
+            })
+            pixel_num_items += qty
+    return render_template(
+        'main/cart.html',
+        cart_items=cart_items,
+        total=total,
+        pixel_contents=pixel_contents,
+        pixel_num_items=pixel_num_items,
+    )
 
 @main_bp.route('/cart/remove/<int:variant_id>', methods=['POST'])
 def remove_from_cart(variant_id):

@@ -515,6 +515,26 @@
 
 </div>
 
+{% if cart_items %}
+<script type="application/json" id="metaPixelCartData">
+{{ {
+    'content_ids': pixel_contents | map(attribute='id') | list,
+    'contents': pixel_contents,
+    'content_type': 'product',
+    'currency': 'INR',
+    'num_items': pixel_num_items,
+    'value': total
+} | tojson }}
+</script>
+<script>
+    (() => {
+        window.__zuhraanMetaPixelCartData = JSON.parse(
+            document.getElementById('metaPixelCartData').textContent
+        );
+    })();
+</script>
+{% endif %}
+
 {% if config.GOKWIK_ENABLED %}
 <script src="{{ config.GOKWIK_SDK_URL }}"></script>
 <script>
@@ -586,6 +606,10 @@
                 }
 
                 checkoutId = data.checkout_id;
+                window.ZuhraanPixel?.track(
+                    'InitiateCheckout',
+                    window.__zuhraanMetaPixelCartData
+                );
                 window.gokwikSdk.initCheckout({
                     environment: data.environment,
                     type: 'merchantInfo',
