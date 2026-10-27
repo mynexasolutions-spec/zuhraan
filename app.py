@@ -100,6 +100,27 @@ app.config['META_PIXEL_ID'] = os.environ.get(
 app.config['SUPABASE_URL'] = os.environ.get('NEXT_PUBLIC_SUPABASE_URL')
 app.config['SUPABASE_ANON_KEY'] = os.environ.get('NEXT_PUBLIC_SUPABASE_ANON_KEY')
 app.config['SUPABASE_SERVICE_ROLE_KEY'] = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
+app.config['RAZORPAY_KEY_ID'] = os.environ.get('RAZORPAY_KEY_ID')
+app.config['RAZORPAY_KEY_SECRET'] = os.environ.get('RAZORPAY_KEY_SECRET')
+app.config['RAZORPAY_WEBHOOK_SECRET'] = os.environ.get('RAZORPAY_WEBHOOK_SECRET')
+app.config['RAZORPAY_ENABLED'] = environment_flag(
+    'RAZORPAY_ENABLED',
+    bool(app.config['RAZORPAY_KEY_ID'] and app.config['RAZORPAY_KEY_SECRET']),
+)
+
+if app.config['RAZORPAY_ENABLED']:
+    missing_razorpay_settings = [
+        name for name in (
+            'RAZORPAY_KEY_ID',
+            'RAZORPAY_KEY_SECRET',
+            'RAZORPAY_WEBHOOK_SECRET',
+        ) if not app.config.get(name)
+    ]
+    if missing_razorpay_settings:
+        raise RuntimeError(
+            'Razorpay is enabled but required configuration is missing: '
+            + ', '.join(missing_razorpay_settings)
+        )
 
 gokwik_environment = os.environ.get('GOKWIK_ENV', 'sandbox').strip().lower()
 gokwik_sdk_urls = {

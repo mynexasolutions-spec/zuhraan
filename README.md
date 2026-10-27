@@ -66,11 +66,29 @@ On Windows, `python app.py` starts the application locally with Waitress on
 `http://127.0.0.1:5005`. The production Linux service continues to use Gunicorn
 behind Nginx.
 
+## Razorpay direct checkout
+
+Direct Razorpay checkout is available from the cart when `RAZORPAY_ENABLED=1`
+and the three Razorpay environment variables are configured. The server creates
+the Razorpay order, verifies the browser signature and payment amount, and
+reconciles `payment.captured` and `order.paid` webhooks before marking the local
+order paid. Configure Razorpay's webhook URL as:
+
+```text
+https://<store-domain>/payment/webhook
+```
+
+Run `migrations/20261027_razorpay_checkout.sql` in the Supabase SQL Editor
+before enabling the checkout. The webhook signing secret must match
+`RAZORPAY_WEBHOOK_SECRET`; it is never sent to the browser.
+
+GoKwik remains available as an optional hosted checkout integration.
+
 ## GoKwik Checkout integration
 
-This custom Flask storefront uses GoKwik as its only checkout and payment
-integration. Both prepaid and COD orders must be created through authenticated
-GoKwik merchant callbacks.
+This custom Flask storefront also supports GoKwik as a hosted checkout and
+payment integration. Both prepaid and COD orders must be created through
+authenticated GoKwik merchant callbacks.
 
 1. Complete GoKwik merchant onboarding and request the custom web integration
    specification, sandbox Merchant ID, App ID, and App Secret.

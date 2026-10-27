@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block title %}Complete Payment — Zuhraan{% endblock %}
+{% block content %}
+<style>
+    .rzp-payment { min-height: 60vh; display: grid; place-items: center; padding: 52px 20px; text-align: center; }
+    .rzp-payment-card { max-width: 520px; padding: 36px 28px; background: #fff; border: 1px solid #e8e3da; border-radius: 14px; }
+    .rzp-payment h1 { margin: 0 0 12px; color: #111; font-size: 2rem; }
+    .rzp-payment p { color: #777; line-height: 1.6; }
+    .rzp-payment .rzp-order-ref { color: #111; font-weight: 700; }
+    .rzp-retry { padding: 13px 28px; border: 0; border-radius: 999px; color: #fff; background: #111; font: inherit; font-weight: 700; cursor: pointer; }
+    .rzp-retry:hover { background: #c4640c; }
+    #payment-error { display: none; padding: 10px 14px; color: #991b1b; background: #fef2f2; border-radius: 8px; }
+</style>
+
+<div class="rzp-payment">
+    <div class="rzp-payment-card">
+        <h1>Complete your payment</h1>
+        <p id="payment-status">Opening Razorpay securely. Please do not close this page.</p>
+        <p class="rzp-order-ref">Order #{{ order.id }} · ₹{{ "{:,.2f}".format(order.total_amount) }}</p>
+        <p id="payment-error"></p>
+        <button id="retry-payment" class="rzp-retry" type="button" style="display:none;">Retry payment</button>
+    </div>
+</div>
+
+<form id="razorpay-verify-form" method="POST" action="{{ url_for('main.verify_payment') }}" hidden>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="razorpay_payment_id" id="razorpay_payment_id">
+    <input type="hidden" name="razorpay_order_id" id="razorpay_order_id">
+    <input type="hidden" name="razorpay_signature" id="razorpay_signature">
+</form>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+    (() => {
+        const status = document.getElementById('payment-status');
+        const error = document.getElementById('payment-error');
+        const retry = document.getElementById('retry-payment');
+        const options = {
+            key: {{ key_id|tojson }},
+            amount: {{ amount }},
+            currency: 'INR',
+            name: 'Zuhraan',
+            description: {{ ('Fragrance order #' ~ order.id)|tojson }},
+            order_id: {{ razorpay_order_id|tojson }},
+            prefill: {
+                name: {{ order.customer_name|tojson }},
+                email: {{ order.customer_email|tojson }},
+                contact: {{ order.customer_phone|tojson }}
+            },
+            notes: { local_order_id: {{ order.id|string|tojson }} },
+            theme: { color: '#c4640c' },
+            retry: { enabled: true, max_count: 3 },
+            handler(response) {
+                status.textContent = 'Confirming your payment…';
+                document.getElementById('razorpay_payment_id').value = response.razorpay_payment_id;
+                document.getElementById('razorpay_order_id').value = response.razorpay_order_id;
+                document.getElementById('razorpay_signature').value = response.razorpay_signature;
+                document.getElementById('razorpay-verify-form').submit();
+            },
+            modal: {
+                ondismiss() {
+                    status.textContent = 'Payment window closed. You can retry when ready.';
+                    retry.style.display = 'inline-block';
+                }
+            }
+        };
+
+        const razorpay = new Razorpay(options);
+        razorpay.on('payment.failed', (response) => {
+            error.textContent = response.error?.description || 'Payment could not be processed.';
+            error.style.display = 'block';
+            status.textContent = 'Payment attempt failed.';
+            retry.style.display = 'inline-block';
+        });
+        retry.addEventListener('click', () => {
+            error.style.display = 'none';
+            retry.style.display = 'none';
+            status.textContent = 'Opening Razorpay securely. Please do not close this page.';
+            razorpay.open();
+        });
+        window.addEventListener('load', () => razorpay.open());
+    })();
+</script>
+{% endblock %}

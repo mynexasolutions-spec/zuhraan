@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% block title %}Razorpay Checkout — Zuhraan{% endblock %}
+{% block content %}
+<style>
+    .rzp-checkout { max-width: 1180px; margin: 32px auto 80px; padding: 0 20px; }
+    .rzp-checkout h1 { margin: 0 0 28px; color: #111; font-size: 2.4rem; }
+    .rzp-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 28px; align-items: start; }
+    .rzp-card { padding: 28px; background: #fff; border: 1px solid #e8e3da; border-radius: 14px; }
+    .rzp-card h2 { margin: 0 0 20px; color: #111; font-size: 1.35rem; }
+    .rzp-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .rzp-field { display: flex; flex-direction: column; gap: 7px; }
+    .rzp-field.full { grid-column: 1 / -1; }
+    .rzp-field label { color: #333; font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .rzp-field input { width: 100%; box-sizing: border-box; padding: 12px 13px; border: 1px solid #d4cfc6; border-radius: 8px; color: #111; font: inherit; }
+    .rzp-field input:focus { outline: 0; border-color: #111; box-shadow: 0 0 0 3px rgba(0,0,0,.06); }
+    .rzp-summary { position: sticky; top: 110px; color: #fff; background: #111; border-radius: 14px; padding: 26px; }
+    .rzp-summary h2 { color: #fff; }
+    .rzp-line { display: flex; justify-content: space-between; gap: 16px; margin: 12px 0; color: rgba(255,255,255,.72); }
+    .rzp-line strong { color: #fff; }
+    .rzp-total { display: flex; justify-content: space-between; margin-top: 22px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.16); color: #fff; font-size: 1.15rem; font-weight: 700; }
+    .rzp-submit { width: 100%; margin-top: 24px; padding: 14px 18px; border: 0; border-radius: 999px; color: #111; background: #fff; font: inherit; font-weight: 800; cursor: pointer; }
+    .rzp-submit:hover { color: #fff; background: #c4640c; }
+    .rzp-back { display: inline-block; margin-top: 16px; color: #777; font-size: .9rem; text-decoration: none; }
+    .rzp-note { color: #777; font-size: .85rem; line-height: 1.5; }
+    @media (max-width: 800px) { .rzp-grid { grid-template-columns: 1fr; } .rzp-summary { position: static; } }
+    @media (max-width: 560px) { .rzp-fields { grid-template-columns: 1fr; } .rzp-field.full { grid-column: auto; } .rzp-card, .rzp-summary { padding: 20px; } }
+</style>
+
+<div class="rzp-checkout">
+    <h1>Secure Checkout</h1>
+    <div class="rzp-grid">
+        <form class="rzp-card" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <h2>Contact and delivery details</h2>
+            <p class="rzp-note">Your details are used only to process and deliver this order.</p>
+            <div class="rzp-fields">
+                {% for field, label, required in [
+                    ('name', 'Full name', true), ('email', 'Email address', true),
+                    ('phone', 'Phone number', true), ('address_line1', 'Address line 1', true),
+                    ('address_line2', 'Address line 2', false), ('city', 'City', true),
+                    ('state', 'State', true), ('pincode', 'PIN code', true), ('country', 'Country', true),
+                    ('coupon_code', 'Coupon code', false)
+                ] %}
+                <div class="rzp-field{% if field == 'address_line1' or field == 'address_line2' %} full{% endif %}">
+                    <label for="{{ field }}">{{ label }}{% if required %} *{% endif %}</label>
+                    <input id="{{ field }}" name="{{ field }}" value="{{ form_values[field] }}"{% if required %} required{% endif %}>
+                </div>
+                {% endfor %}
+            </div>
+            <button class="rzp-submit" type="submit">Continue to Razorpay</button>
+            <a class="rzp-back" href="{{ url_for('main.cart') }}">← Back to cart</a>
+        </form>
+
+        <aside class="rzp-summary">
+            <h2>Order summary</h2>
+            {% for item in items %}
+            <div class="rzp-line">
+                <span>{{ item.variant.product.name }} · {{ item.variant.size }} × {{ item.quantity }}</span>
+                <strong>₹{{ "{:,.2f}".format(item.line_total) }}</strong>
+            </div>
+            {% endfor %}
+            <div class="rzp-line"><span>Subtotal</span><strong>₹{{ "{:,.2f}".format(subtotal) }}</strong></div>
+            {% if discount %}<div class="rzp-line"><span>Discount</span><strong>−₹{{ "{:,.2f}".format(discount) }}</strong></div>{% endif %}
+            <div class="rzp-line"><span>Shipping</span><strong>₹{{ "{:,.2f}".format(shipping) }}</strong></div>
+            <div class="rzp-total"><span>Total</span><span>₹{{ "{:,.2f}".format(total) }}</span></div>
+            <p class="rzp-note" style="margin:18px 0 0;color:rgba(255,255,255,.65);">Payments are processed securely by Razorpay.</p>
+        </aside>
+    </div>
+</div>
+{% endblock %}

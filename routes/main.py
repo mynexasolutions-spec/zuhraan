@@ -1,9 +1,10 @@
 from flask import Blueprint, current_app, jsonify, render_template, request, redirect, url_for, flash, session
-from models import db, Product, Category, ProductVariant, Review, User, Order, Setting, Coupon, OfferBanner, AboutPage, ContactMessage
+from models import db, Product, Category, ProductVariant, Review, User, Order, OrderItem, Setting, Coupon, OfferBanner, AboutPage, ContactMessage
 from flask_login import current_user, login_user, logout_user, login_required
 from werkzeug.security import generate_password_hash, check_password_hash
 import hashlib
 import json
+import razorpay
 import secrets
 import time
 import requests
@@ -85,6 +86,7 @@ INVENTORY_TRACKED_PAYMENT_METHODS = frozenset({
     'cod',
     'gokwik_prepaid',
     'legacy_prepaid',
+    'razorpay',
 })
 FULFILLMENT_STEPS = (
     'Order placed',
@@ -843,6 +845,8 @@ def release_order_inventory(order):
     """Restore inventory for a newly cancelled order exactly once per cancellation."""
     if order.payment_method not in INVENTORY_TRACKED_PAYMENT_METHODS:
         return
+    if order.payment_method == 'razorpay' and order.payment_status != 'paid':
+        return
     quantities = {}
     for order_item in order.items:
         quantities[order_item.variant_id] = (
@@ -864,6 +868,160 @@ def release_order_inventory(order):
         variant.stock_quantity = (variant.stock_quantity or 0) + quantities[variant.id]
 
 
+def get_razorpay_client():
+    key_id = current_app.config.get('RAZORPAY_KEY_ID')
+    key_secret = current_app.config.get('RAZORPAY_KEY_SECRET')
+    if not key_id or not key_secret:
+        raise RuntimeError('Razorpay API credentials are not configured.')
+    return razorpay.Client(auth=(key_id, key_secret))
+
+
+def _razorpay_cart_lines():
+    cart = session.get('cart', {})
+    if not isinstance(cart, dict) or not cart:
+        raise ValueError('Your cart is empty.')
+
+    lines = []
+    for raw_variant_id, raw_quantity in cart.items():
+        try:
+            variant_id = int(raw_variant_id)
+            quantity = int(raw_quantity)
+        except (TypeError, ValueError) as error:
+            raise ValueError('Your cart contains invalid data.') from error
+        if quantity <= 0:
+            raise ValueError('Your cart contains an invalid quantity.')
+
+        variant = ProductVariant.query.filter_by(id=variant_id).first()
+        if not variant:
+            raise ValueError('A cart item is no longer available.')
+        if (variant.stock_quantity or 0) < quantity:
+            raise ValueError(
+                f'Only {variant.stock_quantity or 0} unit(s) of {variant.product.name} are available.'
+            )
+        lines.append({
+            'variant': variant,
+            'quantity': quantity,
+            'line_total': Decimal(str(variant.price)) * quantity,
+        })
+    return lines
+
+
+def _razorpay_totals(lines, coupon_code=''):
+    subtotal = sum((line['line_total'] for line in lines), Decimal('0.00'))
+    settings = {setting.key: setting.value for setting in Setting.query.all()}
+    shipping = Decimal(str(calculate_shipping(float(subtotal), settings))).quantize(Decimal('0.01'))
+    discount = Decimal('0.00')
+    coupon_id = None
+    if coupon_code:
+        result = _validate_coupon(coupon_code, float(subtotal))
+        if not result.get('valid'):
+            raise ValueError(str(result.get('message') or 'Coupon is not valid.'))
+        discount = Decimal(str(result['discount'])).quantize(Decimal('0.01'))
+        coupon_id = int(result['coupon_id'])
+    total = subtotal - discount + shipping
+    if total <= 0:
+        raise ValueError('The order total must be greater than zero.')
+    return subtotal, discount, shipping, total, coupon_id
+
+
+def _razorpay_checkout_context(lines, coupon_code=''):
+    subtotal, discount, shipping, total, _ = _razorpay_totals(lines, coupon_code)
+    return {
+        'items': lines,
+        'subtotal': subtotal,
+        'discount': discount,
+        'shipping': shipping,
+        'total': total,
+        'coupon_code': coupon_code,
+    }
+
+
+def mark_order_as_paid(razorpay_order_id, razorpay_payment_id, payment_amount=None):
+    order = (
+        Order.query
+        .filter_by(razorpay_order_id=razorpay_order_id)
+        .with_for_update()
+        .first()
+    )
+    if not order:
+        return None
+
+    if payment_amount is not None:
+        expected_amount = max(100, int(Decimal(str(order.total_amount)) * 100))
+        if int(payment_amount) != expected_amount:
+            raise ValueError('Razorpay payment amount does not match the local order.')
+
+    existing_payment = Order.query.filter_by(razorpay_payment_id=razorpay_payment_id).first()
+    if existing_payment and existing_payment.id != order.id:
+        raise ValueError('Razorpay payment is already linked to another order.')
+
+    if order.payment_status == 'paid':
+        if order.razorpay_payment_id != razorpay_payment_id:
+            raise ValueError('The Razorpay payment does not match the paid order.')
+        return order
+
+    quantities = {}
+    for item in order.items:
+        quantities[item.variant_id] = quantities.get(item.variant_id, 0) + item.quantity
+    variants = (
+        ProductVariant.query
+        .filter(ProductVariant.id.in_(sorted(quantities)))
+        .with_for_update()
+        .all()
+    )
+    if len(variants) != len(quantities):
+        raise RuntimeError('Cannot confirm payment because an ordered item is missing.')
+    for variant in variants:
+        quantity = quantities[variant.id]
+        if (variant.stock_quantity or 0) < quantity:
+            raise RuntimeError(
+                f'Cannot confirm payment because {variant.product.name} is out of stock.'
+            )
+
+    for variant in variants:
+        variant.stock_quantity = (variant.stock_quantity or 0) - quantities[variant.id]
+
+    order.payment_status = 'paid'
+    order.status = 'processing'
+    order.payment_method = 'razorpay'
+    order.razorpay_payment_id = razorpay_payment_id
+
+    if order.coupon_id:
+        coupon = Coupon.query.filter_by(id=order.coupon_id).with_for_update().first()
+        if not coupon or (coupon.max_uses and coupon.used_count >= coupon.max_uses):
+            raise RuntimeError('Cannot confirm payment because the coupon is no longer valid.')
+        coupon.used_count = (coupon.used_count or 0) + 1
+
+    db.session.commit()
+    _auto_create_shiprocket_shipment(order)
+    return order
+
+
+def _finish_razorpay_browser_payment(order):
+    _remember_guest_order(order)
+    if current_user.is_authenticated:
+        _link_guest_orders_to_user(current_user)
+
+    purchase_contents = [
+        {
+            'id': str(item.variant.product_id),
+            'quantity': item.quantity,
+            'item_price': float(item.price_at_time),
+        }
+        for item in order.items
+    ]
+    session['meta_pixel_purchase'] = {
+        'event_id': f'purchase-{order.id}',
+        'value': float(order.total_amount),
+        'currency': 'INR',
+        'content_ids': [item['id'] for item in purchase_contents],
+        'contents': purchase_contents,
+        'content_type': 'product',
+        'num_items': sum(item['quantity'] for item in purchase_contents),
+    }
+    session['cart'] = {}
+
+
 @main_bp.route('/api/validate-coupon', methods=['POST'])
 def api_validate_coupon():
     data = request.json
@@ -872,11 +1030,276 @@ def api_validate_coupon():
     result = _validate_coupon(code, total)
     return result
 
+
+@main_bp.route('/razorpay/checkout', methods=['GET', 'POST'])
+def razorpay_checkout():
+    if not current_app.config.get('RAZORPAY_ENABLED'):
+        flash('Online payment is temporarily unavailable. Please try again shortly.', 'error')
+        return redirect(url_for('main.cart'))
+
+    try:
+        lines = _razorpay_cart_lines()
+    except ValueError as error:
+        flash(str(error), 'error')
+        return redirect(url_for('main.cart'))
+
+    form_values = {
+        'name': (current_user.name or '') if current_user.is_authenticated else '',
+        'email': (current_user.email or '') if current_user.is_authenticated else '',
+        'phone': (current_user.phone or '') if current_user.is_authenticated else '',
+        'address_line1': (current_user.address_line1 or '') if current_user.is_authenticated else '',
+        'address_line2': (current_user.address_line2 or '') if current_user.is_authenticated else '',
+        'city': (current_user.city or '') if current_user.is_authenticated else '',
+        'state': (current_user.state or '') if current_user.is_authenticated else '',
+        'pincode': (current_user.pincode or '') if current_user.is_authenticated else '',
+        'country': (current_user.country or 'India') if current_user.is_authenticated else 'India',
+        'coupon_code': '',
+    }
+
+    if request.method == 'GET':
+        try:
+            context = _razorpay_checkout_context(lines)
+        except ValueError as error:
+            flash(str(error), 'error')
+            return redirect(url_for('main.cart'))
+        return render_template('main/razorpay_checkout.html', **context, form_values=form_values)
+
+    for field in form_values:
+        form_values[field] = request.form.get(field, '').strip()
+    form_values['country'] = form_values['country'] or 'India'
+
+    required_fields = ('name', 'email', 'phone', 'address_line1', 'city', 'state', 'pincode')
+    if any(not form_values[field] for field in required_fields) or '@' not in form_values['email']:
+        flash('Please complete your contact and shipping details.', 'error')
+        try:
+            context = _razorpay_checkout_context(lines, form_values['coupon_code'].upper())
+        except ValueError:
+            context = _razorpay_checkout_context(lines)
+        return render_template(
+            'main/razorpay_checkout.html',
+            **context,
+            form_values=form_values,
+        )
+
+    coupon_code = form_values['coupon_code'].upper()
+    try:
+        _, _, shipping, total, coupon_id = _razorpay_totals(lines, coupon_code)
+    except ValueError as error:
+        flash(str(error), 'error')
+        try:
+            context = _razorpay_checkout_context(lines)
+        except ValueError:
+            return redirect(url_for('main.cart'))
+        return render_template(
+            'main/razorpay_checkout.html',
+            **context,
+            form_values=form_values,
+        )
+
+    try:
+        order = Order(
+            user_id=current_user.id if current_user.is_authenticated else None,
+            customer_name=form_values['name'],
+            customer_email=form_values['email'].lower(),
+            customer_phone=form_values['phone'],
+            shipping_address=', '.join(filter(None, [
+                form_values['address_line1'], form_values['address_line2'], form_values['city'],
+                form_values['state'], form_values['pincode'], form_values['country'],
+            ])),
+            address_line1=form_values['address_line1'],
+            address_line2=form_values['address_line2'],
+            city=form_values['city'],
+            state=form_values['state'],
+            pincode=form_values['pincode'],
+            country=form_values['country'],
+            total_amount=float(total),
+            shipping_charges=float(shipping),
+            status='pending',
+            payment_status='unpaid',
+            payment_method='razorpay',
+            coupon_id=coupon_id,
+        )
+        db.session.add(order)
+        db.session.flush()
+        for line in lines:
+            db.session.add(OrderItem(
+                order_id=order.id,
+                variant_id=line['variant'].id,
+                quantity=line['quantity'],
+                price_at_time=float(line['variant'].price),
+            ))
+
+        razorpay_amount = max(100, int(total * 100))
+        razorpay_order = get_razorpay_client().order.create({
+            'amount': razorpay_amount,
+            'currency': 'INR',
+            'payment_capture': 1,
+            'notes': {'local_order_id': str(order.id)},
+        })
+        razorpay_order_id = str(razorpay_order.get('id') or '').strip()
+        if not razorpay_order_id:
+            raise RuntimeError('Razorpay returned no order identifier.')
+        order.razorpay_order_id = razorpay_order_id
+
+        if current_user.is_authenticated:
+            current_user.phone = order.customer_phone
+            current_user.address_line1 = order.address_line1
+            current_user.address_line2 = order.address_line2
+            current_user.city = order.city
+            current_user.state = order.state
+            current_user.pincode = order.pincode
+            current_user.country = order.country
+        db.session.commit()
+    except (razorpay.errors.BadRequestError, razorpay.errors.GatewayError, razorpay.errors.ServerError):
+        db.session.rollback()
+        current_app.logger.exception('Unable to create Razorpay order.')
+        flash('Online payment is currently unavailable. Please try again shortly.', 'error')
+        return redirect(url_for('main.cart'))
+    except (RuntimeError, SQLAlchemyError, ValueError):
+        db.session.rollback()
+        current_app.logger.exception('Unable to prepare Razorpay order.')
+        flash('Unable to prepare your order. Please try again.', 'error')
+        return redirect(url_for('main.cart'))
+
+    return render_template(
+        'main/razorpay_payment.html',
+        order=order,
+        razorpay_order_id=razorpay_order_id,
+        key_id=current_app.config['RAZORPAY_KEY_ID'],
+        amount=razorpay_amount,
+    )
+
+
+@main_bp.route('/payment/verify', methods=['POST'])
+def verify_payment():
+    razorpay_payment_id = request.form.get('razorpay_payment_id', '').strip()
+    razorpay_order_id = request.form.get('razorpay_order_id', '').strip()
+    razorpay_signature = request.form.get('razorpay_signature', '').strip()
+    payment_url = url_for('main.razorpay_checkout')
+
+    if not all((razorpay_payment_id, razorpay_order_id, razorpay_signature)):
+        flash('Invalid payment response. Please try again or contact support.', 'error')
+        return redirect(payment_url)
+
+    try:
+        client = get_razorpay_client()
+        client.utility.verify_payment_signature({
+            'razorpay_order_id': razorpay_order_id,
+            'razorpay_payment_id': razorpay_payment_id,
+            'razorpay_signature': razorpay_signature,
+        })
+        order = Order.query.filter_by(razorpay_order_id=razorpay_order_id).first()
+        if not order:
+            flash('Order not found. Please contact support with your payment ID.', 'error')
+            return redirect(payment_url)
+
+        payment = client.payment.fetch(razorpay_payment_id)
+        if (
+            payment.get('id') != razorpay_payment_id
+            or payment.get('order_id') != razorpay_order_id
+            or payment.get('currency') not in (None, 'INR')
+        ):
+            raise ValueError('Razorpay payment did not match the local order.')
+
+        payment_status = payment.get('status')
+        if payment_status == 'authorized':
+            client.payment.capture(razorpay_payment_id, payment['amount'])
+            payment_status = 'captured'
+        if payment_status != 'captured':
+            flash('Payment could not be confirmed. Please try again.', 'error')
+            return redirect(payment_url)
+
+        order = mark_order_as_paid(
+            razorpay_order_id,
+            razorpay_payment_id,
+            payment.get('amount'),
+        )
+        if not order:
+            flash('Order not found. Please contact support with your payment ID.', 'error')
+            return redirect(payment_url)
+        _finish_razorpay_browser_payment(order)
+        flash('Payment successful! Your order is being processed.', 'success')
+        return redirect(url_for('main.account', _anchor='orders') if current_user.is_authenticated else url_for('main.index'))
+    except razorpay.errors.SignatureVerificationError:
+        current_app.logger.warning(
+            'Rejected Razorpay payment signature.',
+            extra={'razorpay_order_id': razorpay_order_id, 'razorpay_payment_id': razorpay_payment_id},
+        )
+        flash('Payment verification failed. Please contact support if you were charged.', 'error')
+    except (razorpay.errors.BadRequestError, razorpay.errors.GatewayError, razorpay.errors.ServerError, RuntimeError, SQLAlchemyError, ValueError):
+        db.session.rollback()
+        current_app.logger.exception(
+            'Unable to verify Razorpay payment.',
+            extra={'razorpay_order_id': razorpay_order_id, 'razorpay_payment_id': razorpay_payment_id},
+        )
+        flash('Payment could not be confirmed. Please contact support if you were charged.', 'error')
+    return redirect(payment_url)
+
+
+@main_bp.route('/payment/webhook', methods=['POST'])
+def payment_webhook():
+    webhook_body = request.get_data(cache=True, as_text=True)
+    webhook_signature = request.headers.get('X-Razorpay-Signature', '').strip()
+    webhook_secret = current_app.config.get('RAZORPAY_WEBHOOK_SECRET')
+    if not webhook_secret or not webhook_signature:
+        return jsonify({'status': 'invalid signature'}), 400
+
+    try:
+        get_razorpay_client().utility.verify_webhook_signature(
+            webhook_body, webhook_signature, webhook_secret
+        )
+    except razorpay.errors.SignatureVerificationError:
+        current_app.logger.warning('Rejected Razorpay webhook with invalid signature.')
+        return jsonify({'status': 'invalid signature'}), 400
+
+    try:
+        payload = json.loads(webhook_body)
+    except json.JSONDecodeError:
+        return jsonify({'status': 'invalid payload'}), 400
+
+    event = payload.get('event')
+    payment = payload.get('payload', {}).get('payment', {}).get('entity', {})
+    razorpay_order = payload.get('payload', {}).get('order', {}).get('entity', {})
+    if event == 'payment.captured':
+        razorpay_order_id = payment.get('order_id')
+    elif event == 'order.paid':
+        razorpay_order_id = razorpay_order.get('id')
+    else:
+        return jsonify({'status': 'ignored'}), 200
+
+    razorpay_payment_id = payment.get('id')
+    if not razorpay_order_id or not razorpay_payment_id:
+        return jsonify({'status': 'invalid payload'}), 400
+
+    try:
+        order = mark_order_as_paid(
+            str(razorpay_order_id),
+            str(razorpay_payment_id),
+            payment.get('amount') or razorpay_order.get('amount'),
+        )
+        if not order:
+            current_app.logger.warning(
+                'Razorpay webhook referenced an unknown order.',
+                extra={'razorpay_order_id': razorpay_order_id},
+            )
+    except (RuntimeError, SQLAlchemyError, ValueError):
+        db.session.rollback()
+        current_app.logger.exception(
+            'Unable to reconcile Razorpay webhook.',
+            extra={'razorpay_order_id': razorpay_order_id, 'razorpay_payment_id': razorpay_payment_id},
+        )
+        return jsonify({'status': 'temporary error'}), 500
+    return jsonify({'status': 'ok'}), 200
+
+
 @main_bp.route('/checkout', methods=['GET'])
 def checkout():
-    """Redirect legacy checkout URLs to the GoKwik-powered cart."""
+    """Redirect legacy checkout URLs to the cart's available secure checkouts."""
     if not session.get('cart'):
         return redirect(url_for('main.shop'))
-    flash('Use the secure GoKwik checkout button in your cart to complete this purchase.', 'info')
+    if current_app.config.get('RAZORPAY_ENABLED'):
+        flash('Use the secure Razorpay checkout button in your cart to complete this purchase.', 'info')
+    else:
+        flash('Secure checkout is temporarily unavailable. Please try again shortly.', 'error')
     return redirect(url_for('main.cart'))
 # End of public checkout routes.

@@ -665,9 +665,9 @@ def update_order_status(order_id):
     if bool(shipping_provider) != bool(awb_number):
         flash('Shipping provider and AWB number must be supplied together.', 'error')
         return redirect(url_for('admin.manage_orders'))
-    if is_gokwik_payment_method(order.payment_method) and new_status in {'shipped', 'delivered'}:
+    if (is_gokwik_payment_method(order.payment_method) or order.payment_method == 'razorpay') and new_status in {'shipped', 'delivered'}:
         if not shipping_provider or not awb_number:
-            flash('GoKwik shipped/delivered orders require a shipping provider and AWB number.', 'error')
+            flash('Prepaid shipped/delivered orders require a shipping provider and AWB number.', 'error')
             return redirect(url_for('admin.manage_orders'))
 
     old_status = order.status

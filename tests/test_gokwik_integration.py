@@ -38,6 +38,7 @@ def isolated_database(request):
         GOKWIK_MERCHANT_ID='test-merchant',
         GOKWIK_APP_ID='test-app-id',
         GOKWIK_APP_SECRET='test-app-secret',
+        RAZORPAY_ENABLED=True,
     )
     with app.app_context():
         db.create_all()
@@ -401,7 +402,7 @@ def test_gokwik_transaction_cannot_be_reused(client):
         assert Order.query.count() == 1
 
 
-def test_cart_uses_only_gokwik_checkout(client):
+def test_cart_uses_only_razorpay_checkout(client):
     with app.app_context():
         variant_id = create_cart_product()
     with client.session_transaction() as browser_session:
@@ -413,8 +414,9 @@ def test_cart_uses_only_gokwik_checkout(client):
     cart_body = cart_response.get_data(as_text=True)
 
     assert cart_response.status_code == 200
-    assert 'Checkout securely with GoKwik' in cart_body
-    assert app.config['GOKWIK_SDK_URL'] in cart_body
+    assert 'Checkout securely with Razorpay' in cart_body
+    assert 'Checkout securely with GoKwik' not in cart_body
+    assert app.config['GOKWIK_SDK_URL'] not in cart_body
     assert legacy_get.status_code == 302
     assert legacy_get.headers['Location'].endswith('/cart')
     assert legacy_post.status_code == 405
