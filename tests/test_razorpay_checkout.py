@@ -142,7 +142,7 @@ def test_checkout_get_renders_summary(client):
     assert response.status_code == 200
     assert 'Secure Checkout' in body
     assert 'Test Perfume' in body
-    assert 'Continue to Razorpay' in body
+    assert 'Place Order' in body
     assert 'customer@example.test' not in body
 
 

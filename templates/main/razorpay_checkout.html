@@ -18,7 +18,7 @@
     .rzp-line { display: flex; justify-content: space-between; gap: 16px; margin: 12px 0; color: rgba(255,255,255,.72); }
     .rzp-line strong { color: #fff; }
     .rzp-total { display: flex; justify-content: space-between; margin-top: 22px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.16); color: #fff; font-size: 1.15rem; font-weight: 700; }
-    .rzp-submit { width: 100%; margin-top: 24px; padding: 14px 18px; border: 0; border-radius: 999px; color: #111; background: #fff; font: inherit; font-weight: 800; cursor: pointer; }
+    .rzp-submit { width: 100%; margin-top: 24px; padding: 14px 18px; border: 0; border-radius: 999px; color: #fff; background: #111; font: inherit; font-weight: 800; cursor: pointer; }
     .rzp-submit:hover { color: #fff; background: #c4640c; }
     .rzp-back { display: inline-block; margin-top: 16px; color: #777; font-size: .9rem; text-decoration: none; }
     .rzp-note { color: #777; font-size: .85rem; line-height: 1.5; }
@@ -47,7 +47,7 @@
                 </div>
                 {% endfor %}
             </div>
-            <button class="rzp-submit" type="submit">Continue to Razorpay</button>
+            <button class="rzp-submit" type="submit">Place Order</button>
             <a class="rzp-back" href="{{ url_for('main.cart') }}">← Back to cart</a>
         </form>
 

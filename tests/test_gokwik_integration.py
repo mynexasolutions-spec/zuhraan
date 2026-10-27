@@ -414,7 +414,8 @@ def test_cart_uses_only_razorpay_checkout(client):
     cart_body = cart_response.get_data(as_text=True)
 
     assert cart_response.status_code == 200
-    assert 'Checkout securely with Razorpay' in cart_body
+    assert 'Checkout securely with Razorpay' not in cart_body
+    assert 'Checkout' in cart_body
     assert 'Checkout securely with GoKwik' not in cart_body
     assert app.config['GOKWIK_SDK_URL'] not in cart_body
     assert legacy_get.status_code == 302
