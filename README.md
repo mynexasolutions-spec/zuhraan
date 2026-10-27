@@ -36,7 +36,7 @@ The administrative interface gives complete control over the store's operations.
 ## 💻 Tech Stack & Deployment Security
 
 - **Database:** Uses Supabase PostgreSQL through SQLAlchemy. Set `SUPABASE_DATABASE_URL` to the SQLAlchemy-formatted connection string from the Supabase Dashboard. URL-encode special characters in the database password and keep `?sslmode=require`.
-- **Security:** CSRF validation globally. Sensitive GoKwik, Shiprocket, Supabase, and media credentials are supplied through environment variables and ignored by Git. Never commit `.env` credentials.
+- **Security:** CSRF validation globally. Sensitive GoKwik, iThink Logistics, Supabase, and media credentials are supplied through environment variables and ignored by Git. Never commit `.env` credentials.
 - **Currency:** Fully localized format to `INR` (₹).
 
 > **Note**: For initial setup, make sure you configure `.env` mimicking whatever was stored securely offline, as the project deliberately lacks it on GitHub for defense architecture. 
@@ -49,13 +49,17 @@ The administrative interface gives complete control over the store's operations.
    `requirements.txt` inside it.
 2. Create `/srv/zuhraan/.env` from `.env.example`. Keep it readable only by the
    service account and never commit it.
-3. Run `python -m pytest -q` and `python -m flask --app app gokwik-readiness`
+3. For a brand-new Supabase project, run
+   `python -m flask --app app init-db` once to create the base schema and seed
+   the admin account, categories, settings, and About page. Existing databases
+   should be upgraded with the SQL files in `migrations/` instead.
+4. Run `python -m pytest -q` and `python -m flask --app app gokwik-readiness`
    from the virtual environment.
-4. Adapt `deploy/zuhraan.service.example`, install it as a systemd unit, then
+5. Adapt `deploy/zuhraan.service.example`, install it as a systemd unit, then
    enable and start the service.
-5. Adapt `deploy/nginx.conf.example`, validate the Nginx configuration, and
+6. Adapt `deploy/nginx.conf.example`, validate the Nginx configuration, and
    reload Nginx after the HTTPS certificate paths exist.
-6. Verify `GET https://<store-domain>/healthz` returns HTTP 200 and the GoKwik
+7. Verify `GET https://<store-domain>/healthz` returns HTTP 200 and the GoKwik
    health route returns 401 without merchant credentials.
 
 Do not run `python app.py` or `flask run` as the public server. Schema changes
@@ -187,29 +191,30 @@ payload contract for the merchant account. The implementation intentionally
 rejects unconfigured GoKwik fee lines so a discount or surcharge cannot alter
 the locally verified order total.
 
-## Shiprocket fulfillment
+## iThink Logistics fulfillment
 
-Shiprocket is an optional fulfillment layer for GoKwik orders. Credentials
-must belong to a dedicated Shiprocket API user and stay in the deployment environment.
-Apply `migrations/20261010_shiprocket.sql`, then configure the variables documented in
-`.env.example`. Keep `SHIPROCKET_ENABLED=0` until the migration and pickup location are
-ready.
+iThink Logistics is the fulfillment layer for eligible COD and paid prepaid orders.
+Configure `ITHINK_ACCESS_TOKEN`, `ITHINK_SECRET_KEY`, `ITHINK_PICKUP_ADDRESS_ID`, and
+`ITHINK_RETURN_ADDRESS_ID` in the deployment environment. Apply
+`migrations/20261027_ithink_logistics.sql` before enabling the integration.
 
-After enabling it, run:
+Keep `ITHINK_ENABLED=0` until the migration and credentials are ready, then run:
 
 ```bash
-flask --app app shiprocket-readiness --verify-api
+flask --app app ithink-readiness --verify-api
 ```
 
-The command authenticates but does not create a shipment. In Shiprocket, configure the
-tracking webhook as `https://<store-domain>/api/fulfillment/webhook`, set its security
-token to the exact `SHIPROCKET_WEBHOOK_TOKEN` value, and enable it. The URL deliberately
-does not contain Shiprocket-reserved keywords.
+The readiness command validates configuration and warehouse access without creating an
+order. Eligible COD orders are submitted immediately after checkout; prepaid orders are
+submitted after payment confirmation. iThink returns the AWB and courier during order
+creation, and the admin order page can refresh tracking on demand.
 
-Eligible COD orders are sent to Shiprocket immediately after checkout. Prepaid orders
-are sent after payment confirmation. Automatic checkout sync only creates the Shiprocket
-order, so it remains in Shiprocket's **New** queue. Admins assign an AWB and advance
-fulfillment from **Admin > Orders**; pickup can then be scheduled explicitly or
-automatically through **Admin > Settings**. After pickup, authenticated webhook events
-update the local shipped/delivered status and synchronize GoKwik orders. Customers see
-courier, live status, and a tracking link in their account.
+iThink's public API does not provide a webhook contract for this integration, so schedule
+the read-only tracking sync every 15 minutes:
+
+```bash
+flask --app app ithink-sync-tracking
+```
+
+The sync uses iThink's tracking API in batches of ten AWBs and updates customer and
+GoKwik-facing order status.

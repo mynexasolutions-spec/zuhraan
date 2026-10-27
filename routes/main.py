@@ -16,24 +16,24 @@ from urllib.parse import urlsplit
 from datetime import datetime
 from about_cms import get_assets, get_content
 from homepage_reels import get_homepage_reels
+from routes.ithink import apply_ithink_shipment, create_or_recover_ithink_shipment
 
 main_bp = Blueprint('main', __name__)
 GUEST_ORDER_SESSION_KEY = 'guest_order_ids'
 
-def _auto_create_shiprocket_shipment(order: Order) -> bool:
-    """Automatically create Shiprocket shipment for eligible orders."""
-    if not current_app.config.get('SHIPROCKET_ENABLED'):
+def _auto_create_ithink_shipment(order: Order) -> bool:
+    """Automatically create or recover an iThink shipment for an eligible order."""
+    if not current_app.config.get('ITHINK_ENABLED'):
         return False
-    if order.shiprocket_shipment_id:
+    if order.awb_number:
         return True
     if order.status in {'cancelled', 'delivered'}:
         return False
 
-    from shiprocket_client import (
+    from ithink_client import (
         COD_PAYMENT_METHODS,
-        ShiprocketClient,
-        ShiprocketRequestError,
-        build_shiprocket_order_payload,
+        IThinkClient,
+        IThinkRequestError,
         parcel_dimensions,
     )
 
@@ -43,40 +43,37 @@ def _auto_create_shiprocket_shipment(order: Order) -> bool:
         return False
 
     try:
-        from routes.admin import _shiprocket_operational_settings
-        from models import utcnow_naive
-
-        settings = _shiprocket_operational_settings()
         dimensions = parcel_dimensions(
-            settings['weight'], settings['length'], settings['breadth'], settings['height']
+            current_app.config['ITHINK_DEFAULT_WEIGHT_KG'],
+            current_app.config['ITHINK_DEFAULT_LENGTH_CM'],
+            current_app.config['ITHINK_DEFAULT_WIDTH_CM'],
+            current_app.config['ITHINK_DEFAULT_HEIGHT_CM'],
         )
-        client = ShiprocketClient()
-
-        payload = build_shiprocket_order_payload(order, settings['pickup_location'], dimensions)
-        created = client.create_order(payload)
-        shiprocket_order_id = str(created.get('order_id') or '').strip()
-        shipment_id = str(created.get('shipment_id') or '').strip()
-        if not shiprocket_order_id or not shipment_id:
-            raise ShiprocketRequestError(
-                'Shiprocket created no usable order or shipment identifier.'
-            )
-
-        order.shiprocket_order_id = shiprocket_order_id
-        order.shiprocket_shipment_id = shipment_id
-        order.shiprocket_status = str(created.get('status') or 'ORDER CREATED')[:100]
-        order.status = 'processing'
-        order.shiprocket_tracking_updated_at = utcnow_naive()
+        client = IThinkClient()
+        shipment = create_or_recover_ithink_shipment(order, dimensions, client)
+        apply_ithink_shipment(order, shipment)
+        if not shipment.get('awb_number'):
+            if shipment.get('order_reference'):
+                db.session.commit()
+                current_app.logger.warning(
+                    'Auto-created iThink shipment is waiting for an AWB',
+                    extra={
+                        'order_id': order.id,
+                        'shipping_order_reference': order.shipping_order_reference,
+                    },
+                )
+            return False
         db.session.commit()
 
         current_app.logger.info(
-            'Auto-created Shiprocket order',
-            extra={'order_id': order.id, 'shipment_id': order.shiprocket_shipment_id},
+            'Auto-created iThink shipment',
+            extra={'order_id': order.id, 'awb_number': order.awb_number},
         )
         return True
-    except (ShiprocketRequestError, ValueError, SQLAlchemyError):
+    except (IThinkRequestError, ValueError, SQLAlchemyError):
         db.session.rollback()
         current_app.logger.exception(
-            'Auto Shiprocket shipment creation failed',
+            'Auto iThink shipment creation failed',
             extra={'order_id': order.id},
         )
         return False
@@ -101,7 +98,7 @@ FULFILLMENT_STEPS = (
 def _fulfillment_stage(order: Order) -> int:
     """Return the furthest customer-facing fulfillment stage reached by an order."""
     local_status = str(order.status or '').strip().upper()
-    carrier_status = str(order.shiprocket_status or '').strip().upper()
+    carrier_status = str(order.shipping_status or '').strip().upper()
 
     if (
         local_status == 'DELIVERED'
@@ -122,12 +119,12 @@ def _fulfillment_stage(order: Order) -> int:
         )
     ):
         return 3
-    if order.awb_number or order.shiprocket_pickup_scheduled or any(
+    if order.awb_number or any(
         marker in carrier_status
         for marker in ('PACKED', 'MANIFEST', 'READY TO SHIP', 'PICKUP SCHEDULED', 'AWB')
     ):
         return 2
-    if order.shiprocket_shipment_id or local_status == 'PROCESSING' or any(
+    if order.shipping_order_reference or local_status == 'PROCESSING' or any(
         marker in carrier_status
         for marker in ('NEW', 'ORDER CREATED', 'CONFIRMED', 'PROCESSING')
     ):
@@ -138,7 +135,7 @@ def _fulfillment_stage(order: Order) -> int:
 def _fulfillment_view(order: Order) -> dict[str, object]:
     """Build accurate presentation data for the authenticated customer's order card."""
     active_stage = _fulfillment_stage(order)
-    latest_update = order.shiprocket_tracking_updated_at
+    latest_update = order.shipping_tracking_updated_at
     steps: list[dict[str, object]] = []
     for index, label in enumerate(FULFILLMENT_STEPS):
         if index == 0:
@@ -160,7 +157,7 @@ def _fulfillment_view(order: Order) -> dict[str, object]:
             'current': index == active_stage,
         })
 
-    raw_status = str(order.shiprocket_status or order.status or 'Order placed').strip()
+    raw_status = str(order.shipping_status or order.status or 'Order placed').strip()
     display_status = raw_status.replace('_', ' ').title()
     if raw_status.upper() in {'AWB ASSIGNED', 'RTO'}:
         display_status = raw_status.upper()
@@ -169,7 +166,7 @@ def _fulfillment_view(order: Order) -> dict[str, object]:
         'steps': steps,
         'status': display_status,
         'cancelled': str(order.status or '').lower() == 'cancelled',
-        'live': bool(order.shiprocket_shipment_id),
+        'live': bool(order.shipping_order_reference or order.awb_number),
         'latest_update': latest_update,
     }
 
@@ -993,7 +990,7 @@ def mark_order_as_paid(razorpay_order_id, razorpay_payment_id, payment_amount=No
         coupon.used_count = (coupon.used_count or 0) + 1
 
     db.session.commit()
-    _auto_create_shiprocket_shipment(order)
+    _auto_create_ithink_shipment(order)
     return order
 
 

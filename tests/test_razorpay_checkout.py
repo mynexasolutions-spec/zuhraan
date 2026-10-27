@@ -5,7 +5,7 @@ from types import SimpleNamespace
 os.environ['APP_ENV'] = 'testing'
 os.environ['SUPABASE_DATABASE_URL'] = 'sqlite:///:memory:'
 os.environ['SECRET_KEY'] = 'test-secret'
-os.environ['SHIPROCKET_ENABLED'] = '0'
+os.environ['ITHINK_ENABLED'] = '0'
 os.environ['RAZORPAY_ENABLED'] = '1'
 os.environ['RAZORPAY_KEY_ID'] = 'rzp_test_key'
 os.environ['RAZORPAY_KEY_SECRET'] = 'rzp_test_secret'
@@ -78,7 +78,7 @@ def isolated_database():
         RAZORPAY_KEY_ID='rzp_test_key',
         RAZORPAY_KEY_SECRET='rzp_test_secret',
         RAZORPAY_WEBHOOK_SECRET='rzp_test_webhook_secret',
-        SHIPROCKET_ENABLED=False,
+        ITHINK_ENABLED=False,
     )
     with app.app_context():
         db.create_all()

@@ -732,7 +732,7 @@
             <div class="mobile-orders-intro">
                 <span>Your purchases</span>
                 <h1>My Orders</h1>
-                <p>Track your purchases and view delivery updates from Shiprocket.</p>
+                <p>Track your purchases and view delivery updates from iThink Logistics.</p>
             </div>
             <h1 class="section-title">Order History</h1>
             {% if not orders %}
@@ -793,7 +793,7 @@
                             <div class="shipment-heading">
                                 <div>
                                     <h3>Shipment tracking</h3>
-                                    <div class="shipment-brand">Powered by Shiprocket</div>
+                                    <div class="shipment-brand">Powered by iThink Logistics</div>
                                 </div>
                                 <span class="live-badge{% if not fulfillment.live %} pending{% endif %}">
                                     {{ 'Live' if fulfillment.live else 'Pending' }}
@@ -815,12 +815,8 @@
 
                             <div class="shipment-details">
                                 <div class="shipment-detail">
-                                    <span>Shiprocket order ID</span>
-                                    <strong>{{ order.shiprocket_order_id or 'Pending assignment' }}</strong>
-                                </div>
-                                <div class="shipment-detail">
-                                    <span>Shipment ID</span>
-                                    <strong>{{ order.shiprocket_shipment_id or 'Pending assignment' }}</strong>
+                                    <span>iThink order reference</span>
+                                    <strong>{{ order.shipping_order_reference or 'Pending assignment' }}</strong>
                                 </div>
                                 <div class="shipment-detail">
                                     <span>Courier</span>
@@ -833,15 +829,15 @@
                             </div>
 
                             {% if order.awb_number %}
-                            <a class="track-shipment-link" href="{{ order.shiprocket_tracking_url or ('https://shiprocket.co/tracking/' ~ order.awb_number) }}" target="_blank" rel="noopener noreferrer">
+                            {% if order.shipping_tracking_url %}<a class="track-shipment-link" href="{{ order.shipping_tracking_url }}" target="_blank" rel="noopener noreferrer">
                                 <i class="fa-solid fa-location-dot"></i>
                                 Track shipment
-                            </a>
+                            </a>{% endif %}
                             {% endif %}
                         </section>
                         {% if not order.awb_number %}
                             <div class="tracking-pending-note">
-                                Tracking will be available once Shiprocket assigns an AWB number.
+                                Tracking will be available once iThink assigns an AWB number.
                             </div>
                         {% endif %}
                     </article>

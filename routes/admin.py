@@ -16,13 +16,15 @@ from about_cms import ASSET_SPECS, MAX_IMAGE_MB, delete_asset_from_cloudinary, g
 from gokwik_client import GoKwikRequestError, is_gokwik_payment_method, sync_gokwik_order
 from homepage_reels import REEL_TITLES, get_homepage_reels, save_homepage_reels, set_max_reels, _get_max_reels
 from routes.main import release_order_inventory
-from routes.shiprocket import apply_shiprocket_tracking
-from shiprocket_client import (
+from routes.ithink import (
+    apply_ithink_shipment,
+    apply_ithink_tracking,
+    create_or_recover_ithink_shipment,
+)
+from ithink_client import (
     COD_PAYMENT_METHODS,
-    ShiprocketClient,
-    ShiprocketRequestError,
-    build_shiprocket_order_payload,
-    extract_awb_data,
+    IThinkClient,
+    IThinkRequestError,
     extract_tracking_data,
     parcel_dimensions,
 )
@@ -615,29 +617,29 @@ def edit_category(category_id):
 def manage_orders():
     orders = Order.query.order_by(Order.created_at.desc()).all()
     settings = {setting.key: setting.value for setting in Setting.query.all()}
-    shiprocket_defaults = {
+    ithink_defaults = {
         'weight': settings.get(
-            'shiprocket_default_weight_kg',
-            current_app.config.get('SHIPROCKET_DEFAULT_WEIGHT_KG', '0.5'),
+            'ithink_default_weight_kg',
+            current_app.config.get('ITHINK_DEFAULT_WEIGHT_KG', '0.5'),
         ),
         'length': settings.get(
-            'shiprocket_default_length_cm',
-            current_app.config.get('SHIPROCKET_DEFAULT_LENGTH_CM', '10'),
+            'ithink_default_length_cm',
+            current_app.config.get('ITHINK_DEFAULT_LENGTH_CM', '10'),
         ),
-        'breadth': settings.get(
-            'shiprocket_default_breadth_cm',
-            current_app.config.get('SHIPROCKET_DEFAULT_BREADTH_CM', '10'),
+        'width': settings.get(
+            'ithink_default_width_cm',
+            current_app.config.get('ITHINK_DEFAULT_WIDTH_CM', '10'),
         ),
         'height': settings.get(
-            'shiprocket_default_height_cm',
-            current_app.config.get('SHIPROCKET_DEFAULT_HEIGHT_CM', '10'),
+            'ithink_default_height_cm',
+            current_app.config.get('ITHINK_DEFAULT_HEIGHT_CM', '10'),
         ),
     }
     return render_template(
         'admin/orders.html',
         orders=orders,
-        shiprocket_enabled=current_app.config.get('SHIPROCKET_ENABLED'),
-        shiprocket_defaults=shiprocket_defaults,
+        ithink_enabled=current_app.config.get('ITHINK_ENABLED'),
+        ithink_defaults=ithink_defaults,
     )
 
 @admin_bp.route('/orders/<int:order_id>/status', methods=['POST'])
@@ -653,11 +655,11 @@ def update_order_status(order_id):
         flash('A cancelled order cannot be reopened because its inventory was restored.', 'error')
         return redirect(url_for('admin.manage_orders'))
     if (
-        order.shiprocket_shipment_id
+        order.shipping_order_reference
         and new_status in {'shipped', 'delivered'}
         and new_status != order.status
     ):
-        flash('Shiprocket controls shipped and delivered statuses. Refresh tracking instead.', 'error')
+        flash('iThink controls shipped and delivered statuses. Refresh tracking instead.', 'error')
         return redirect(url_for('admin.manage_orders'))
 
     shipping_provider = request.form.get('shipping_provider', '').strip()
@@ -674,17 +676,17 @@ def update_order_status(order_id):
     if (
         new_status == 'cancelled'
         and old_status != 'cancelled'
-        and order.shiprocket_order_id
-        and current_app.config.get('SHIPROCKET_ENABLED')
+        and order.awb_number
+        and current_app.config.get('ITHINK_ENABLED')
     ):
         try:
-            ShiprocketClient().cancel_order(order.shiprocket_order_id)
-        except ShiprocketRequestError:
+            IThinkClient().cancel_order(order.awb_number)
+        except IThinkRequestError:
             current_app.logger.exception(
-                'Shiprocket cancellation failed; local order was not cancelled.',
+                'iThink cancellation failed; local order was not cancelled.',
                 extra={'order_id': order.id},
             )
-            flash('Shiprocket rejected the cancellation. The local order was not changed.', 'error')
+            flash('iThink rejected the cancellation. The local order was not changed.', 'error')
             return redirect(url_for('admin.manage_orders'))
     try:
         if new_status == 'cancelled' and old_status != 'cancelled':
@@ -728,50 +730,42 @@ def update_order_status(order_id):
     return redirect(url_for('admin.manage_orders'))
 
 
-def _shiprocket_operational_settings() -> dict[str, str]:
+def _ithink_operational_settings() -> dict[str, str]:
     stored = {
         setting.key: setting.value
-        for setting in Setting.query.filter(Setting.key.like('shiprocket_%')).all()
+        for setting in Setting.query.filter(Setting.key.like('ithink_%')).all()
     }
     return {
-        'pickup_location': stored.get(
-            'shiprocket_pickup_location',
-            current_app.config.get('SHIPROCKET_PICKUP_LOCATION', ''),
-        ),
         'weight': stored.get(
-            'shiprocket_default_weight_kg',
-            current_app.config.get('SHIPROCKET_DEFAULT_WEIGHT_KG', '0.5'),
+            'ithink_default_weight_kg',
+            current_app.config.get('ITHINK_DEFAULT_WEIGHT_KG', '0.5'),
         ),
         'length': stored.get(
-            'shiprocket_default_length_cm',
-            current_app.config.get('SHIPROCKET_DEFAULT_LENGTH_CM', '10'),
+            'ithink_default_length_cm',
+            current_app.config.get('ITHINK_DEFAULT_LENGTH_CM', '10'),
         ),
-        'breadth': stored.get(
-            'shiprocket_default_breadth_cm',
-            current_app.config.get('SHIPROCKET_DEFAULT_BREADTH_CM', '10'),
+        'width': stored.get(
+            'ithink_default_width_cm',
+            current_app.config.get('ITHINK_DEFAULT_WIDTH_CM', '10'),
         ),
         'height': stored.get(
-            'shiprocket_default_height_cm',
-            current_app.config.get('SHIPROCKET_DEFAULT_HEIGHT_CM', '10'),
-        ),
-        'auto_pickup': stored.get(
-            'shiprocket_auto_pickup',
-            '1' if current_app.config.get('SHIPROCKET_AUTO_PICKUP') else '0',
+            'ithink_default_height_cm',
+            current_app.config.get('ITHINK_DEFAULT_HEIGHT_CM', '10'),
         ),
     }
 
 
-def _shiprocket_available() -> bool:
-    if current_app.config.get('SHIPROCKET_ENABLED'):
+def _ithink_available() -> bool:
+    if current_app.config.get('ITHINK_ENABLED'):
         return True
-    flash('Shiprocket is disabled in the server environment.', 'error')
+    flash('iThink Logistics is disabled in the server environment.', 'error')
     return False
 
 
-@admin_bp.post('/orders/<int:order_id>/shiprocket/create')
+@admin_bp.post('/orders/<int:order_id>/ithink/create')
 @admin_required
-def create_shiprocket_shipment(order_id):
-    if not _shiprocket_available():
+def create_ithink_shipment(order_id):
+    if not _ithink_available():
         return redirect(url_for('admin.manage_orders'))
 
     order = Order.query.filter_by(id=order_id).with_for_update().first_or_404()
@@ -782,72 +776,44 @@ def create_shiprocket_shipment(order_id):
         flash('A prepaid order must be paid before it can be shipped.', 'error')
         return redirect(url_for('admin.manage_orders'))
 
-    settings = _shiprocket_operational_settings()
+    settings = _ithink_operational_settings()
     try:
         dimensions = parcel_dimensions(
             request.form.get('weight', settings['weight']),
             request.form.get('length', settings['length']),
-            request.form.get('breadth', settings['breadth']),
+            request.form.get('width', settings['width']),
             request.form.get('height', settings['height']),
         )
-        courier_value = request.form.get('courier_id', '').strip()
-        courier_id = int(courier_value) if courier_value else None
-        if courier_id is not None and courier_id <= 0:
-            raise ValueError('Courier ID must be a positive integer.')
     except ValueError as error:
         flash(str(error), 'error')
         return redirect(url_for('admin.manage_orders'))
 
-    client = ShiprocketClient()
     try:
-        if not order.shiprocket_shipment_id:
-            payload = build_shiprocket_order_payload(
-                order,
-                settings['pickup_location'],
-                dimensions,
+        client = IThinkClient()
+        if order.awb_number:
+            flash(f'iThink shipment for order #{order.id} already exists.', 'success')
+            return redirect(url_for('admin.manage_orders'))
+        shipment = create_or_recover_ithink_shipment(order, dimensions, client)
+        apply_ithink_shipment(order, shipment)
+        if not shipment.get('awb_number'):
+            db.session.commit()
+            message = (
+                f'iThink saved order #{order.id} as {shipment.get("order_reference")} '
+                'but did not assign an AWB yet.'
             )
-            created = client.create_order(payload)
-            shiprocket_order_id = str(created.get('order_id') or '').strip()
-            shipment_id = str(created.get('shipment_id') or '').strip()
-            if not shiprocket_order_id or not shipment_id:
-                raise ShiprocketRequestError(
-                    'Shiprocket created no usable order or shipment identifier.'
-                )
-            order.shiprocket_order_id = shiprocket_order_id
-            order.shiprocket_shipment_id = shipment_id
-            order.shiprocket_status = str(created.get('status') or 'ORDER CREATED')[:100]
-            order.status = 'processing'
-            created_awb = extract_awb_data(created)
-            order.awb_number = created_awb['awb_number'] or order.awb_number
-            order.shipping_provider = created_awb['courier_name'] or order.shipping_provider
-            order.shiprocket_tracking_updated_at = utcnow_naive()
-            db.session.commit()
-
-        if not order.awb_number:
-            assigned = client.assign_awb(order.shiprocket_shipment_id, courier_id)
-            awb_data = extract_awb_data(assigned)
-            if not awb_data['awb_number']:
-                raise ShiprocketRequestError('Shiprocket did not assign an AWB number.')
-            order.awb_number = awb_data['awb_number']
-            order.shipping_provider = awb_data['courier_name'] or order.shipping_provider
-            order.shiprocket_status = 'AWB ASSIGNED'
-            order.shiprocket_tracking_updated_at = utcnow_naive()
-            db.session.commit()
-
-        if settings['auto_pickup'] == '1' and not order.shiprocket_pickup_scheduled:
-            client.schedule_pickup(order.shiprocket_shipment_id)
-            order.shiprocket_pickup_scheduled = True
-            order.shiprocket_status = 'PICKUP SCHEDULED'
-            order.shiprocket_tracking_updated_at = utcnow_naive()
-            db.session.commit()
-    except (ShiprocketRequestError, ValueError):
+            if shipment.get('remark'):
+                message += f" iThink said: {shipment['remark']}"
+            flash(f'{message} Retry the shipment action.', 'error')
+            return redirect(url_for('admin.manage_orders'))
+        db.session.commit()
+    except (IThinkRequestError, ValueError, SQLAlchemyError) as error:
         db.session.rollback()
         current_app.logger.exception(
-            'Unable to advance Shiprocket fulfillment.',
+            'Unable to create iThink fulfillment.',
             extra={'order_id': order_id},
         )
         flash(
-            'Shiprocket could not complete this step. Any saved Shiprocket IDs are preserved; retry the action.',
+            f'iThink could not create this shipment: {str(error)[:300]}',
             'error',
         )
         return redirect(url_for('admin.manage_orders'))
@@ -862,72 +828,37 @@ def create_shiprocket_shipment(order_id):
             )
         except GoKwikRequestError:
             current_app.logger.exception(
-                'Shiprocket shipment was created but GoKwik synchronization failed.',
+                'iThink shipment was created but GoKwik synchronization failed.',
                 extra={'order_id': order.id},
             )
             flash('Shipment created, but GoKwik synchronization failed.', 'error')
             return redirect(url_for('admin.manage_orders'))
 
-    flash(f'Shiprocket shipment for order #{order.id} is ready.', 'success')
+    flash(f'iThink shipment for order #{order.id} is ready.', 'success')
     return redirect(url_for('admin.manage_orders'))
 
 
-@admin_bp.post('/orders/<int:order_id>/shiprocket/pickup')
+@admin_bp.post('/orders/<int:order_id>/ithink/refresh')
 @admin_required
-def schedule_shiprocket_pickup(order_id):
-    if not _shiprocket_available():
-        return redirect(url_for('admin.manage_orders'))
-    order = Order.query.get_or_404(order_id)
-    if not order.shiprocket_shipment_id or not order.awb_number:
-        flash('Create the shipment and assign an AWB before scheduling pickup.', 'error')
-        return redirect(url_for('admin.manage_orders'))
-    if order.shiprocket_pickup_scheduled:
-        flash('Pickup is already scheduled for this shipment.', 'success')
-        return redirect(url_for('admin.manage_orders'))
-    try:
-        ShiprocketClient().schedule_pickup(order.shiprocket_shipment_id)
-        order.shiprocket_pickup_scheduled = True
-        order.shiprocket_status = 'PICKUP SCHEDULED'
-        order.shiprocket_tracking_updated_at = utcnow_naive()
-        db.session.commit()
-    except ShiprocketRequestError:
-        db.session.rollback()
-        current_app.logger.exception(
-            'Unable to schedule Shiprocket pickup.',
-            extra={'order_id': order_id},
-        )
-        flash('Shiprocket could not schedule the pickup. Try again.', 'error')
-        return redirect(url_for('admin.manage_orders'))
-    flash(f'Pickup scheduled for order #{order.id}.', 'success')
-    return redirect(url_for('admin.manage_orders'))
-
-
-@admin_bp.post('/orders/<int:order_id>/shiprocket/refresh')
-@admin_required
-def refresh_shiprocket_tracking(order_id):
-    if not _shiprocket_available():
+def refresh_ithink_tracking(order_id):
+    if not _ithink_available():
         return redirect(url_for('admin.manage_orders'))
     order = Order.query.get_or_404(order_id)
     if not order.awb_number:
-        flash('This order has no Shiprocket AWB to track.', 'error')
+        flash('This order has no iThink AWB to track.', 'error')
         return redirect(url_for('admin.manage_orders'))
     try:
-        tracking = extract_tracking_data(ShiprocketClient().track_awb(order.awb_number))
-        status_changed = apply_shiprocket_tracking(order, {
-            'current_status': tracking['status'],
-            'current_status_id': tracking['status_id'],
-            'courier_name': tracking['courier_name'],
-            'awb': tracking['awb_number'] or order.awb_number,
-            'track_url': tracking['tracking_url'],
-        })
+        tracking_payload = IThinkClient().track_awbs([order.awb_number])
+        tracking = extract_tracking_data(tracking_payload, order.awb_number)
+        status_changed = apply_ithink_tracking(order, tracking)
         db.session.commit()
-    except ShiprocketRequestError:
+    except (IThinkRequestError, ValueError):
         db.session.rollback()
         current_app.logger.exception(
-            'Unable to refresh Shiprocket tracking.',
+            'Unable to refresh iThink tracking.',
             extra={'order_id': order_id},
         )
-        flash('Shiprocket tracking could not be refreshed. Try again.', 'error')
+        flash('iThink tracking could not be refreshed. Try again.', 'error')
         return redirect(url_for('admin.manage_orders'))
     if status_changed and is_gokwik_payment_method(order.payment_method):
         try:
@@ -939,7 +870,7 @@ def refresh_shiprocket_tracking(order_id):
             )
         except GoKwikRequestError:
             current_app.logger.exception(
-                'Shiprocket tracking was refreshed but GoKwik synchronization failed.',
+                'iThink tracking was refreshed but GoKwik synchronization failed.',
                 extra={'order_id': order.id},
             )
             flash('Tracking refreshed, but GoKwik synchronization failed.', 'error')
@@ -966,58 +897,46 @@ def manage_settings():
     ALLOWED_SETTINGS = {
         'shipping_charge',
         'free_shipping_threshold',
-        'shiprocket_pickup_location',
-        'shiprocket_default_weight_kg',
-        'shiprocket_default_length_cm',
-        'shiprocket_default_breadth_cm',
-        'shiprocket_default_height_cm',
-        'shiprocket_auto_pickup',
+        'ithink_default_weight_kg',
+        'ithink_default_length_cm',
+        'ithink_default_width_cm',
+        'ithink_default_height_cm',
     }
     if request.method == 'POST':
-        current_shiprocket_settings = _shiprocket_operational_settings()
+        current_ithink_settings = _ithink_operational_settings()
         try:
             shipping_settings = {
                 'shipping_charge': _parse_shipping_amount(request.form.get('shipping_charge'), 'Standard shipping charge'),
                 'free_shipping_threshold': _parse_shipping_amount(request.form.get('free_shipping_threshold'), 'Free shipping threshold'),
             }
-            shiprocket_dimensions = parcel_dimensions(
+            ithink_dimensions = parcel_dimensions(
                 request.form.get(
-                    'shiprocket_default_weight_kg',
-                    current_shiprocket_settings['weight'],
+                    'ithink_default_weight_kg',
+                    current_ithink_settings['weight'],
                 ),
                 request.form.get(
-                    'shiprocket_default_length_cm',
-                    current_shiprocket_settings['length'],
+                    'ithink_default_length_cm',
+                    current_ithink_settings['length'],
                 ),
                 request.form.get(
-                    'shiprocket_default_breadth_cm',
-                    current_shiprocket_settings['breadth'],
+                    'ithink_default_width_cm',
+                    current_ithink_settings['width'],
                 ),
                 request.form.get(
-                    'shiprocket_default_height_cm',
-                    current_shiprocket_settings['height'],
+                    'ithink_default_height_cm',
+                    current_ithink_settings['height'],
                 ),
             )
-            pickup_location = request.form.get(
-                'shiprocket_pickup_location',
-                current_shiprocket_settings['pickup_location'],
-            ).strip()
-            if len(pickup_location) > 100:
-                raise ValueError('Shiprocket pickup location must not exceed 100 characters.')
-            if current_app.config.get('SHIPROCKET_ENABLED') and not pickup_location:
-                raise ValueError('Shiprocket pickup location is required while Shiprocket is enabled.')
         except ValueError as error:
             flash(str(error), 'error')
             return redirect(url_for('admin.manage_settings'))
 
         submitted_settings = {
             **shipping_settings,
-            'shiprocket_pickup_location': pickup_location,
-            'shiprocket_default_weight_kg': str(shiprocket_dimensions['weight']),
-            'shiprocket_default_length_cm': str(shiprocket_dimensions['length']),
-            'shiprocket_default_breadth_cm': str(shiprocket_dimensions['breadth']),
-            'shiprocket_default_height_cm': str(shiprocket_dimensions['height']),
-            'shiprocket_auto_pickup': '1' if request.form.get('shiprocket_auto_pickup') == '1' else '0',
+            'ithink_default_weight_kg': str(ithink_dimensions['weight']),
+            'ithink_default_length_cm': str(ithink_dimensions['length']),
+            'ithink_default_width_cm': str(ithink_dimensions['width']),
+            'ithink_default_height_cm': str(ithink_dimensions['height']),
         }
         for key, value in submitted_settings.items():
             if key in ALLOWED_SETTINGS:
@@ -1030,13 +949,11 @@ def manage_settings():
         flash('Settings updated', 'success')
         
     all_settings = {s.key: s.value for s in Setting.query.all()}
-    shiprocket_defaults = _shiprocket_operational_settings()
-    all_settings.setdefault('shiprocket_pickup_location', shiprocket_defaults['pickup_location'])
-    all_settings.setdefault('shiprocket_default_weight_kg', shiprocket_defaults['weight'])
-    all_settings.setdefault('shiprocket_default_length_cm', shiprocket_defaults['length'])
-    all_settings.setdefault('shiprocket_default_breadth_cm', shiprocket_defaults['breadth'])
-    all_settings.setdefault('shiprocket_default_height_cm', shiprocket_defaults['height'])
-    all_settings.setdefault('shiprocket_auto_pickup', shiprocket_defaults['auto_pickup'])
+    ithink_defaults = _ithink_operational_settings()
+    all_settings.setdefault('ithink_default_weight_kg', ithink_defaults['weight'])
+    all_settings.setdefault('ithink_default_length_cm', ithink_defaults['length'])
+    all_settings.setdefault('ithink_default_width_cm', ithink_defaults['width'])
+    all_settings.setdefault('ithink_default_height_cm', ithink_defaults['height'])
     return render_template('admin/settings.html', settings=all_settings)
 
 @admin_bp.route('/reviews')

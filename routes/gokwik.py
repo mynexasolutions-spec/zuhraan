@@ -13,7 +13,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from models import Coupon, GoKwikCheckoutSession, Order, OrderItem, ProductVariant, Setting, User, db
 from routes.main import (
-    _auto_create_shiprocket_shipment,
+    _auto_create_ithink_shipment,
     _link_guest_orders_to_user,
     _remember_guest_order,
     _validate_coupon,
@@ -694,7 +694,7 @@ def place_order():
         if checkout.order_id:
             existing_order = db.session.get(Order, checkout.order_id)
             if existing_order:
-                _auto_create_shiprocket_shipment(existing_order)
+                _auto_create_ithink_shipment(existing_order)
             return jsonify({'id': checkout.order_id}), 200
 
         customer = _decoded_json_object(checkout.customer_data, 'customer data')
@@ -806,7 +806,7 @@ def place_order():
         checkout.failure_reason = None
         checkout.updated_at = _utcnow()
         db.session.commit()
-        _auto_create_shiprocket_shipment(order)
+        _auto_create_ithink_shipment(order)
         return jsonify({'id': order.id}), 200
     except GoKwikAPIError:
         db.session.rollback()

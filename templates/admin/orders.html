@@ -149,7 +149,7 @@
     }
     .status-badge,
     .payment-badge,
-    .shiprocket-state {
+    .shipping-state {
         display: inline-flex;
         width: fit-content;
         align-items: center;
@@ -374,11 +374,11 @@
         gap: 8px;
         margin-bottom: 14px;
     }
-    .shiprocket-state {
+    .shipping-state {
         color: #1d4ed8;
         background: #dbeafe;
     }
-    .shiprocket-state.pending {
+    .shipping-state.pending {
         color: #475569;
         background: #e2e8f0;
     }
@@ -463,7 +463,7 @@
                     <span class="detail-label">Delivery</span>
                     <div class="detail-value">{{ order.shipping_provider or 'Courier not assigned' }}</div>
                     <span class="detail-muted">AWB: {{ order.awb_number or 'Not assigned' }}</span>
-                    <span class="detail-muted">Shiprocket: {{ order.shiprocket_status or 'Not created' }}</span>
+                    <span class="detail-muted">iThink status: {{ order.shipping_status or 'Not created' }}</span>
                 </section>
 
                 <section class="order-info-card">
@@ -528,12 +528,12 @@
                                 <select class="admin-field" name="status">
                                     <option value="pending" {% if order.status == 'pending' %}selected{% endif %}>Pending</option>
                                     <option value="processing" {% if order.status == 'processing' %}selected{% endif %}>Processing</option>
-                                    <option value="shipped" {% if order.status == 'shipped' %}selected{% endif %}>Shipped</option>
-                                    <option value="delivered" {% if order.status == 'delivered' %}selected{% endif %}>Delivered</option>
+                                    <option value="shipped" {% if order.status == 'shipped' %}selected{% endif %} {% if ithink_enabled and not order.shipping_order_reference %}disabled{% endif %}>Shipped</option>
+                                    <option value="delivered" {% if order.status == 'delivered' %}selected{% endif %} {% if ithink_enabled and not order.shipping_order_reference %}disabled{% endif %}>Delivered</option>
                                     <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
                                 </select>
                             </label>
-                            {% if order.payment_method in ['cod', 'gokwik_prepaid', 'razorpay'] %}
+                            {% if not ithink_enabled and order.payment_method in ['cod', 'gokwik_prepaid', 'razorpay'] %}
                             <label>
                                 <span class="field-label">Shipping provider</span>
                                 <input class="admin-field" name="shipping_provider" value="{{ order.shipping_provider or '' }}" placeholder="Courier company">
@@ -542,6 +542,8 @@
                                 <span class="field-label">AWB / tracking number</span>
                                 <input class="admin-field" name="awb_number" value="{{ order.awb_number or '' }}" placeholder="AWB number">
                             </label>
+                            {% elif ithink_enabled %}
+                            <p class="detail-muted">iThink assigns the courier and AWB automatically. Use the iThink panel to create or refresh the shipment.</p>
                             {% endif %}
                             <button class="primary-action" type="submit"><i class="fa-solid fa-floppy-disk"></i> Save status</button>
                         </form>
@@ -549,52 +551,42 @@
 
                     <div class="management-panel">
                         <div class="order-section-heading">
-                            <h3><i class="fa-solid fa-truck-fast"></i> Shiprocket fulfillment</h3>
-                            <span class="shiprocket-state{% if not order.shiprocket_shipment_id %} pending{% endif %}">
-                                {{ order.shiprocket_status or ('Not created' if not order.shiprocket_shipment_id else 'Created') }}
+                            <h3><i class="fa-solid fa-truck-fast"></i> iThink Logistics fulfillment</h3>
+                            <span class="shipping-state{% if not order.shipping_order_reference %} pending{% endif %}">
+                                {{ order.shipping_status or ('Not created' if not order.shipping_order_reference else 'Created') }}
                             </span>
                         </div>
 
-                        {% if shiprocket_enabled or order.shiprocket_shipment_id %}
+                        {% if ithink_enabled or order.shipping_order_reference %}
                             {% if order.awb_number %}
                             <div class="shipment-actions">
-                                <a class="secondary-action" href="{{ order.shiprocket_tracking_url or ('https://shiprocket.co/tracking/' ~ order.awb_number) }}" target="_blank" rel="noopener noreferrer">
+                                {% if order.shipping_tracking_url %}<a class="secondary-action" href="{{ order.shipping_tracking_url }}" target="_blank" rel="noopener noreferrer">
                                     <i class="fa-solid fa-location-dot"></i> Track
-                                </a>
-                                <form action="{{ url_for('admin.refresh_shiprocket_tracking', order_id=order.id) }}" method="POST">
+                                </a>{% endif %}
+                                <form action="{{ url_for('admin.refresh_ithink_tracking', order_id=order.id) }}" method="POST">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button class="secondary-action" type="submit"><i class="fa-solid fa-rotate"></i> Refresh</button>
                                 </form>
-                                {% if not order.shiprocket_pickup_scheduled %}
-                                <form action="{{ url_for('admin.schedule_shiprocket_pickup', order_id=order.id) }}" method="POST">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button class="secondary-action" type="submit"><i class="fa-solid fa-calendar-check"></i> Schedule pickup</button>
-                                </form>
-                                {% endif %}
                             </div>
                             {% endif %}
 
-                            {% if shiprocket_enabled and not order.awb_number and order.status not in ['cancelled', 'delivered'] %}
-                            <form class="form-stack" action="{{ url_for('admin.create_shiprocket_shipment', order_id=order.id) }}" method="POST">
+                            {% if ithink_enabled and not order.awb_number and order.status not in ['cancelled', 'delivered'] %}
+                            <form class="form-stack" action="{{ url_for('admin.create_ithink_shipment', order_id=order.id) }}" method="POST">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <div class="form-grid">
-                                    <label><span class="field-label">Weight (kg)</span><input class="admin-field" type="number" min="0.01" step="0.01" name="weight" value="{{ shiprocket_defaults.weight }}" required></label>
-                                    <label><span class="field-label">Length (cm)</span><input class="admin-field" type="number" min="0.1" step="0.1" name="length" value="{{ shiprocket_defaults.length }}" required></label>
-                                    <label><span class="field-label">Breadth (cm)</span><input class="admin-field" type="number" min="0.1" step="0.1" name="breadth" value="{{ shiprocket_defaults.breadth }}" required></label>
-                                    <label><span class="field-label">Height (cm)</span><input class="admin-field" type="number" min="0.1" step="0.1" name="height" value="{{ shiprocket_defaults.height }}" required></label>
+                                    <label><span class="field-label">Weight (kg)</span><input class="admin-field" type="number" min="0.01" step="0.01" name="weight" value="{{ ithink_defaults.weight }}" required></label>
+                                    <label><span class="field-label">Length (cm)</span><input class="admin-field" type="number" min="0.1" step="0.1" name="length" value="{{ ithink_defaults.length }}" required></label>
+                                    <label><span class="field-label">Width (cm)</span><input class="admin-field" type="number" min="0.1" step="0.1" name="width" value="{{ ithink_defaults.width }}" required></label>
+                                    <label><span class="field-label">Height (cm)</span><input class="admin-field" type="number" min="0.1" step="0.1" name="height" value="{{ ithink_defaults.height }}" required></label>
                                 </div>
-                                <label>
-                                    <span class="field-label">Courier ID (optional)</span>
-                                    <input class="admin-field" type="number" min="1" name="courier_id" placeholder="Leave blank for automatic selection">
-                                </label>
                                 <button class="primary-action" type="submit">
                                     <i class="fa-solid fa-truck-fast"></i>
-                                    {% if order.shiprocket_shipment_id %}Assign AWB{% else %}Create shipment &amp; assign AWB{% endif %}
+                                    Create shipment &amp; assign AWB
                                 </button>
                             </form>
                             {% endif %}
                         {% else %}
-                            <p class="detail-muted">Shiprocket is disabled in the server environment.</p>
+                            <p class="detail-muted">iThink Logistics is disabled in the server environment.</p>
                         {% endif %}
                     </div>
                 </div>

@@ -5,7 +5,7 @@ from io import BytesIO
 os.environ['APP_ENV'] = 'testing'
 os.environ['SUPABASE_DATABASE_URL'] = 'sqlite:///:memory:'
 os.environ['SECRET_KEY'] = 'test-secret'
-os.environ['SHIPROCKET_ENABLED'] = '0'
+os.environ['ITHINK_ENABLED'] = '0'
 
 import pytest
 from werkzeug.security import generate_password_hash

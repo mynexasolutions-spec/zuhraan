@@ -4,7 +4,7 @@ from types import SimpleNamespace
 os.environ['APP_ENV'] = 'testing'
 os.environ['SUPABASE_DATABASE_URL'] = 'sqlite:///:memory:'
 os.environ['SECRET_KEY'] = 'test-secret'
-os.environ['SHIPROCKET_ENABLED'] = '0'
+os.environ['ITHINK_ENABLED'] = '0'
 os.environ['GOKWIK_ENABLED'] = '1'
 os.environ['GOKWIK_ENV'] = 'sandbox'
 os.environ['GOKWIK_MERCHANT_ID'] = 'test-merchant'
@@ -227,15 +227,29 @@ def test_guest_gokwik_order_appears_after_same_browser_login(client):
         assert order.user_id == customer.id
 
 
-def test_cod_order_is_automatically_created_in_shiprocket(client, monkeypatch):
-    class FakeShiprocketClient:
+def test_cod_order_is_automatically_created_in_ithink(client, monkeypatch):
+    class FakeIThinkClient:
         def create_order(self, payload):
-            assert payload['payment_method'] == 'COD'
-            return {'order_id': 12345, 'shipment_id': 67890, 'status': 'NEW'}
+            assert payload['shipments'][0]['payment_mode'] == 'COD'
+            return {
+                'status': 'success',
+                'status_code': 200,
+                'data': {
+                    '1': {
+                        'status': 'Success',
+                        'waybill': 'AWB123',
+                        'refnum': 'ZUHRAAN-1',
+                        'logistic_name': 'Xpressbees',
+                    },
+                },
+            }
 
-    monkeypatch.setitem(app.config, 'SHIPROCKET_ENABLED', True)
-    monkeypatch.setitem(app.config, 'SHIPROCKET_PICKUP_LOCATION', 'Primary Warehouse')
-    monkeypatch.setattr('shiprocket_client.ShiprocketClient', FakeShiprocketClient)
+    monkeypatch.setitem(app.config, 'ITHINK_ENABLED', True)
+    monkeypatch.setitem(app.config, 'ITHINK_ACCESS_TOKEN', 'test-access-token')
+    monkeypatch.setitem(app.config, 'ITHINK_SECRET_KEY', 'test-secret-key')
+    monkeypatch.setitem(app.config, 'ITHINK_PICKUP_ADDRESS_ID', '127196')
+    monkeypatch.setitem(app.config, 'ITHINK_RETURN_ADDRESS_ID', '127196')
+    monkeypatch.setattr('ithink_client.IThinkClient', FakeIThinkClient)
     with app.app_context():
         variant_id = create_cart_product()
     checkout_id = create_checkout(client, variant_id, 1)
@@ -257,12 +271,10 @@ def test_cod_order_is_automatically_created_in_shiprocket(client, monkeypatch):
     assert response.status_code == 200
     with app.app_context():
         order = db.session.get(Order, response.get_json()['id'])
-        assert order.shiprocket_order_id == '12345'
-        assert order.shiprocket_shipment_id == '67890'
-        assert order.awb_number is None
-        assert order.shipping_provider is None
-        assert order.shiprocket_status == 'NEW'
-        assert order.shiprocket_pickup_scheduled is False
+        assert order.shipping_order_reference == 'ZUHRAAN-1'
+        assert order.awb_number == 'AWB123'
+        assert order.shipping_provider == 'Xpressbees'
+        assert order.shipping_status == 'Success'
 
 
 def test_prepaid_order_requires_confirmed_payment_and_matching_total(client):
@@ -500,8 +512,7 @@ def test_production_database_requires_ssl(monkeypatch):
         'postgresql://user:password@pooler.supabase.com:5432/postgres',
     )
 
-    with pytest.raises(RuntimeError, match='require SSL'):
-        get_supabase_database_url()
+    assert get_supabase_database_url().endswith('?sslmode=require')
 
     secure_url = (
         'postgresql://user:password@pooler.supabase.com:5432/postgres?sslmode=require'

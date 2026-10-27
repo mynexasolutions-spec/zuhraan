@@ -19,7 +19,7 @@ from models import db, Category, User, Setting, AboutPage, ContactMessage, GoKwi
 from routes.main import main_bp
 from routes.admin import admin_bp
 from routes.gokwik import gokwik_api_bp, gokwik_storefront_bp
-from routes.shiprocket import shiprocket_bp
+from routes.ithink import apply_ithink_tracking
 from gokwik_client import GoKwikRequestError, verify_gokwik_merchant
 from flask_login import LoginManager
 from werkzeug.security import generate_password_hash
@@ -58,11 +58,18 @@ def get_supabase_database_url() -> str:
             'URL from Supabase Connect; do not type the pooler host manually.'
         )
 
-    if is_production_runtime() and database_url.startswith(('postgresql://', 'postgres://')):
+    is_postgres_url = database_url.lower().startswith(
+        ('postgresql://', 'postgres://', 'postgresql+')
+    )
+    if is_postgres_url:
         parsed_url = urlparse(database_url)
         query_parameters = parse_qs(parsed_url.query)
         ssl_mode = query_parameters.get('sslmode', [''])[0].lower()
-        if ssl_mode not in {'require', 'verify-ca', 'verify-full'}:
+        if not ssl_mode:
+            separator = '&' if parsed_url.query else '?'
+            database_url = f'{database_url}{separator}sslmode=require'
+            ssl_mode = 'require'
+        if is_production_runtime() and ssl_mode not in {'require', 'verify-ca', 'verify-full'}:
             raise RuntimeError(
                 'Production SUPABASE_DATABASE_URL must require SSL. Add sslmode=require '
                 'or use verify-ca/verify-full.'
@@ -161,32 +168,34 @@ if app.config['GOKWIK_ENABLED']:
             + ', '.join(missing_gokwik_settings)
         )
 
-app.config['SHIPROCKET_ENABLED'] = environment_flag('SHIPROCKET_ENABLED')
-app.config['SHIPROCKET_EMAIL'] = os.environ.get('SHIPROCKET_EMAIL')
-app.config['SHIPROCKET_PASSWORD'] = os.environ.get('SHIPROCKET_PASSWORD')
-app.config['SHIPROCKET_WEBHOOK_TOKEN'] = os.environ.get('SHIPROCKET_WEBHOOK_TOKEN')
-app.config['SHIPROCKET_PICKUP_LOCATION'] = os.environ.get('SHIPROCKET_PICKUP_LOCATION', '')
-app.config['SHIPROCKET_ORDER_PREFIX'] = os.environ.get('SHIPROCKET_ORDER_PREFIX', 'ZUHRAAN-')
-app.config['SHIPROCKET_DEFAULT_WEIGHT_KG'] = os.environ.get('SHIPROCKET_DEFAULT_WEIGHT_KG', '0.5')
-app.config['SHIPROCKET_DEFAULT_LENGTH_CM'] = os.environ.get('SHIPROCKET_DEFAULT_LENGTH_CM', '10')
-app.config['SHIPROCKET_DEFAULT_BREADTH_CM'] = os.environ.get('SHIPROCKET_DEFAULT_BREADTH_CM', '10')
-app.config['SHIPROCKET_DEFAULT_HEIGHT_CM'] = os.environ.get('SHIPROCKET_DEFAULT_HEIGHT_CM', '10')
-app.config['SHIPROCKET_AUTO_PICKUP'] = environment_flag('SHIPROCKET_AUTO_PICKUP')
+app.config['ITHINK_ENABLED'] = environment_flag('ITHINK_ENABLED')
+app.config['ITHINK_ACCESS_TOKEN'] = os.environ.get('ITHINK_ACCESS_TOKEN')
+app.config['ITHINK_SECRET_KEY'] = os.environ.get('ITHINK_SECRET_KEY')
+app.config['ITHINK_PICKUP_ADDRESS_ID'] = os.environ.get('ITHINK_PICKUP_ADDRESS_ID')
+app.config['ITHINK_RETURN_ADDRESS_ID'] = os.environ.get('ITHINK_RETURN_ADDRESS_ID')
+app.config['ITHINK_STORE_ID'] = os.environ.get('ITHINK_STORE_ID', '')
+app.config['ITHINK_API_SOURCE'] = os.environ.get('ITHINK_API_SOURCE', '')
+app.config['ITHINK_LOGISTICS'] = os.environ.get('ITHINK_LOGISTICS', '')
+app.config['ITHINK_SERVICE_TYPE'] = os.environ.get('ITHINK_SERVICE_TYPE') or 'surface'
+app.config['ITHINK_DEFAULT_WEIGHT_KG'] = os.environ.get('ITHINK_DEFAULT_WEIGHT_KG', '0.5')
+app.config['ITHINK_DEFAULT_LENGTH_CM'] = os.environ.get('ITHINK_DEFAULT_LENGTH_CM', '10')
+app.config['ITHINK_DEFAULT_WIDTH_CM'] = os.environ.get('ITHINK_DEFAULT_WIDTH_CM', '10')
+app.config['ITHINK_DEFAULT_HEIGHT_CM'] = os.environ.get('ITHINK_DEFAULT_HEIGHT_CM', '10')
 
-if app.config['SHIPROCKET_ENABLED']:
-    required_shiprocket_settings = (
-        'SHIPROCKET_EMAIL',
-        'SHIPROCKET_PASSWORD',
-        'SHIPROCKET_WEBHOOK_TOKEN',
-        'SHIPROCKET_PICKUP_LOCATION',
+if app.config['ITHINK_ENABLED']:
+    required_ithink_settings = (
+        'ITHINK_ACCESS_TOKEN',
+        'ITHINK_SECRET_KEY',
+        'ITHINK_PICKUP_ADDRESS_ID',
+        'ITHINK_RETURN_ADDRESS_ID',
     )
-    missing_shiprocket_settings = [
-        name for name in required_shiprocket_settings if not app.config.get(name)
+    missing_ithink_settings = [
+        name for name in required_ithink_settings if not app.config.get(name)
     ]
-    if missing_shiprocket_settings:
+    if missing_ithink_settings:
         raise RuntimeError(
-            'Shiprocket is enabled but required configuration is missing: '
-            + ', '.join(missing_shiprocket_settings)
+            'iThink is enabled but required configuration is missing: '
+            + ', '.join(missing_ithink_settings)
         )
 
 app.config['BREVO_API_KEY'] = os.environ.get('BREVO_API_KEY')
@@ -228,9 +237,22 @@ def health_check():
     """Return deployment health without exposing configuration or credentials."""
     try:
         db.session.execute(text('SELECT 1'))
+        inspector = inspect(db.engine)
+        missing_tables = [
+            table_name
+            for table_name in sorted(db.metadata.tables)
+            if not inspector.has_table(table_name)
+        ]
     except SQLAlchemyError:
         db.session.rollback()
         app.logger.exception('Database health check failed.')
+        return {'status': 'unhealthy'}, 503
+    if missing_tables:
+        db.session.rollback()
+        app.logger.error(
+            'Database schema is incomplete. Missing tables: %s',
+            ', '.join(missing_tables),
+        )
         return {'status': 'unhealthy'}, 503
     return {'status': 'ok'}, 200
 
@@ -327,55 +349,59 @@ def gokwik_readiness(verify_api: bool):
         )
 
 
-@app.cli.command('shiprocket-readiness')
+@app.cli.command('ithink-readiness')
 @click.option(
     '--verify-api',
     is_flag=True,
-    help='Authenticate against the live Shiprocket API without creating a shipment.',
+    help='Verify credentials and warehouse access without creating an order.',
 )
-def shiprocket_readiness(verify_api: bool):
-    """Verify Shiprocket configuration, schema, and optionally API credentials."""
-    from shiprocket_client import ShiprocketClient, ShiprocketRequestError, parcel_dimensions
+def ithink_readiness(verify_api: bool):
+    """Verify iThink configuration, schema, and optionally API credentials."""
+    from ithink_client import IThinkClient, IThinkRequestError, parcel_dimensions
 
     checks = {
-        'integration_enabled': bool(app.config.get('SHIPROCKET_ENABLED')),
-        'api_email': bool(app.config.get('SHIPROCKET_EMAIL')),
-        'api_password': bool(app.config.get('SHIPROCKET_PASSWORD')),
-        'webhook_token': bool(app.config.get('SHIPROCKET_WEBHOOK_TOKEN')),
-        'pickup_location': bool(app.config.get('SHIPROCKET_PICKUP_LOCATION')),
+        'integration_enabled': bool(app.config.get('ITHINK_ENABLED')),
+        'access_token': bool(app.config.get('ITHINK_ACCESS_TOKEN')),
+        'secret_key': bool(app.config.get('ITHINK_SECRET_KEY')),
+        'pickup_address_id': bool(app.config.get('ITHINK_PICKUP_ADDRESS_ID')),
+        'return_address_id': bool(app.config.get('ITHINK_RETURN_ADDRESS_ID')),
     }
     try:
         parcel_dimensions(
-            app.config['SHIPROCKET_DEFAULT_WEIGHT_KG'],
-            app.config['SHIPROCKET_DEFAULT_LENGTH_CM'],
-            app.config['SHIPROCKET_DEFAULT_BREADTH_CM'],
-            app.config['SHIPROCKET_DEFAULT_HEIGHT_CM'],
+            app.config['ITHINK_DEFAULT_WEIGHT_KG'],
+            app.config['ITHINK_DEFAULT_LENGTH_CM'],
+            app.config['ITHINK_DEFAULT_WIDTH_CM'],
+            app.config['ITHINK_DEFAULT_HEIGHT_CM'],
         )
         checks['parcel_defaults'] = True
     except ValueError:
         checks['parcel_defaults'] = False
 
-    inspector = inspect(db.engine)
-    if inspector.has_table('order'):
-        order_columns = {column['name'] for column in inspector.get_columns('order')}
-        checks['order_columns'] = {
-            'shiprocket_order_id',
-            'shiprocket_shipment_id',
-            'shiprocket_status',
-            'shiprocket_status_id',
-            'shiprocket_pickup_scheduled',
-            'shiprocket_tracking_url',
-            'shiprocket_tracking_updated_at',
-        }.issubset(order_columns)
-    else:
+    try:
+        inspector = inspect(db.engine)
+        checks['database_connection'] = True
+        if inspector.has_table('order'):
+            order_columns = {column['name'] for column in inspector.get_columns('order')}
+            checks['order_columns'] = {
+                'shipping_order_reference',
+                'shipping_status',
+                'shipping_status_code',
+                'shipping_tracking_url',
+                'shipping_tracking_updated_at',
+            }.issubset(order_columns)
+        else:
+            checks['order_columns'] = False
+    except SQLAlchemyError:
+        app.logger.exception('iThink readiness database check failed.')
+        checks['database_connection'] = False
         checks['order_columns'] = False
 
     if verify_api:
         try:
-            ShiprocketClient().authenticate(force=True)
-            checks['api_authentication'] = True
-        except ShiprocketRequestError:
-            app.logger.exception('Shiprocket readiness authentication failed.')
+            warehouses = IThinkClient().get_warehouses()
+            checks['api_authentication'] = isinstance(warehouses.get('data'), (list, dict))
+        except IThinkRequestError:
+            app.logger.exception('iThink readiness authentication failed.')
             checks['api_authentication'] = False
 
     for name, passed in checks.items():
@@ -383,8 +409,47 @@ def shiprocket_readiness(verify_api: bool):
     click.echo('[INFO] api_writes_performed=False')
     if not all(checks.values()):
         raise click.ClickException(
-            'Shiprocket is not ready. Resolve the failed checks; no credential values were printed.'
+            'iThink is not ready. Resolve the failed checks; no credential values were printed.'
         )
+
+
+@app.cli.command('ithink-sync-tracking')
+def ithink_sync_tracking():
+    """Refresh active iThink AWBs in batches of ten."""
+    from ithink_client import IThinkClient, IThinkRequestError, extract_tracking_data
+    from models import Order
+
+    if not app.config.get('ITHINK_ENABLED'):
+        raise click.ClickException('iThink integration is disabled.')
+
+    orders = Order.query.filter(
+        Order.awb_number.isnot(None),
+        Order.status.notin_(['delivered', 'cancelled']),
+    ).all()
+    client = IThinkClient()
+    updated = 0
+    failed = 0
+    for start in range(0, len(orders), 10):
+        batch = orders[start:start + 10]
+        try:
+            tracking_payload = client.track_awbs([order.awb_number for order in batch])
+            for order in batch:
+                try:
+                    tracking = extract_tracking_data(tracking_payload, order.awb_number)
+                except IThinkRequestError:
+                    failed += 1
+                    continue
+                apply_ithink_tracking(order, tracking)
+                updated += 1
+            db.session.commit()
+        except (IThinkRequestError, ValueError):
+            db.session.rollback()
+            failed += len(batch)
+            app.logger.exception('iThink tracking batch failed.')
+
+    click.echo(f'[INFO] orders_checked={len(orders)} orders_updated={updated} failures={failed}')
+    if failed:
+        raise click.ClickException('Some iThink tracking records could not be refreshed.')
 
 # Login Manager
 login_manager = LoginManager()
@@ -420,14 +485,12 @@ app.register_blueprint(main_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(gokwik_storefront_bp)
 app.register_blueprint(gokwik_api_bp)
-app.register_blueprint(shiprocket_bp)
 
 # Exempt webhook route and AJAX API routes from CSRF
 csrf.exempt("routes.main.payment_webhook")
 csrf.exempt("routes.main.api_validate_coupon")
 csrf.exempt("routes.admin.validate_coupon_api")
 csrf.exempt(gokwik_api_bp)
-csrf.exempt(shiprocket_bp)
 
 # CREATE DB CLI COMMAND
 @app.cli.command('init-db')
