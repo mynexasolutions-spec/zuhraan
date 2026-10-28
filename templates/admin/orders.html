@@ -457,6 +457,12 @@
                     <span class="payment-badge payment-badge--{{ order.payment_status }}">{{ order.payment_status }}</span>
                     {% if order.razorpay_payment_id %}<span class="detail-muted">Razorpay payment: {{ order.razorpay_payment_id }}</span>{% endif %}
                     {% if order.gokwik_transaction_id %}<span class="detail-muted">GoKwik transaction: {{ order.gokwik_transaction_id }}</span>{% endif %}
+                    {% if order.payment_method == 'razorpay' and order.payment_status != 'paid' %}
+                    <form class="form-stack" style="margin-top: 12px;" action="{{ url_for('admin.reconcile_order_payment', order_id=order.id) }}" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button class="secondary-action" type="submit"><i class="fa-solid fa-rotate"></i> Reconcile Razorpay payment</button>
+                    </form>
+                    {% endif %}
                 </section>
 
                 <section class="order-info-card">
@@ -533,7 +539,6 @@
                                     <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
                                 </select>
                             </label>
-                            {% if not ithink_enabled and order.payment_method in ['cod', 'gokwik_prepaid', 'razorpay'] %}
                             <label>
                                 <span class="field-label">Shipping provider</span>
                                 <input class="admin-field" name="shipping_provider" value="{{ order.shipping_provider or '' }}" placeholder="Courier company">
@@ -542,10 +547,25 @@
                                 <span class="field-label">AWB / tracking number</span>
                                 <input class="admin-field" name="awb_number" value="{{ order.awb_number or '' }}" placeholder="AWB number">
                             </label>
-                            {% elif ithink_enabled %}
-                            <p class="detail-muted">iThink assigns the courier and AWB automatically. Use the iThink panel to create or refresh the shipment.</p>
-                            {% endif %}
+                            {% if ithink_enabled %}<p class="detail-muted">iThink can assign these automatically. Use these fields as a manual fallback when a courier or AWB must be assigned by the admin.</p>{% endif %}
                             <button class="primary-action" type="submit"><i class="fa-solid fa-floppy-disk"></i> Save status</button>
+                        </form>
+
+                        <h3 style="margin-top: 22px;">Delivery details</h3>
+                        <form class="form-stack" action="{{ url_for('admin.update_order_details', order_id=order.id) }}" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <label><span class="field-label">Customer name</span><input class="admin-field" name="customer_name" value="{{ order.customer_name or '' }}" required></label>
+                            <label><span class="field-label">Customer email</span><input class="admin-field" type="email" name="customer_email" value="{{ order.customer_email or '' }}" required></label>
+                            <label><span class="field-label">Phone number</span><input class="admin-field" name="customer_phone" value="{{ order.customer_phone or '' }}" required></label>
+                            <label><span class="field-label">Address line 1</span><input class="admin-field" name="address_line1" value="{{ order.address_line1 or '' }}" required></label>
+                            <label><span class="field-label">Address line 2</span><input class="admin-field" name="address_line2" value="{{ order.address_line2 or '' }}"></label>
+                            <div class="form-grid">
+                                <label><span class="field-label">City</span><input class="admin-field" name="city" value="{{ order.city or '' }}" required></label>
+                                <label><span class="field-label">State</span><input class="admin-field" name="state" value="{{ order.state or '' }}" required></label>
+                                <label><span class="field-label">PIN code</span><input class="admin-field" name="pincode" value="{{ order.pincode or '' }}" inputmode="numeric" maxlength="6" required></label>
+                                <label><span class="field-label">Country</span><input class="admin-field" name="country" value="{{ order.country or 'India' }}" required></label>
+                            </div>
+                            <button class="secondary-action" type="submit"><i class="fa-solid fa-location-dot"></i> Save delivery details</button>
                         </form>
                     </div>
 

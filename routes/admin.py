@@ -15,7 +15,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from about_cms import ASSET_SPECS, MAX_IMAGE_MB, delete_asset_from_cloudinary, get_assets, get_content, save_assets, save_content, upload_asset
 from gokwik_client import GoKwikRequestError, is_gokwik_payment_method, sync_gokwik_order
 from homepage_reels import REEL_TITLES, get_homepage_reels, save_homepage_reels, set_max_reels, _get_max_reels
-from routes.main import release_order_inventory
+from routes.main import reconcile_razorpay_order, release_order_inventory
 from routes.ithink import (
     apply_ithink_shipment,
     apply_ithink_tracking,
@@ -26,6 +26,8 @@ from ithink_client import (
     IThinkClient,
     IThinkRequestError,
     extract_tracking_data,
+    normalize_indian_phone,
+    normalize_indian_pincode,
     parcel_dimensions,
 )
 
@@ -642,6 +644,91 @@ def manage_orders():
         ithink_defaults=ithink_defaults,
     )
 
+
+@admin_bp.post('/orders/<int:order_id>/details')
+@admin_required
+def update_order_details(order_id):
+    """Correct delivery details before retrying shipment creation."""
+    order = Order.query.get_or_404(order_id)
+    fields = {
+        'customer_name': request.form.get('customer_name', '').strip(),
+        'customer_email': request.form.get('customer_email', '').strip().lower(),
+        'customer_phone': request.form.get('customer_phone', '').strip(),
+        'address_line1': request.form.get('address_line1', '').strip(),
+        'address_line2': request.form.get('address_line2', '').strip(),
+        'city': request.form.get('city', '').strip(),
+        'state': request.form.get('state', '').strip(),
+        'pincode': request.form.get('pincode', '').strip(),
+        'country': request.form.get('country', '').strip() or 'India',
+    }
+    if not all(fields[name] for name in ('customer_name', 'customer_email', 'customer_phone', 'address_line1', 'city', 'state', 'pincode')):
+        flash('Complete all required delivery details before saving.', 'error')
+        return redirect(url_for('admin.manage_orders'))
+    if '@' not in fields['customer_email']:
+        flash('Enter a valid customer email address.', 'error')
+        return redirect(url_for('admin.manage_orders'))
+    try:
+        fields['customer_phone'] = normalize_indian_phone(fields['customer_phone'])
+        fields['pincode'] = normalize_indian_pincode(fields['pincode'])
+    except ValueError as error:
+        flash(str(error), 'error')
+        return redirect(url_for('admin.manage_orders'))
+
+    order.customer_name = fields['customer_name']
+    order.customer_email = fields['customer_email']
+    order.customer_phone = fields['customer_phone']
+    order.address_line1 = fields['address_line1']
+    order.address_line2 = fields['address_line2'] or None
+    order.city = fields['city']
+    order.state = fields['state']
+    order.pincode = fields['pincode']
+    order.country = fields['country']
+    order.shipping_address = ', '.join(filter(None, [
+        fields['address_line1'],
+        fields['address_line2'],
+        fields['city'],
+        fields['state'],
+        fields['pincode'],
+        fields['country'],
+    ]))
+    try:
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception(
+            'Unable to update order delivery details.',
+            extra={'order_id': order_id},
+        )
+        flash('The delivery details could not be saved. Please try again.', 'error')
+        return redirect(url_for('admin.manage_orders'))
+    flash(f'Delivery details for order #{order_id} were updated.', 'success')
+    return redirect(url_for('admin.manage_orders'))
+
+
+@admin_bp.post('/orders/<int:order_id>/payment/reconcile')
+@admin_required
+def reconcile_order_payment(order_id):
+    """Recover a missed Razorpay callback using the provider's paid record."""
+    order = Order.query.get_or_404(order_id)
+    if order.payment_method != 'razorpay':
+        flash('Only Razorpay orders can be reconciled here.', 'error')
+        return redirect(url_for('admin.manage_orders'))
+    try:
+        reconciled = reconcile_razorpay_order(order)
+        if reconciled.payment_status != 'paid':
+            raise RuntimeError('The order could not be marked as paid.')
+    except (RuntimeError, SQLAlchemyError, ValueError) as error:
+        db.session.rollback()
+        current_app.logger.exception(
+            'Unable to reconcile Razorpay payment.',
+            extra={'order_id': order_id},
+        )
+        flash(f'Payment reconciliation failed: {str(error)[:250]}', 'error')
+        return redirect(url_for('admin.manage_orders'))
+    flash(f'Razorpay payment for order #{order_id} was reconciled successfully.', 'success')
+    return redirect(url_for('admin.manage_orders'))
+
+
 @admin_bp.route('/orders/<int:order_id>/status', methods=['POST'])
 @admin_required
 def update_order_status(order_id):
@@ -654,28 +741,19 @@ def update_order_status(order_id):
     if order.status == 'cancelled' and new_status != 'cancelled':
         flash('A cancelled order cannot be reopened because its inventory was restored.', 'error')
         return redirect(url_for('admin.manage_orders'))
-    if (
-        order.shipping_order_reference
-        and new_status in {'shipped', 'delivered'}
-        and new_status != order.status
-    ):
-        flash('iThink controls shipped and delivered statuses. Refresh tracking instead.', 'error')
-        return redirect(url_for('admin.manage_orders'))
-
-    shipping_provider = request.form.get('shipping_provider', '').strip()
-    awb_number = request.form.get('awb_number', '').strip()
+    old_status = order.status
+    shipping_provider = request.form.get('shipping_provider', '').strip() or (order.shipping_provider or '')
+    awb_number = request.form.get('awb_number', '').strip() or (order.awb_number or '')
     if bool(shipping_provider) != bool(awb_number):
         flash('Shipping provider and AWB number must be supplied together.', 'error')
         return redirect(url_for('admin.manage_orders'))
-    if (is_gokwik_payment_method(order.payment_method) or order.payment_method == 'razorpay') and new_status in {'shipped', 'delivered'}:
-        if not shipping_provider or not awb_number:
-            flash('Prepaid shipped/delivered orders require a shipping provider and AWB number.', 'error')
-            return redirect(url_for('admin.manage_orders'))
-
-    old_status = order.status
+    if new_status in {'shipped', 'delivered'} and not shipping_provider:
+        flash('Shipped and delivered orders require a shipping provider and AWB number.', 'error')
+        return redirect(url_for('admin.manage_orders'))
     if (
         new_status == 'cancelled'
         and old_status != 'cancelled'
+        and order.shipping_order_reference
         and order.awb_number
         and current_app.config.get('ITHINK_ENABLED')
     ):
@@ -692,8 +770,16 @@ def update_order_status(order_id):
         if new_status == 'cancelled' and old_status != 'cancelled':
             release_order_inventory(order)
         order.status = new_status
-        order.shipping_provider = shipping_provider or order.shipping_provider
-        order.awb_number = awb_number or order.awb_number
+        order.shipping_provider = shipping_provider or None
+        order.awb_number = awb_number or None
+        if shipping_provider and awb_number:
+            order.shipping_tracking_updated_at = utcnow_naive()
+            if new_status == 'shipped':
+                order.shipping_status = 'Shipped'
+            elif new_status == 'delivered':
+                order.shipping_status = 'Delivered'
+            elif not order.shipping_status:
+                order.shipping_status = 'AWB assigned'
         db.session.commit()
     except (RuntimeError, SQLAlchemyError):
         db.session.rollback()

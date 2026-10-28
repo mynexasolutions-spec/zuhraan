@@ -28,7 +28,8 @@ def _positive_decimal(value: Any, label: str) -> Decimal:
     return amount
 
 
-def _indian_phone(value: Any) -> str:
+def normalize_indian_phone(value: Any) -> str:
+    """Normalize an Indian phone number to the ten-digit local form."""
     digits = ''.join(character for character in str(value or '') if character.isdigit())
     if len(digits) == 12 and digits.startswith('91'):
         digits = digits[2:]
@@ -39,11 +40,16 @@ def _indian_phone(value: Any) -> str:
     return digits
 
 
-def _indian_pincode(value: Any) -> str:
+def normalize_indian_pincode(value: Any) -> str:
+    """Normalize and validate a six-digit Indian delivery pincode."""
     digits = ''.join(character for character in str(value or '') if character.isdigit())
     if len(digits) != 6:
         raise ValueError('Delivery pincode must contain a valid 6-digit Indian pincode.')
     return digits
+
+
+_indian_phone = normalize_indian_phone
+_indian_pincode = normalize_indian_pincode
 
 
 def parcel_dimensions(

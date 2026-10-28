@@ -43,7 +43,7 @@
                 ] %}
                 <div class="rzp-field{% if field == 'address_line1' or field == 'address_line2' %} full{% endif %}">
                     <label for="{{ field }}">{{ label }}{% if required %} *{% endif %}</label>
-                    <input id="{{ field }}" name="{{ field }}" value="{{ form_values[field] }}"{% if required %} required{% endif %}>
+                    <input id="{{ field }}" name="{{ field }}" value="{{ form_values[field] }}"{% if field == 'phone' %} inputmode="tel" autocomplete="tel"{% elif field == 'pincode' %} inputmode="numeric" autocomplete="postal-code" maxlength="6"{% elif field == 'email' %} type="email" autocomplete="email"{% endif %}{% if required %} required{% endif %}>
                 </div>
                 {% endfor %}
             </div>

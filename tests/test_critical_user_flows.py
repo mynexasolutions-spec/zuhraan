@@ -166,6 +166,76 @@ def test_cart_add_returns_success_message_and_updated_count(client):
     assert response.get_json() == {'message': 'Test Perfume added to cart!', 'cart_count': 2}
 
 
+def test_account_registration_login_and_cart_use_the_same_session(client):
+    with app.app_context():
+        variant_id = create_product(149.0)
+
+    registered = client.post(
+        '/account/register',
+        data={
+            'name': 'Test Customer',
+            'email': 'customer@example.test',
+            'password': 'test-password',
+            'confirm_password': 'test-password',
+        },
+        follow_redirects=True,
+    )
+    assert registered.status_code == 200
+    assert b'Welcome to your Profile' in registered.data
+
+    client.post('/account/logout', data={})
+    logged_in = client.post(
+        '/account/login',
+        data={'email': 'customer@example.test', 'password': 'test-password'},
+        follow_redirects=True,
+    )
+    assert logged_in.status_code == 200
+    assert b'Welcome to your Profile' in logged_in.data
+
+    added = client.post(
+        '/cart/add',
+        data={'variant_id': variant_id, 'quantity': 1},
+        headers={'Accept': 'application/json'},
+    )
+    assert added.status_code == 200
+    assert added.get_json()['cart_count'] == 1
+    assert client.get('/cart').status_code == 200
+
+
+def test_admin_can_mark_paid_order_shipped_with_manual_awb(client):
+    with app.app_context():
+        admin = User(email='admin@example.test', password='test-password', role='admin')
+        db.session.add(admin)
+        order = Order(
+            total_amount=149.0,
+            payment_status='paid',
+            payment_method='razorpay',
+            status='processing',
+        )
+        db.session.add(order)
+        db.session.commit()
+        admin_id = admin.id
+        order_id = order.id
+
+    add_admin_session(client, admin_id)
+    response = client.post(
+        f'/admin/orders/{order_id}/status',
+        data={
+            'status': 'shipped',
+            'shipping_provider': 'Test Courier',
+            'awb_number': 'AWB-123',
+        },
+    )
+
+    assert response.status_code == 302
+    with app.app_context():
+        saved_order = db.session.get(Order, order_id)
+        assert saved_order.status == 'shipped'
+        assert saved_order.shipping_provider == 'Test Courier'
+        assert saved_order.awb_number == 'AWB-123'
+        assert saved_order.shipping_status == 'Shipped'
+
+
 def test_health_check_verifies_database_connection(client):
     response = client.get('/healthz')
 

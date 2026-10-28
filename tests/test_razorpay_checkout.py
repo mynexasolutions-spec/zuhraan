@@ -15,17 +15,23 @@ import pytest
 
 from app import app
 from models import Category, Coupon, Order, OrderItem, Product, ProductVariant, Setting, db
-from routes.main import release_order_inventory
+from routes.main import reconcile_razorpay_order, release_order_inventory
 
 
 class FakeRazorpayClient:
     def __init__(self):
         self.created_orders = []
         self.payment_records = {}
+        self.order_payment_records = {}
+        self.remote_orders = {}
         self.captured_payments = []
         self.payment_signature_error = None
         self.webhook_signature_error = None
-        self.order = SimpleNamespace(create=self._create_order)
+        self.order = SimpleNamespace(
+            create=self._create_order,
+            fetch=self._fetch_order,
+            payments=self._payments,
+        )
         self.payment = SimpleNamespace(fetch=self._fetch_payment, capture=self._capture_payment)
         self.utility = SimpleNamespace(
             verify_payment_signature=self._verify_payment_signature,
@@ -38,6 +44,12 @@ class FakeRazorpayClient:
 
     def _fetch_payment(self, payment_id):
         return self.payment_records[payment_id]
+
+    def _payments(self, order_id):
+        return {'items': self.order_payment_records.get(order_id, [])}
+
+    def _fetch_order(self, order_id):
+        return self.remote_orders[order_id]
 
     def _capture_payment(self, payment_id, amount):
         self.captured_payments.append((payment_id, amount))
@@ -201,6 +213,24 @@ def test_checkout_post_rejects_invalid_coupon_without_creating_order(client, raz
         assert Order.query.count() == 0
 
 
+def test_checkout_rejects_invalid_delivery_pincode_before_payment_order(client, razorpay_client):
+    with app.app_context():
+        variant_id = create_cart_product()
+
+    form = dict(CHECKOUT_FORM)
+    form['pincode'] = '40000'
+    with client.session_transaction() as browser_session:
+        browser_session['cart'] = {str(variant_id): 1}
+
+    response = client.post('/razorpay/checkout', data=form)
+
+    assert response.status_code == 200
+    assert '6-digit Indian pincode' in response.get_data(as_text=True)
+    assert razorpay_client.created_orders == []
+    with app.app_context():
+        assert Order.query.count() == 0
+
+
 def test_verify_payment_marks_order_paid_and_updates_stock(client, razorpay_client):
     with app.app_context():
         variant_id = create_cart_product(stock_quantity=10)
@@ -252,6 +282,39 @@ def test_verify_payment_marks_order_paid_and_updates_stock(client, razorpay_clie
     with client.session_transaction() as browser_session:
         assert browser_session['cart'] == {}
         assert browser_session['guest_order_ids'] == [local_order_id]
+
+
+def test_reconcile_razorpay_paid_order_updates_local_state(client, razorpay_client):
+    with app.app_context():
+        variant_id = create_cart_product(stock_quantity=10)
+    assert place_checkout(client, variant_id).status_code == 200
+
+    with app.app_context():
+        order = Order.query.one()
+        order_id = order.id
+        razorpay_order_id = order.razorpay_order_id
+        payment_id = 'pay_reconciled_1'
+        razorpay_client.order_payment_records[razorpay_order_id] = [{
+            'id': payment_id,
+            'order_id': razorpay_order_id,
+            'status': 'captured',
+            'amount': 14900,
+            'currency': 'INR',
+        }]
+        razorpay_client.remote_orders[razorpay_order_id] = {
+            'status': 'paid',
+            'amount_paid': 14900,
+            'currency': 'INR',
+        }
+        reconciled = reconcile_razorpay_order(order)
+        assert reconciled.id == order_id
+
+    with app.app_context():
+        saved_order = db.session.get(Order, order_id)
+        assert saved_order.payment_status == 'paid'
+        assert saved_order.razorpay_payment_id == payment_id
+        assert saved_order.status == 'processing'
+        assert db.session.get(ProductVariant, variant_id).stock_quantity == 9
 
 
 def test_verify_payment_rejects_amount_mismatch(client, razorpay_client):

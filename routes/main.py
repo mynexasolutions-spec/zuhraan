@@ -17,6 +17,7 @@ from datetime import datetime
 from about_cms import get_assets, get_content
 from homepage_reels import get_homepage_reels
 from routes.ithink import apply_ithink_shipment, create_or_recover_ithink_shipment
+from ithink_client import normalize_indian_phone, normalize_indian_pincode
 
 main_bp = Blueprint('main', __name__)
 GUEST_ORDER_SESSION_KEY = 'guest_order_ids'
@@ -72,6 +73,12 @@ def _auto_create_ithink_shipment(order: Order) -> bool:
         return True
     except (IThinkRequestError, ValueError, SQLAlchemyError):
         db.session.rollback()
+        try:
+            order.shipping_status = 'Shipment pending'
+            order.shipping_tracking_updated_at = datetime.utcnow()
+            db.session.commit()
+        except SQLAlchemyError:
+            db.session.rollback()
         current_app.logger.exception(
             'Auto iThink shipment creation failed',
             extra={'order_id': order.id},
@@ -220,6 +227,21 @@ def calculate_shipping(subtotal, settings):
     if free_shipping_threshold > 0 and order_subtotal >= free_shipping_threshold:
         return 0.0
     return float(shipping_charge)
+
+
+def validate_checkout_details(form_values: dict[str, str]) -> str | None:
+    """Validate and normalize customer data before creating a payable order."""
+    required_fields = ('name', 'email', 'phone', 'address_line1', 'city', 'state', 'pincode')
+    if any(not form_values.get(field) for field in required_fields):
+        return 'Please complete your contact and shipping details.'
+    if '@' not in form_values['email']:
+        return 'Enter a valid email address.'
+    try:
+        form_values['phone'] = normalize_indian_phone(form_values['phone'])
+        form_values['pincode'] = normalize_indian_pincode(form_values['pincode'])
+    except ValueError as error:
+        return str(error)
+    return None
 
 
 @main_bp.route('/')
@@ -994,6 +1016,44 @@ def mark_order_as_paid(razorpay_order_id, razorpay_payment_id, payment_amount=No
     return order
 
 
+def reconcile_razorpay_order(order: Order):
+    """Reconcile a locally unpaid order against Razorpay's captured payment record."""
+    if order.payment_status == 'paid':
+        return order
+    if not order.razorpay_order_id:
+        raise ValueError('This order has no Razorpay order identifier.')
+
+    client = get_razorpay_client()
+    remote_order = client.order.fetch(order.razorpay_order_id)
+    expected_amount = max(100, int(Decimal(str(order.total_amount)) * 100))
+    if (
+        remote_order.get('status') != 'paid'
+        or int(remote_order.get('amount_paid') or 0) != expected_amount
+        or remote_order.get('currency') not in (None, 'INR')
+    ):
+        raise ValueError('Razorpay does not show a fully paid order matching the local total.')
+
+    payments = client.order.payments(order.razorpay_order_id).get('items', [])
+    captured_payment = next(
+        (
+            payment for payment in payments
+            if payment.get('id')
+            and payment.get('order_id') == order.razorpay_order_id
+            and payment.get('status') == 'captured'
+            and int(payment.get('amount') or 0) == expected_amount
+            and payment.get('currency') in (None, 'INR')
+        ),
+        None,
+    )
+    if not captured_payment:
+        raise ValueError('Razorpay has no captured payment matching this order.')
+    return mark_order_as_paid(
+        order.razorpay_order_id,
+        str(captured_payment['id']),
+        captured_payment.get('amount'),
+    )
+
+
 def _finish_razorpay_browser_payment(order):
     _remember_guest_order(order)
     if current_user.is_authenticated:
@@ -1065,9 +1125,9 @@ def razorpay_checkout():
         form_values[field] = request.form.get(field, '').strip()
     form_values['country'] = form_values['country'] or 'India'
 
-    required_fields = ('name', 'email', 'phone', 'address_line1', 'city', 'state', 'pincode')
-    if any(not form_values[field] for field in required_fields) or '@' not in form_values['email']:
-        flash('Please complete your contact and shipping details.', 'error')
+    validation_error = validate_checkout_details(form_values)
+    if validation_error:
+        flash(validation_error, 'error')
         try:
             context = _razorpay_checkout_context(lines, form_values['coupon_code'].upper())
         except ValueError:

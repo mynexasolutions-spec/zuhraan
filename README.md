@@ -82,6 +82,14 @@ order paid. Configure Razorpay's webhook URL as:
 https://<store-domain>/payment/webhook
 ```
 
+In the Razorpay Dashboard, use the same value as `RAZORPAY_WEBHOOK_SECRET`
+and enable the `payment.captured` and `order.paid` events. The browser callback
+verifies a payment immediately; the webhook covers customers who close the
+payment page before the browser callback completes. If a provider callback is
+missed, an administrator can use **Reconcile Razorpay payment** on an unpaid
+Razorpay order. Reconciliation checks Razorpay's paid amount and captured
+payment before updating Supabase, inventory, and the local order status.
+
 Run `migrations/20261027_razorpay_checkout.sql` in the Supabase SQL Editor
 before enabling the checkout. The webhook signing secret must match
 `RAZORPAY_WEBHOOK_SECRET`; it is never sent to the browser.

@@ -189,6 +189,15 @@
         color: #6b7280;
         font-size: 0.9rem;
     }
+    .customer-order-payment {
+        margin-top: 8px;
+        color: #6b7280;
+        font-size: 0.82rem;
+    }
+    .customer-order-payment strong {
+        color: #166534;
+        text-transform: capitalize;
+    }
     .customer-order-total {
         font-size: 1.2rem;
         font-weight: 700;
@@ -747,6 +756,7 @@
                                 <div class="customer-order-id">Order #{{ order.id }}</div>
                                 <h2 class="customer-order-status">{{ fulfillment.status }}</h2>
                                 <div class="customer-order-date">Placed {{ order.created_at.strftime('%d %b %Y') }}</div>
+                                <div class="customer-order-payment">Payment: <strong>{{ order.payment_status or 'unpaid' }}</strong>{% if order.payment_status == 'paid' %} · Confirmed{% endif %}</div>
                             </div>
                             <div class="customer-order-total">&#8377;{{ "{:,.2f}".format(order.total_amount) }}</div>
                         </header>
@@ -793,7 +803,7 @@
                             <div class="shipment-heading">
                                 <div>
                                     <h3>Shipment tracking</h3>
-                                    <div class="shipment-brand">Powered by iThink Logistics</div>
+                                    <div class="shipment-brand">{{ order.shipping_provider or 'iThink Logistics' }}</div>
                                 </div>
                                 <span class="live-badge{% if not fulfillment.live %} pending{% endif %}">
                                     {{ 'Live' if fulfillment.live else 'Pending' }}
@@ -837,7 +847,7 @@
                         </section>
                         {% if not order.awb_number %}
                             <div class="tracking-pending-note">
-                                Tracking will be available once iThink assigns an AWB number.
+                                Tracking will be available once a courier and AWB number are assigned.
                             </div>
                         {% endif %}
                     </article>
