@@ -163,7 +163,7 @@
                 yet.</div>
             {% else %}
             {% for cat in categories %}
-            <a href="{{ url_for('main.shop', cat=cat.slug) }}" class="category-card">
+            <a href="{{ url_for('main.shop', cat=cat.id) }}" class="category-card">
                 <img src="{{ get_image_url(cat.image) }}" alt="{{ cat.name }}">
                 <div class="cat-overlay"></div>
                 <div class="cat-content">
