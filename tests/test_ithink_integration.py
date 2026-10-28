@@ -3,7 +3,11 @@ import os
 import pytest
 
 from app import app
-from ithink_client import IThinkRequestError, extract_created_shipment
+from ithink_client import (
+    IThinkRequestError,
+    extract_created_shipment,
+    normalize_indian_pincode,
+)
 from models import Category, Order, OrderItem, Product, ProductVariant, User, db
 
 
@@ -79,6 +83,16 @@ def add_admin_session(client, admin_id: int) -> None:
     with client.session_transaction() as session:
         session['_user_id'] = str(admin_id)
         session['_fresh'] = True
+
+
+@pytest.mark.parametrize('value', ['400001.0', '400001.00'])
+def test_normalize_indian_pincode_accepts_legacy_integer_format(value):
+    assert normalize_indian_pincode(value) == '400001'
+
+
+def test_normalize_indian_pincode_rejects_non_six_digit_value():
+    with pytest.raises(ValueError, match='6-digit Indian pincode'):
+        normalize_indian_pincode('40000')
 
 
 def test_admin_can_create_ithink_shipment(client, monkeypatch):

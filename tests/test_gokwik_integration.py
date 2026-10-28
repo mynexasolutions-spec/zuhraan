@@ -177,6 +177,32 @@ def test_cod_order_creation_is_idempotent_and_uses_authoritative_cart(client):
         assert db.session.get(GoKwikCheckoutSession, checkout_id).status == 'completed'
 
 
+def test_gokwik_rejects_invalid_pincode_before_creating_order(client):
+    with app.app_context():
+        variant_id = create_cart_product()
+
+    checkout_id = create_checkout(client, variant_id, 1)
+    address = checkout_address()
+    address['postcode'] = '40000'
+    response = client.post(
+        '/api/gokwik/v1/cart/place-order',
+        json={
+            'session_key': checkout_id,
+            'payment_method': 'cod',
+            'order_total': 149.0,
+            'billing': address,
+            'shipping': address,
+            'fee_lines': [],
+        },
+        headers=gokwik_headers(),
+    )
+
+    assert response.status_code == 400
+    assert response.get_json()['code'] == 'gc_invalid_postcode'
+    with app.app_context():
+        assert Order.query.count() == 0
+
+
 def test_guest_gokwik_order_appears_after_same_browser_login(client):
     with app.app_context():
         variant_id = create_cart_product()

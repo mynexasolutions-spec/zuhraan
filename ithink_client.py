@@ -1,6 +1,7 @@
 import time
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
+import re
 from typing import Any
 
 import requests
@@ -42,8 +43,14 @@ def normalize_indian_phone(value: Any) -> str:
 
 def normalize_indian_pincode(value: Any) -> str:
     """Normalize and validate a six-digit Indian delivery pincode."""
-    digits = ''.join(character for character in str(value or '') if character.isdigit())
+    raw_value = str(value or '').strip()
+    digits = ''.join(character for character in raw_value if character.isdigit())
     if len(digits) != 6:
+        # Older rows can contain a numeric pincode serialized as ``400001.0``.
+        # Accept only a six-digit integer with a zero-only decimal suffix.
+        integer_like = re.fullmatch(r'(\d{6})\.0+', raw_value)
+        if integer_like:
+            return integer_like.group(1)
         raise ValueError('Delivery pincode must contain a valid 6-digit Indian pincode.')
     return digits
 

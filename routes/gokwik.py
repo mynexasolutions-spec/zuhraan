@@ -20,6 +20,7 @@ from routes.main import (
     calculate_shipping,
     release_order_inventory,
 )
+from ithink_client import normalize_indian_pincode
 
 
 gokwik_storefront_bp = Blueprint('gokwik_storefront', __name__)
@@ -671,6 +672,10 @@ def _validate_order_address(address: dict[str, str]) -> None:
             'Missing required address fields: ' + ', '.join(missing_fields),
             400,
         )
+    try:
+        address['postcode'] = normalize_indian_pincode(address['postcode'])
+    except ValueError as error:
+        raise GoKwikAPIError('gc_invalid_postcode', str(error), 400) from error
 
 
 @gokwik_api_bp.route('/cart/place-order', methods=['POST'])
