@@ -317,6 +317,42 @@ def test_reconcile_razorpay_paid_order_updates_local_state(client, razorpay_clie
         assert db.session.get(ProductVariant, variant_id).stock_quantity == 9
 
 
+def test_reconcile_uses_matching_captured_payment_when_order_snapshot_lags(
+    client,
+    razorpay_client,
+):
+    with app.app_context():
+        variant_id = create_cart_product(price=10.01, stock_quantity=10)
+    assert place_checkout(client, variant_id).status_code == 200
+
+    with app.app_context():
+        order = Order.query.one()
+        order_id = order.id
+        razorpay_order_id = order.razorpay_order_id
+        razorpay_client.remote_orders[razorpay_order_id] = {
+            'status': 'attempted',
+            'amount': '1001',
+            'amount_paid': '0',
+            'currency': 'INR',
+        }
+        razorpay_client.order_payment_records[razorpay_order_id] = [{
+            'id': 'pay_reconciled_lagged',
+            'order_id': razorpay_order_id,
+            'status': 'captured',
+            'amount': '1001',
+            'currency': 'INR',
+        }]
+        reconciled = reconcile_razorpay_order(order)
+        assert reconciled.id == order_id
+
+    with app.app_context():
+        saved_order = db.session.get(Order, order_id)
+        assert saved_order.payment_status == 'paid'
+        assert saved_order.razorpay_payment_id == 'pay_reconciled_lagged'
+        assert saved_order.status == 'processing'
+        assert db.session.get(ProductVariant, variant_id).stock_quantity == 9
+
+
 def test_verify_payment_rejects_amount_mismatch(client, razorpay_client):
     with app.app_context():
         variant_id = create_cart_product(stock_quantity=10)

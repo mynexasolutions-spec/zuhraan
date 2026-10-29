@@ -8,7 +8,7 @@ import razorpay
 import secrets
 import time
 import requests
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from sqlalchemy import and_, func, or_
 from sqlalchemy.exc import SQLAlchemyError
 from urllib.parse import urlsplit
@@ -956,6 +956,30 @@ def _razorpay_totals(lines, coupon_code=''):
     return subtotal, discount, shipping, total, coupon_id
 
 
+def _razorpay_amount_in_paise(amount):
+    """Convert a local rupee amount to Razorpay paise consistently."""
+    try:
+        money = Decimal(str(amount)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    except (InvalidOperation, TypeError, ValueError) as error:
+        raise ValueError('The order amount is invalid.') from error
+    if not money.is_finite() or money <= 0:
+        raise ValueError('The order amount must be greater than zero.')
+    return max(100, int(money * 100))
+
+
+def _razorpay_provider_amount(value, field_name):
+    """Parse a provider amount expressed in paise without accepting fractions."""
+    if value is None:
+        return None
+    try:
+        amount = Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError) as error:
+        raise ValueError(f'Razorpay returned an invalid {field_name}.') from error
+    if not amount.is_finite() or amount != amount.to_integral_value() or amount < 0:
+        raise ValueError(f'Razorpay returned an invalid {field_name}.')
+    return int(amount)
+
+
 def _razorpay_checkout_context(lines, coupon_code=''):
     subtotal, discount, shipping, total, _ = _razorpay_totals(lines, coupon_code)
     return {
@@ -979,8 +1003,9 @@ def mark_order_as_paid(razorpay_order_id, razorpay_payment_id, payment_amount=No
         return None
 
     if payment_amount is not None:
-        expected_amount = max(100, int(Decimal(str(order.total_amount)) * 100))
-        if int(payment_amount) != expected_amount:
+        expected_amount = _razorpay_amount_in_paise(order.total_amount)
+        provider_amount = _razorpay_provider_amount(payment_amount, 'payment amount')
+        if provider_amount != expected_amount:
             raise ValueError('Razorpay payment amount does not match the local order.')
 
     existing_payment = Order.query.filter_by(razorpay_payment_id=razorpay_payment_id).first()
@@ -1038,28 +1063,109 @@ def reconcile_razorpay_order(order: Order):
 
     client = get_razorpay_client()
     remote_order = client.order.fetch(order.razorpay_order_id)
-    expected_amount = max(100, int(Decimal(str(order.total_amount)) * 100))
-    if (
-        remote_order.get('status') != 'paid'
-        or int(remote_order.get('amount_paid') or 0) != expected_amount
-        or remote_order.get('currency') not in (None, 'INR')
-    ):
-        raise ValueError('Razorpay does not show a fully paid order matching the local total.')
-
-    payments = client.order.payments(order.razorpay_order_id).get('items', [])
-    captured_payment = next(
-        (
-            payment for payment in payments
-            if payment.get('id')
-            and payment.get('order_id') == order.razorpay_order_id
-            and payment.get('status') == 'captured'
-            and int(payment.get('amount') or 0) == expected_amount
-            and payment.get('currency') in (None, 'INR')
-        ),
-        None,
+    expected_amount = _razorpay_amount_in_paise(order.total_amount)
+    remote_status = str(remote_order.get('status') or '').strip().lower()
+    remote_currency = str(remote_order.get('currency') or '').strip().upper()
+    remote_order_amount = _razorpay_provider_amount(
+        remote_order.get('amount'),
+        'order amount',
     )
+    remote_amount_paid = _razorpay_provider_amount(
+        remote_order.get('amount_paid'),
+        'amount paid',
+    )
+
+    if remote_order_amount is not None and remote_order_amount != expected_amount:
+        current_app.logger.error(
+            'Razorpay order amount does not match the local order during reconciliation.',
+            extra={
+                'order_id': order.id,
+                'razorpay_order_id': order.razorpay_order_id,
+                'local_amount_paise': expected_amount,
+                'provider_order_amount_paise': remote_order_amount,
+                'provider_status': remote_status,
+            },
+        )
+        raise ValueError(
+            'Razorpay order amount does not match the local order '
+            f'(local={expected_amount} paise, provider={remote_order_amount} paise).'
+        )
+    if remote_currency and remote_currency != 'INR':
+        raise ValueError(
+            f'Razorpay order currency does not match INR (provider={remote_currency}).'
+        )
+    if remote_amount_paid not in (None, 0, expected_amount):
+        current_app.logger.error(
+            'Razorpay paid amount does not match the local order during reconciliation.',
+            extra={
+                'order_id': order.id,
+                'razorpay_order_id': order.razorpay_order_id,
+                'local_amount_paise': expected_amount,
+                'provider_amount_paid_paise': remote_amount_paid,
+                'provider_status': remote_status,
+            },
+        )
+        raise ValueError(
+            'Razorpay paid amount does not match the local order '
+            f'(local={expected_amount} paise, provider={remote_amount_paid} paise).'
+        )
+
+    payment_response = client.order.payments(order.razorpay_order_id) or {}
+    payments = payment_response.get('items', [])
+    captured_payment = None
+    for payment in payments if isinstance(payments, list) else []:
+        if not isinstance(payment, dict):
+            continue
+        if (
+            not payment.get('id')
+            or payment.get('order_id') != order.razorpay_order_id
+            or str(payment.get('status') or '').strip().lower() != 'captured'
+            or str(payment.get('currency') or '').strip().upper() not in ('', 'INR')
+        ):
+            continue
+        try:
+            payment_amount = _razorpay_provider_amount(payment.get('amount'), 'payment amount')
+        except ValueError:
+            current_app.logger.warning(
+                'Ignoring Razorpay payment with an invalid amount during reconciliation.',
+                extra={
+                    'order_id': order.id,
+                    'razorpay_order_id': order.razorpay_order_id,
+                    'razorpay_payment_id': payment.get('id'),
+                },
+            )
+            continue
+        if payment_amount == expected_amount:
+            captured_payment = payment
+            break
     if not captured_payment:
-        raise ValueError('Razorpay has no captured payment matching this order.')
+        current_app.logger.error(
+            'Razorpay has no captured payment matching the local order.',
+            extra={
+                'order_id': order.id,
+                'razorpay_order_id': order.razorpay_order_id,
+                'local_amount_paise': expected_amount,
+                'provider_status': remote_status,
+                'provider_amount_paid_paise': remote_amount_paid,
+            },
+        )
+        raise ValueError(
+            'Razorpay has no captured payment matching the local order '
+            f'(expected={expected_amount} paise, provider_status={remote_status or "missing"}, '
+            f'provider_amount_paid={remote_amount_paid if remote_amount_paid is not None else "missing"}).'
+        )
+
+    if remote_status != 'paid' or remote_amount_paid == 0:
+        current_app.logger.warning(
+            'Razorpay order snapshot lagged its captured payment; reconciling from the payment record.',
+            extra={
+                'order_id': order.id,
+                'razorpay_order_id': order.razorpay_order_id,
+                'local_amount_paise': expected_amount,
+                'provider_status': remote_status,
+                'provider_amount_paid_paise': remote_amount_paid,
+            },
+        )
     return mark_order_as_paid(
         order.razorpay_order_id,
         str(captured_payment['id']),
@@ -1199,7 +1305,7 @@ def razorpay_checkout():
                 price_at_time=float(line['variant'].price),
             ))
 
-        razorpay_amount = max(100, int(total * 100))
+        razorpay_amount = _razorpay_amount_in_paise(total)
         razorpay_order = get_razorpay_client().order.create({
             'amount': razorpay_amount,
             'currency': 'INR',

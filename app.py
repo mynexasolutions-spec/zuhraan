@@ -571,9 +571,19 @@ def init_contact_messages():
 if __name__ == '__main__':
     server_host: str = os.environ.get('FLASK_RUN_HOST', '127.0.0.1')
     server_port: int = int(os.environ.get('PORT', '5005'))
-    click.echo(f'Waitress serving Zuhraan on http://{server_host}:{server_port}')
+    try:
+        waitress_threads = int(os.environ.get('WAITRESS_THREADS', '8'))
+    except ValueError as error:
+        raise RuntimeError('WAITRESS_THREADS must be a positive integer.') from error
+    if waitress_threads < 1:
+        raise RuntimeError('WAITRESS_THREADS must be a positive integer.')
+    click.echo(
+        f'Waitress serving Zuhraan on http://{server_host}:{server_port} '
+        f'with {waitress_threads} threads'
+    )
     serve(
         app,
         host=server_host,
         port=server_port,
+        threads=waitress_threads,
     )

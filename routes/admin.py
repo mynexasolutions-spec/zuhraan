@@ -721,7 +721,13 @@ def reconcile_order_payment(order_id):
         db.session.rollback()
         current_app.logger.exception(
             'Unable to reconcile Razorpay payment.',
-            extra={'order_id': order_id},
+            extra={
+                'order_id': order_id,
+                'payment_method': order.payment_method,
+                'payment_status': order.payment_status,
+                'total_amount': order.total_amount,
+                'razorpay_order_id': order.razorpay_order_id,
+            },
         )
         flash(f'Payment reconciliation failed: {str(error)[:250]}', 'error')
         return redirect(url_for('admin.manage_orders'))

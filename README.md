@@ -87,8 +87,10 @@ and enable the `payment.captured` and `order.paid` events. The browser callback
 verifies a payment immediately; the webhook covers customers who close the
 payment page before the browser callback completes. If a provider callback is
 missed, an administrator can use **Reconcile Razorpay payment** on an unpaid
-Razorpay order. Reconciliation checks Razorpay's paid amount and captured
-payment before updating Supabase, inventory, and the local order status.
+Razorpay order. Reconciliation checks the local total against Razorpay's order
+amount and a matching captured payment before updating Supabase, inventory, and
+the local order status. The captured payment is authoritative if the provider's
+order status snapshot is briefly stale.
 
 Run `migrations/20261027_razorpay_checkout.sql` in the Supabase SQL Editor
 before enabling the checkout. The webhook signing secret must match
