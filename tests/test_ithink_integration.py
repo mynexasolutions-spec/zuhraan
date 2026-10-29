@@ -1,10 +1,14 @@
 import os
 
+from decimal import Decimal
+
 import pytest
 
 from app import app
 from ithink_client import (
     IThinkRequestError,
+    build_ithink_order_payload,
+    calculate_ithink_amounts,
     extract_created_shipment,
     normalize_indian_pincode,
 )
@@ -95,11 +99,107 @@ def test_normalize_indian_pincode_rejects_non_six_digit_value():
         normalize_indian_pincode('40000')
 
 
+def test_ithink_payload_maps_cod_amounts_and_shipping():
+    with app.app_context():
+        _, order_id = create_fulfillable_order()
+        order = db.session.get(Order, order_id)
+        shipment = build_ithink_order_payload(
+            order,
+            {'weight': 0.5, 'length': 10.0, 'width': 10.0, 'height': 10.0},
+        )['shipments'][0]
+
+    assert shipment['payment_mode'] == 'COD'
+    assert shipment['total_amount'] == '578.00'
+    assert shipment['shipping_charges'] == '79.00'
+    assert shipment['total_discount'] == '0.00'
+    assert shipment['advance_amount'] == '0.00'
+    assert shipment['cod_amount'] == '578.00'
+    assert shipment['products'][0]['product_price'] == '499.00'
+    assert shipment['products'][0]['product_quantity'] == '1'
+
+
+def test_ithink_payload_maps_paid_prepaid_amounts_as_zero_collectable():
+    with app.app_context():
+        _, order_id = create_fulfillable_order()
+        order = db.session.get(Order, order_id)
+        order.payment_method = 'razorpay'
+        order.payment_status = 'paid'
+        db.session.commit()
+        shipment = build_ithink_order_payload(
+            order,
+            {'weight': 0.5, 'length': 10.0, 'width': 10.0, 'height': 10.0},
+        )['shipments'][0]
+
+    assert shipment['payment_mode'] == 'Prepaid'
+    assert shipment['total_amount'] == '578.00'
+    assert shipment['advance_amount'] == '578.00'
+    assert shipment['cod_amount'] == '0.00'
+
+
+def test_ithink_payload_maps_discount_and_inferred_tax_without_dropping_amounts():
+    with app.app_context():
+        _, order_id = create_fulfillable_order()
+        order = db.session.get(Order, order_id)
+        order.total_amount = 523.95
+        order.shipping_charges = 0
+        db.session.commit()
+        amounts = calculate_ithink_amounts(order)
+        shipment = build_ithink_order_payload(
+            order,
+            {'weight': 0.5, 'length': 10.0, 'width': 10.0, 'height': 10.0},
+        )['shipments'][0]
+
+    assert amounts['total_tax'] == Decimal('24.95')
+    assert amounts['total_discount'] == Decimal('0.00')
+    assert shipment['total_amount'] == '523.95'
+    assert shipment['products'][0]['product_tax_rate'] == '5.00'
+
+
+def test_ithink_payload_maps_order_discount():
+    with app.app_context():
+        _, order_id = create_fulfillable_order()
+        order = db.session.get(Order, order_id)
+        order.total_amount = 478.0
+        db.session.commit()
+        shipment = build_ithink_order_payload(
+            order,
+            {'weight': 0.5, 'length': 10.0, 'width': 10.0, 'height': 10.0},
+        )['shipments'][0]
+
+    assert shipment['total_amount'] == '478.00'
+    assert shipment['total_discount'] == '100.00'
+
+
+def test_ithink_rejects_unpaid_prepaid_orders_and_invalid_totals():
+    with app.app_context():
+        _, order_id = create_fulfillable_order()
+        order = db.session.get(Order, order_id)
+        order.payment_method = 'razorpay'
+        order.payment_status = 'unpaid'
+        with pytest.raises(ValueError, match='must be paid'):
+            build_ithink_order_payload(
+                order,
+                {'weight': 0.5, 'length': 10.0, 'width': 10.0, 'height': 10.0},
+            )
+
+        order.payment_method = 'cod'
+        order.total_amount = 0
+        with pytest.raises(ValueError, match='greater than zero'):
+            build_ithink_order_payload(
+                order,
+                {'weight': 0.5, 'length': 10.0, 'width': 10.0, 'height': 10.0},
+            )
+
+
 def test_admin_can_create_ithink_shipment(client, monkeypatch):
     class FakeIThinkClient:
         def create_order(self, payload):
             assert payload['pickup_address_id'] == '127196'
-            assert payload['shipments'][0]['payment_mode'] == 'COD'
+            shipment = payload['shipments'][0]
+            assert shipment['payment_mode'] == 'COD'
+            assert shipment['total_amount'] == '578.00'
+            assert shipment['advance_amount'] == '0.00'
+            assert shipment['cod_amount'] == '578.00'
             assert payload['shipments'][0]['waybill'] == ''
             return {
                 'status': 'success',
@@ -134,6 +234,50 @@ def test_admin_can_create_ithink_shipment(client, monkeypatch):
         assert order.shipping_provider == 'Xpressbees'
         assert order.shipping_tracking_url == 'https://tracking.example.test/AWB123'
         assert order.shipping_status == 'Success'
+        assert order.status == 'processing'
+
+
+def test_admin_can_create_paid_prepaid_ithink_shipment(client, monkeypatch):
+    class FakeIThinkClient:
+        def create_order(self, payload):
+            shipment = payload['shipments'][0]
+            assert shipment['payment_mode'] == 'Prepaid'
+            assert shipment['total_amount'] == '578.00'
+            assert shipment['advance_amount'] == '578.00'
+            assert shipment['cod_amount'] == '0.00'
+            return {
+                'status': 'success',
+                'status_code': 200,
+                'data': {
+                    'shipments': [{
+                        'status': 'Success',
+                        'waybill': 'AWB-PREPAID',
+                        'refnum': 'ZUHRAAN-1',
+                        'logistic_name': 'Delhivery',
+                    }],
+                },
+            }
+
+    monkeypatch.setitem(app.config, 'ITHINK_ENABLED', True)
+    monkeypatch.setattr('routes.admin.IThinkClient', FakeIThinkClient)
+    with app.app_context():
+        admin_id, order_id = create_fulfillable_order()
+        order = db.session.get(Order, order_id)
+        order.payment_method = 'razorpay'
+        order.payment_status = 'paid'
+        db.session.commit()
+    add_admin_session(client, admin_id)
+
+    response = client.post(
+        f'/admin/orders/{order_id}/ithink/create',
+        data={'weight': '0.5', 'length': '10', 'width': '10', 'height': '10'},
+    )
+
+    assert response.status_code == 302
+    with app.app_context():
+        order = db.session.get(Order, order_id)
+        assert order.shipping_order_reference == 'ZUHRAAN-1'
+        assert order.awb_number == 'AWB-PREPAID'
         assert order.status == 'processing'
 
 

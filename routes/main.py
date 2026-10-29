@@ -32,17 +32,25 @@ def _auto_create_ithink_shipment(order: Order) -> bool:
         return False
 
     from ithink_client import (
-        COD_PAYMENT_METHODS,
         IThinkClient,
         IThinkRequestError,
         parcel_dimensions,
+        payment_mode_for_order,
     )
 
-    is_cod = order.payment_method in COD_PAYMENT_METHODS
-    is_prepaid_paid = order.payment_method not in COD_PAYMENT_METHODS and order.payment_status == 'paid'
-    if not (is_cod or is_prepaid_paid):
+    try:
+        payment_mode_for_order(order)
+    except ValueError as error:
+        current_app.logger.error(
+            'Order is not eligible for iThink because its payment state is invalid.',
+            extra={
+                'order_id': order.id,
+                'payment_method': order.payment_method,
+                'payment_status': order.payment_status,
+                'reason': str(error),
+            },
+        )
         return False
-
     try:
         dimensions = parcel_dimensions(
             current_app.config['ITHINK_DEFAULT_WEIGHT_KG'],
@@ -81,7 +89,12 @@ def _auto_create_ithink_shipment(order: Order) -> bool:
             db.session.rollback()
         current_app.logger.exception(
             'Auto iThink shipment creation failed',
-            extra={'order_id': order.id},
+            extra={
+                'order_id': order.id,
+                'payment_method': order.payment_method,
+                'payment_status': order.payment_status,
+                'total_amount': order.total_amount,
+            },
         )
         return False
 

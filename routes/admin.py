@@ -22,13 +22,13 @@ from routes.ithink import (
     create_or_recover_ithink_shipment,
 )
 from ithink_client import (
-    COD_PAYMENT_METHODS,
     IThinkClient,
     IThinkRequestError,
     extract_tracking_data,
     normalize_indian_phone,
     normalize_indian_pincode,
     parcel_dimensions,
+    payment_mode_for_order,
 )
 
 
@@ -858,8 +858,20 @@ def create_ithink_shipment(order_id):
     if order.status in {'cancelled', 'delivered'}:
         flash('Cancelled or delivered orders cannot create a new shipment.', 'error')
         return redirect(url_for('admin.manage_orders'))
-    if order.payment_method not in COD_PAYMENT_METHODS and order.payment_status != 'paid':
-        flash('A prepaid order must be paid before it can be shipped.', 'error')
+    try:
+        payment_mode_for_order(order)
+    except ValueError as error:
+        current_app.logger.warning(
+            'Rejected iThink shipment because the order payment state is invalid.',
+            extra={
+                'order_id': order.id,
+                'payment_method': order.payment_method,
+                'payment_status': order.payment_status,
+                'total_amount': order.total_amount,
+                'reason': str(error),
+            },
+        )
+        flash(str(error), 'error')
         return redirect(url_for('admin.manage_orders'))
 
     settings = _ithink_operational_settings()
@@ -896,7 +908,12 @@ def create_ithink_shipment(order_id):
         db.session.rollback()
         current_app.logger.exception(
             'Unable to create iThink fulfillment.',
-            extra={'order_id': order_id},
+            extra={
+                'order_id': order_id,
+                'payment_method': order.payment_method,
+                'payment_status': order.payment_status,
+                'total_amount': order.total_amount,
+            },
         )
         flash(
             f'iThink could not create this shipment: {str(error)[:300]}',

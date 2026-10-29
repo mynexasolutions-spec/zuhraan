@@ -2,7 +2,7 @@ import time
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 import re
-from typing import Any
+from typing import Any, TypedDict
 
 import requests
 from flask import current_app
@@ -13,6 +13,20 @@ from models import Order
 ITHINK_API_BASE_URL = 'https://my.ithinklogistics.com/api_v3'
 ITHINK_TRACKING_API_BASE_URL = 'https://api.ithinklogistics.com/api_v3'
 COD_PAYMENT_METHODS = frozenset({'cod'})
+PREPAID_PAYMENT_METHODS = frozenset({'gokwik_prepaid', 'legacy_prepaid', 'razorpay'})
+
+
+class IThinkAmountBreakdown(TypedDict):
+    """Validated order amounts mapped to iThink's payment fields."""
+
+    item_subtotal: Decimal
+    shipping_charges: Decimal
+    total_discount: Decimal
+    total_tax: Decimal
+    total_amount: Decimal
+    advance_amount: Decimal
+    cod_amount: Decimal
+    payment_mode: str
 
 
 class IThinkRequestError(RuntimeError):
@@ -127,6 +141,95 @@ def _is_success_response(payload: dict[str, Any]) -> bool:
 
 def _format_decimal(value: Decimal | float | int | str) -> str:
     return format(Decimal(str(value)).quantize(Decimal('0.01')), 'f')
+
+
+def _non_negative_money(value: Any, label: str, *, allow_zero: bool = True) -> Decimal:
+    """Parse a finite non-negative monetary value with two decimal places."""
+    if value is None or isinstance(value, bool):
+        raise ValueError(f'{label} is missing or invalid.')
+    try:
+        amount = Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError) as error:
+        raise ValueError(f'{label} is missing or invalid.') from error
+    if not amount.is_finite() or amount < 0 or (not allow_zero and amount == 0):
+        qualifier = 'greater than zero' if not allow_zero else 'non-negative'
+        raise ValueError(f'{label} must be {qualifier}.')
+    return amount.quantize(Decimal('0.01'))
+
+
+def payment_mode_for_order(order: Order) -> str:
+    """Return the supported iThink payment mode for an order.
+
+    COD remains collectable at delivery. A prepaid order must already be
+    confirmed paid before it can be sent to iThink as prepaid.
+    """
+    payment_method = str(order.payment_method or '').strip().lower()
+    if payment_method in COD_PAYMENT_METHODS:
+        return 'COD'
+    if payment_method in PREPAID_PAYMENT_METHODS:
+        if str(order.payment_status or '').strip().lower() != 'paid':
+            raise ValueError('A prepaid order must be paid before it can be shipped.')
+        return 'Prepaid'
+    raise ValueError(
+        f'Unsupported payment method for iThink: {payment_method or "missing"}.'
+    )
+
+
+def calculate_ithink_amounts(order: Order) -> IThinkAmountBreakdown:
+    """Calculate and validate the amounts sent to iThink Logistics.
+
+    The checkout stores the final payable order total. Product snapshots and
+    shipping are used to derive the discount or tax difference for iThink's
+    breakdown. The current storefront has no separate tax configuration, so a
+    positive difference is treated as an effective product tax rate rather
+    than silently dropping it.
+    """
+    total_amount = _non_negative_money(
+        order.total_amount,
+        'Order total amount',
+        allow_zero=False,
+    )
+    shipping_charges = _non_negative_money(
+        order.shipping_charges or 0,
+        'Shipping charges',
+    )
+    item_subtotal = Decimal('0.00')
+    for item in order.items:
+        quantity = item.quantity
+        if isinstance(quantity, bool) or not isinstance(quantity, int) or quantity <= 0:
+            raise ValueError(f'Order item {item.id or "unknown"} has an invalid quantity.')
+        unit_price = _non_negative_money(
+            item.price_at_time,
+            f'Order item {item.id or "unknown"} price',
+        )
+        item_subtotal += unit_price * quantity
+
+    gross_before_adjustments = item_subtotal + shipping_charges
+    total_discount = max(Decimal('0.00'), gross_before_adjustments - total_amount)
+    total_tax = max(Decimal('0.00'), total_amount - gross_before_adjustments)
+    payment_mode = payment_mode_for_order(order)
+    if total_tax and item_subtotal == 0:
+        raise ValueError('A tax amount cannot be allocated because the item subtotal is zero.')
+
+    if payment_mode == 'COD':
+        advance_amount = Decimal('0.00')
+        cod_amount = total_amount
+    else:
+        # iThink's label displays this as the amount to collect. Zero is
+        # intentional for prepaid orders whose full amount is already paid.
+        advance_amount = total_amount
+        cod_amount = Decimal('0.00')
+
+    return {
+        'item_subtotal': item_subtotal.quantize(Decimal('0.01')),
+        'shipping_charges': shipping_charges,
+        'total_discount': total_discount.quantize(Decimal('0.01')),
+        'total_tax': total_tax.quantize(Decimal('0.01')),
+        'total_amount': total_amount,
+        'advance_amount': advance_amount,
+        'cod_amount': cod_amount,
+        'payment_mode': payment_mode,
+    }
 
 
 class IThinkClient:
@@ -284,13 +387,24 @@ def build_ithink_order_payload(
         raise ValueError('iThink supports at most 40 products in one shipment.')
 
     customer_parts = str(order.customer_name).strip().split(maxsplit=1)
-    item_subtotal = sum(
-        Decimal(str(item.price_at_time)) * item.quantity for item in order.items
+    amounts = calculate_ithink_amounts(order)
+    effective_tax_rate = (
+        amounts['total_tax'] * Decimal('100') / amounts['item_subtotal']
+        if amounts['total_tax']
+        else Decimal('0.00')
     )
-    shipping_charges = Decimal(str(order.shipping_charges or 0))
-    charged_subtotal = max(Decimal('0'), Decimal(str(order.total_amount)) - shipping_charges)
-    total_discount = max(Decimal('0'), item_subtotal - charged_subtotal)
-    is_cod = order.payment_method in COD_PAYMENT_METHODS
+    if amounts['total_tax']:
+        current_app.logger.warning(
+            'Order total includes an amount not covered by item and shipping values; '
+            'mapping it as an effective product tax rate for iThink.',
+            extra={
+                'order_id': order.id,
+                'total_amount': _format_decimal(amounts['total_amount']),
+                'item_subtotal': _format_decimal(amounts['item_subtotal']),
+                'shipping_charges': _format_decimal(amounts['shipping_charges']),
+                'inferred_tax': _format_decimal(amounts['total_tax']),
+            },
+        )
 
     products = [
         {
@@ -298,7 +412,7 @@ def build_ithink_order_payload(
             'product_sku': f'VARIANT-{item.variant_id}',
             'product_quantity': str(item.quantity),
             'product_price': _format_decimal(item.price_at_time),
-            'product_tax_rate': '0',
+            'product_tax_rate': _format_decimal(effective_tax_rate),
             'product_hsn_code': '',
             'product_discount': '0',
         }
@@ -309,7 +423,7 @@ def build_ithink_order_payload(
         'order': f'ZUHRAAN-{order.id}',
         'sub_order': '',
         'order_date': order.created_at.strftime('%d-%m-%Y %H:%M:%S'),
-        'total_amount': _format_decimal(order.total_amount),
+        'total_amount': _format_decimal(amounts['total_amount']),
         'name': str(order.customer_name).strip(),
         'company_name': '',
         'add': str(order.address_line1).strip(),
@@ -340,15 +454,15 @@ def build_ithink_order_payload(
         'shipment_width': str(dimensions['width']),
         'shipment_height': str(dimensions['height']),
         'weight': str(dimensions['weight']),
-        'shipping_charges': _format_decimal(shipping_charges),
+        'shipping_charges': _format_decimal(amounts['shipping_charges']),
         'giftwrap_charges': '0',
         'transaction_charges': '0',
-        'total_discount': _format_decimal(total_discount),
+        'total_discount': _format_decimal(amounts['total_discount']),
         'first_attemp_discount': '0',
         'cod_charges': '0',
-        'advance_amount': '0' if is_cod else _format_decimal(order.total_amount),
-        'cod_amount': _format_decimal(order.total_amount) if is_cod else '0',
-        'payment_mode': 'COD' if is_cod else 'Prepaid',
+        'advance_amount': _format_decimal(amounts['advance_amount']),
+        'cod_amount': _format_decimal(amounts['cod_amount']),
+        'payment_mode': amounts['payment_mode'],
         'reseller_name': '',
         'eway_bill_number': '',
         'gst_number': '',
