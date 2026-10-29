@@ -18,6 +18,7 @@ from routes.main import (
     _remember_guest_order,
     _validate_coupon,
     calculate_shipping,
+    is_cod_enabled,
     release_order_inventory,
 )
 from ithink_client import normalize_indian_pincode
@@ -686,6 +687,8 @@ def place_order():
     payment_method = str(payload.get('payment_method') or '').strip().lower()
     if payment_method not in SUPPORTED_PAYMENT_METHODS:
         raise GoKwikAPIError('gc_cart_invalid_payment_method', 'Payment method is invalid.', 400)
+    if payment_method == 'cod' and not is_cod_enabled():
+        raise GoKwikAPIError('gc_cod_disabled', 'Cash on Delivery is currently unavailable.', 400)
     if payload.get('fee_lines'):
         raise GoKwikAPIError(
             'gc_unsupported_fee_lines',

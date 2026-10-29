@@ -18,6 +18,13 @@
     .rzp-line { display: flex; justify-content: space-between; gap: 16px; margin: 12px 0; color: rgba(255,255,255,.72); }
     .rzp-line strong { color: #fff; }
     .rzp-total { display: flex; justify-content: space-between; margin-top: 22px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.16); color: #fff; font-size: 1.15rem; font-weight: 700; }
+    .rzp-payment-methods { margin-top: 24px; padding-top: 22px; border-top: 1px solid #e8e3da; }
+    .rzp-payment-methods h3 { margin: 0 0 12px; color: #111; font-size: 1rem; }
+    .rzp-payment-options { display: grid; gap: 10px; }
+    .rzp-payment-option { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid #d4cfc6; border-radius: 8px; color: #222; cursor: pointer; }
+    .rzp-payment-option input { width: auto; accent-color: #111; }
+    .rzp-payment-option strong { font-size: .95rem; }
+    .rzp-payment-option span { color: #777; font-size: .85rem; }
     .rzp-submit { width: 100%; margin-top: 24px; padding: 14px 18px; border: 0; border-radius: 999px; color: #fff; background: #111; font: inherit; font-weight: 800; cursor: pointer; }
     .rzp-submit:hover { color: #fff; background: #c4640c; }
     .rzp-back { display: inline-block; margin-top: 16px; color: #777; font-size: .9rem; text-decoration: none; }
@@ -47,6 +54,23 @@
                 </div>
                 {% endfor %}
             </div>
+            <div class="rzp-payment-methods">
+                <h3>Payment method</h3>
+                <div class="rzp-payment-options">
+                    {% if cod_enabled %}
+                    <label class="rzp-payment-option">
+                        <input type="radio" name="payment_method" value="cod"{% if form_values['payment_method'] == 'cod' %} checked{% endif %}>
+                        <span><strong>Cash on Delivery</strong><br>Pay when your order arrives.</span>
+                    </label>
+                    {% endif %}
+                    {% if config.RAZORPAY_ENABLED %}
+                    <label class="rzp-payment-option">
+                        <input type="radio" name="payment_method" value="razorpay"{% if form_values['payment_method'] == 'razorpay' %} checked{% endif %}>
+                        <span><strong>Pay Online</strong><br>Pay securely using Razorpay.</span>
+                    </label>
+                    {% endif %}
+                </div>
+            </div>
             <button class="rzp-submit" type="submit">Place Order</button>
             <a class="rzp-back" href="{{ url_for('main.cart') }}">← Back to cart</a>
         </form>
@@ -63,7 +87,7 @@
             {% if discount %}<div class="rzp-line"><span>Discount</span><strong>−₹{{ "{:,.2f}".format(discount) }}</strong></div>{% endif %}
             <div class="rzp-line"><span>Shipping</span><strong>₹{{ "{:,.2f}".format(shipping) }}</strong></div>
             <div class="rzp-total"><span>Total</span><span>₹{{ "{:,.2f}".format(total) }}</span></div>
-            <p class="rzp-note" style="margin:18px 0 0;color:rgba(255,255,255,.65);">Payments are processed securely by Razorpay.</p>
+            <p class="rzp-note" style="margin:18px 0 0;color:rgba(255,255,255,.65);">{% if cod_enabled and config.RAZORPAY_ENABLED %}Choose COD or pay online securely.{% elif cod_enabled %}Payment will be collected when your order is delivered.{% else %}Payments are processed securely by Razorpay.{% endif %}</p>
         </aside>
     </div>
 </div>

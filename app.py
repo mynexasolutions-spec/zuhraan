@@ -522,6 +522,7 @@ def seed_db():
     settings = {
         'shipping_charge': '0',
         'free_shipping_threshold': '0',
+        'cod_enabled': '1',
     }
     for k, v in settings.items():
         if not Setting.query.filter_by(key=k).first():

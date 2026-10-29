@@ -1006,6 +1006,7 @@ def manage_settings():
     ALLOWED_SETTINGS = {
         'shipping_charge',
         'free_shipping_threshold',
+        'cod_enabled',
         'ithink_default_weight_kg',
         'ithink_default_length_cm',
         'ithink_default_width_cm',
@@ -1017,6 +1018,15 @@ def manage_settings():
             shipping_settings = {
                 'shipping_charge': _parse_shipping_amount(request.form.get('shipping_charge'), 'Standard shipping charge'),
                 'free_shipping_threshold': _parse_shipping_amount(request.form.get('free_shipping_threshold'), 'Free shipping threshold'),
+            }
+            cod_values = request.form.getlist('cod_enabled')
+            current_cod_setting = Setting.query.filter_by(key='cod_enabled').first()
+            payment_settings = {
+                'cod_enabled': (
+                    '1' if '1' in cod_values else '0'
+                ) if cod_values else (
+                    current_cod_setting.value if current_cod_setting else '1'
+                ),
             }
             ithink_dimensions = parcel_dimensions(
                 request.form.get(
@@ -1042,6 +1052,7 @@ def manage_settings():
 
         submitted_settings = {
             **shipping_settings,
+            **payment_settings,
             'ithink_default_weight_kg': str(ithink_dimensions['weight']),
             'ithink_default_length_cm': str(ithink_dimensions['length']),
             'ithink_default_width_cm': str(ithink_dimensions['width']),

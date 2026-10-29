@@ -80,6 +80,18 @@
                 {{ 'Connected' if config.GOKWIK_ENABLED else 'Unavailable' }}
             </span>
         </div>
+
+        <div class="toggle-row">
+            <div class="toggle-info">
+                <h4><i class="fa-solid fa-money-bill-wave" style="color:#16a34a; margin-right:6px;"></i> Cash on Delivery</h4>
+                <p>Show or hide COD as a payment option on the storefront checkout.</p>
+            </div>
+            <label class="switch">
+                <input type="hidden" name="cod_enabled" value="0">
+                <input type="checkbox" name="cod_enabled" value="1"{% if settings.get('cod_enabled', '1')|lower in ['1', 'true', 'yes', 'on'] %} checked{% endif %} aria-label="Enable Cash on Delivery">
+                <span class="slider"></span>
+            </label>
+        </div>
     </div>
 
     <!-- ITHINK LOGISTICS -->

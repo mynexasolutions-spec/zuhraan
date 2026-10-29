@@ -221,6 +221,15 @@ def _validate_coupon(code, order_total):
             'message': f'{coupon.discount_value}% off applied!' if coupon.discount_type == 'percent' else f'₹{coupon.discount_value:.2f} off applied!',
             'coupon_id': coupon.id}
 
+
+def is_cod_enabled() -> bool:
+    """Return whether Cash on Delivery is available at checkout."""
+    setting = Setting.query.filter_by(key='cod_enabled').first()
+    if setting is None:
+        return True
+    return str(setting.value or '').strip().lower() in {'1', 'true', 'yes', 'on'}
+
+
 def _get_non_negative_setting_amount(value):
     try:
         amount = Decimal(str(value))
@@ -532,6 +541,7 @@ def cart():
         total=total,
         pixel_contents=pixel_contents,
         pixel_num_items=pixel_num_items,
+        cod_enabled=is_cod_enabled(),
     )
 
 @main_bp.route('/cart/remove/<int:variant_id>', methods=['POST'])
@@ -873,6 +883,34 @@ def account():
     )
 
 # --- CHECKOUT ---
+def reserve_order_inventory(lines):
+    """Deduct stock for an order while holding row locks for the transaction."""
+    quantities = {}
+    for line in lines:
+        variant = line['variant']
+        quantities[variant.id] = quantities.get(variant.id, 0) + line['quantity']
+
+    variants = (
+        ProductVariant.query
+        .filter(ProductVariant.id.in_(sorted(quantities)))
+        .order_by(ProductVariant.id)
+        .with_for_update()
+        .all()
+    )
+    if len(variants) != len(quantities):
+        raise RuntimeError('Cannot place the order because an ordered item is missing.')
+
+    for variant in variants:
+        quantity = quantities[variant.id]
+        if (variant.stock_quantity or 0) < quantity:
+            raise RuntimeError(
+                f'Only {variant.stock_quantity or 0} unit(s) of {variant.product.name} are available.'
+            )
+
+    for variant in variants:
+        variant.stock_quantity = (variant.stock_quantity or 0) - quantities[variant.id]
+
+
 def release_order_inventory(order):
     """Restore inventory for a newly cancelled order exactly once per cancellation."""
     if order.payment_method not in INVENTORY_TRACKED_PAYMENT_METHODS:
@@ -989,6 +1027,7 @@ def _razorpay_checkout_context(lines, coupon_code=''):
         'shipping': shipping,
         'total': total,
         'coupon_code': coupon_code,
+        'cod_enabled': is_cod_enabled(),
     }
 
 
@@ -1209,8 +1248,10 @@ def api_validate_coupon():
 
 @main_bp.route('/razorpay/checkout', methods=['GET', 'POST'])
 def razorpay_checkout():
-    if not current_app.config.get('RAZORPAY_ENABLED'):
-        flash('Online payment is temporarily unavailable. Please try again shortly.', 'error')
+    online_payment_enabled = bool(current_app.config.get('RAZORPAY_ENABLED'))
+    cod_enabled = is_cod_enabled()
+    if not online_payment_enabled and not cod_enabled:
+        flash('Checkout is temporarily unavailable. Please try again shortly.', 'error')
         return redirect(url_for('main.cart'))
 
     try:
@@ -1230,6 +1271,7 @@ def razorpay_checkout():
         'pincode': (current_user.pincode or '') if current_user.is_authenticated else '',
         'country': (current_user.country or 'India') if current_user.is_authenticated else 'India',
         'coupon_code': '',
+        'payment_method': 'razorpay' if online_payment_enabled else 'cod',
     }
 
     if request.method == 'GET':
@@ -1243,6 +1285,47 @@ def razorpay_checkout():
     for field in form_values:
         form_values[field] = request.form.get(field, '').strip()
     form_values['country'] = form_values['country'] or 'India'
+    payment_method = form_values['payment_method'].lower() or (
+        'razorpay' if online_payment_enabled else 'cod'
+    )
+    form_values['payment_method'] = payment_method
+
+    if payment_method not in {'cod', 'razorpay'}:
+        flash('Please choose a valid payment method.', 'error')
+        form_values['payment_method'] = 'razorpay' if online_payment_enabled else 'cod'
+        try:
+            context = _razorpay_checkout_context(lines, form_values['coupon_code'].upper())
+        except ValueError:
+            context = _razorpay_checkout_context(lines)
+        return render_template(
+            'main/razorpay_checkout.html',
+            **context,
+            form_values=form_values,
+        )
+    if payment_method == 'cod' and not cod_enabled:
+        flash('Cash on Delivery is currently unavailable.', 'error')
+        form_values['payment_method'] = 'razorpay' if online_payment_enabled else 'cod'
+        try:
+            context = _razorpay_checkout_context(lines, form_values['coupon_code'].upper())
+        except ValueError:
+            context = _razorpay_checkout_context(lines)
+        return render_template(
+            'main/razorpay_checkout.html',
+            **context,
+            form_values=form_values,
+        )
+    if payment_method == 'razorpay' and not online_payment_enabled:
+        flash('Online payment is temporarily unavailable. Please choose Cash on Delivery.', 'error')
+        form_values['payment_method'] = 'cod'
+        try:
+            context = _razorpay_checkout_context(lines, form_values['coupon_code'].upper())
+        except ValueError:
+            context = _razorpay_checkout_context(lines)
+        return render_template(
+            'main/razorpay_checkout.html',
+            **context,
+            form_values=form_values,
+        )
 
     validation_error = validate_checkout_details(form_values)
     if validation_error:
@@ -1292,7 +1375,7 @@ def razorpay_checkout():
             shipping_charges=float(shipping),
             status='pending',
             payment_status='unpaid',
-            payment_method='razorpay',
+            payment_method=payment_method,
             coupon_id=coupon_id,
         )
         db.session.add(order)
@@ -1305,17 +1388,27 @@ def razorpay_checkout():
                 price_at_time=float(line['variant'].price),
             ))
 
-        razorpay_amount = _razorpay_amount_in_paise(total)
-        razorpay_order = get_razorpay_client().order.create({
-            'amount': razorpay_amount,
-            'currency': 'INR',
-            'payment_capture': 1,
-            'notes': {'local_order_id': str(order.id)},
-        })
-        razorpay_order_id = str(razorpay_order.get('id') or '').strip()
-        if not razorpay_order_id:
-            raise RuntimeError('Razorpay returned no order identifier.')
-        order.razorpay_order_id = razorpay_order_id
+        razorpay_amount = None
+        razorpay_order_id = None
+        if payment_method == 'cod':
+            reserve_order_inventory(lines)
+            if coupon_id:
+                coupon = Coupon.query.filter_by(id=coupon_id).with_for_update().first()
+                if not coupon or (coupon.max_uses and coupon.used_count >= coupon.max_uses):
+                    raise RuntimeError('Cannot place the order because the coupon is no longer valid.')
+                coupon.used_count = (coupon.used_count or 0) + 1
+        else:
+            razorpay_amount = _razorpay_amount_in_paise(total)
+            razorpay_order = get_razorpay_client().order.create({
+                'amount': razorpay_amount,
+                'currency': 'INR',
+                'payment_capture': 1,
+                'notes': {'local_order_id': str(order.id)},
+            })
+            razorpay_order_id = str(razorpay_order.get('id') or '').strip()
+            if not razorpay_order_id:
+                raise RuntimeError('Razorpay returned no order identifier.')
+            order.razorpay_order_id = razorpay_order_id
 
         if current_user.is_authenticated:
             current_user.phone = order.customer_phone
@@ -1336,6 +1429,12 @@ def razorpay_checkout():
         current_app.logger.exception('Unable to prepare Razorpay order.')
         flash('Unable to prepare your order. Please try again.', 'error')
         return redirect(url_for('main.cart'))
+
+    if payment_method == 'cod':
+        _auto_create_ithink_shipment(order)
+        _finish_razorpay_browser_payment(order)
+        flash('Order placed successfully. We will collect payment on delivery.', 'success')
+        return redirect(url_for('main.account', _anchor='orders') if current_user.is_authenticated else url_for('main.index'))
 
     return render_template(
         'main/razorpay_payment.html',

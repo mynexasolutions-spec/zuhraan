@@ -2,7 +2,7 @@
 
 {% macro payment_method_label(order) -%}
     {% if order.payment_method == 'gokwik_prepaid' %}GoKwik Prepaid
-    {% elif order.payment_method == 'cod' %}GoKwik COD
+    {% elif order.payment_method == 'cod' %}Cash on Delivery
     {% elif order.payment_method == 'razorpay' %}Razorpay
     {% elif order.payment_method %}{{ order.payment_method|replace('_', ' ')|title }}
     {% else %}Not recorded
