@@ -14,6 +14,11 @@
     .group label { display: block; font-size: 1.02rem; font-weight: 600; color: #475569; margin-bottom: 8px; }
     .group input { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 1.1rem; color: #1e293b; }
     .group p { font-size: 0.95rem; color: var(--text-muted); margin-top: 7px; }
+    .shipping-methods { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .shipping-method { border: 1px solid var(--border); border-radius: 10px; padding: 18px; background: #f8fafc; }
+    .shipping-method h4 { margin: 0 0 16px; color: #1e293b; font-size: 1.05rem; }
+    .shipping-method .group:last-child { margin-bottom: 0; }
+    @media (max-width: 700px) { .shipping-methods { grid-template-columns: 1fr; } }
 
     /* TOGGLE SWITCH */
     .toggle-row {
@@ -52,16 +57,36 @@
     <!-- SHIPPING -->
     <div class="card">
         <h3><i class="fa-solid fa-truck"></i> Shipping Operations</h3>
-        <div class="group">
-            <label>Standard Shipping Charge (₹)</label>
-            <input type="number" min="0" step="0.01" name="shipping_charge" value="{{ settings.get('shipping_charge', '0') }}" required>
-            <p>Applied to overall order total during checkout.</p>
+        <p style="color: var(--text-muted); margin: -8px 0 20px;">Configure separate delivery charges and free-shipping thresholds for prepaid and Cash on Delivery orders.</p>
+        <div class="shipping-methods">
+            <div class="shipping-method">
+                <h4><i class="fa-solid fa-credit-card" style="color: var(--primary); margin-right: 6px;"></i>Prepaid / Pay Online</h4>
+                <div class="group">
+                    <label>Shipping Charge (₹)</label>
+                    <input type="number" min="0" step="0.01" name="shipping_charge_prepaid" value="{{ settings.get('shipping_charge_prepaid', settings.get('shipping_charge', '0')) }}" required>
+                    <p>Charged when the customer pays online.</p>
+                </div>
+                <div class="group">
+                    <label>Free Shipping Threshold (₹)</label>
+                    <input type="number" min="0" step="0.01" name="free_shipping_threshold_prepaid" value="{{ settings.get('free_shipping_threshold_prepaid', settings.get('free_shipping_threshold', '0')) }}" required>
+                    <p>Set to 0 to disable free shipping for prepaid orders.</p>
+                </div>
+            </div>
+            <div class="shipping-method">
+                <h4><i class="fa-solid fa-money-bill-wave" style="color: var(--primary); margin-right: 6px;"></i>Cash on Delivery</h4>
+                <div class="group">
+                    <label>Shipping Charge (₹)</label>
+                    <input type="number" min="0" step="0.01" name="shipping_charge_cod" value="{{ settings.get('shipping_charge_cod', settings.get('shipping_charge', '0')) }}" required>
+                    <p>Charged when the customer pays on delivery.</p>
+                </div>
+                <div class="group">
+                    <label>Free Shipping Threshold (₹)</label>
+                    <input type="number" min="0" step="0.01" name="free_shipping_threshold_cod" value="{{ settings.get('free_shipping_threshold_cod', settings.get('free_shipping_threshold', '0')) }}" required>
+                    <p>Set to 0 to disable free shipping for COD orders.</p>
+                </div>
+            </div>
         </div>
-        <div class="group">
-            <label>Free Shipping Threshold (₹)</label>
-            <input type="number" min="0" step="0.01" name="free_shipping_threshold" value="{{ settings.get('free_shipping_threshold', '0') }}" required>
-            <p>Orders at or above this amount get free shipping. Set to 0 to disable.</p>
-        </div>
+        <p style="margin: 18px 0 0; color: var(--text-muted);">Thresholds are checked against the item subtotal before any coupon discount.</p>
     </div>
 
     <!-- CHECKOUT -->

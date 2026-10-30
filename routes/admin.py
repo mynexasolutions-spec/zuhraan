@@ -778,7 +778,12 @@ def update_order_status(order_id):
         order.status = new_status
         order.shipping_provider = shipping_provider or None
         order.awb_number = awb_number or None
-        if shipping_provider and awb_number:
+        if new_status == 'cancelled':
+            # Keep the customer-facing shipment state aligned with a confirmed
+            # local cancellation instead of leaving a stale carrier status.
+            order.shipping_status = 'Cancelled'
+            order.shipping_tracking_updated_at = utcnow_naive()
+        elif shipping_provider and awb_number:
             order.shipping_tracking_updated_at = utcnow_naive()
             if new_status == 'shipped':
                 order.shipping_status = 'Shipped'
@@ -959,7 +964,17 @@ def refresh_ithink_tracking(order_id):
     try:
         tracking_payload = IThinkClient().track_awbs([order.awb_number])
         tracking = extract_tracking_data(tracking_payload, order.awb_number)
+        shipment_before = (
+            order.shipping_provider,
+            order.awb_number,
+            order.shipping_tracking_url,
+        )
         status_changed = apply_ithink_tracking(order, tracking)
+        shipment_changed = shipment_before != (
+            order.shipping_provider,
+            order.awb_number,
+            order.shipping_tracking_url,
+        )
         db.session.commit()
     except (IThinkRequestError, ValueError):
         db.session.rollback()
@@ -969,7 +984,7 @@ def refresh_ithink_tracking(order_id):
         )
         flash('iThink tracking could not be refreshed. Try again.', 'error')
         return redirect(url_for('admin.manage_orders'))
-    if status_changed and is_gokwik_payment_method(order.payment_method):
+    if (status_changed or shipment_changed) and is_gokwik_payment_method(order.payment_method):
         try:
             sync_gokwik_order(
                 order.id,
@@ -1006,6 +1021,10 @@ def manage_settings():
     ALLOWED_SETTINGS = {
         'shipping_charge',
         'free_shipping_threshold',
+        'shipping_charge_prepaid',
+        'free_shipping_threshold_prepaid',
+        'shipping_charge_cod',
+        'free_shipping_threshold_cod',
         'cod_enabled',
         'ithink_default_weight_kg',
         'ithink_default_length_cm',
@@ -1015,9 +1034,36 @@ def manage_settings():
     if request.method == 'POST':
         current_ithink_settings = _ithink_operational_settings()
         try:
+            legacy_shipping_settings = {}
+            legacy_charge = request.form.get('shipping_charge')
+            legacy_threshold = request.form.get('free_shipping_threshold')
+            if legacy_charge is not None:
+                legacy_shipping_settings['shipping_charge'] = _parse_shipping_amount(
+                    legacy_charge,
+                    'Standard shipping charge',
+                )
+            if legacy_threshold is not None:
+                legacy_shipping_settings['free_shipping_threshold'] = _parse_shipping_amount(
+                    legacy_threshold,
+                    'Free shipping threshold',
+                )
             shipping_settings = {
-                'shipping_charge': _parse_shipping_amount(request.form.get('shipping_charge'), 'Standard shipping charge'),
-                'free_shipping_threshold': _parse_shipping_amount(request.form.get('free_shipping_threshold'), 'Free shipping threshold'),
+                'shipping_charge_prepaid': _parse_shipping_amount(
+                    request.form.get('shipping_charge_prepaid', legacy_charge),
+                    'Prepaid shipping charge',
+                ),
+                'free_shipping_threshold_prepaid': _parse_shipping_amount(
+                    request.form.get('free_shipping_threshold_prepaid', legacy_threshold),
+                    'Prepaid free shipping threshold',
+                ),
+                'shipping_charge_cod': _parse_shipping_amount(
+                    request.form.get('shipping_charge_cod', legacy_charge),
+                    'COD shipping charge',
+                ),
+                'free_shipping_threshold_cod': _parse_shipping_amount(
+                    request.form.get('free_shipping_threshold_cod', legacy_threshold),
+                    'COD free shipping threshold',
+                ),
             }
             cod_values = request.form.getlist('cod_enabled')
             current_cod_setting = Setting.query.filter_by(key='cod_enabled').first()
@@ -1052,6 +1098,7 @@ def manage_settings():
 
         submitted_settings = {
             **shipping_settings,
+            **legacy_shipping_settings,
             **payment_settings,
             'ithink_default_weight_kg': str(ithink_dimensions['weight']),
             'ithink_default_length_cm': str(ithink_dimensions['length']),

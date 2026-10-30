@@ -551,22 +551,6 @@
                             <button class="primary-action" type="submit"><i class="fa-solid fa-floppy-disk"></i> Save status</button>
                         </form>
 
-                        <h3 style="margin-top: 22px;">Delivery details</h3>
-                        <form class="form-stack" action="{{ url_for('admin.update_order_details', order_id=order.id) }}" method="POST">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <label><span class="field-label">Customer name</span><input class="admin-field" name="customer_name" value="{{ order.customer_name or '' }}" required></label>
-                            <label><span class="field-label">Customer email</span><input class="admin-field" type="email" name="customer_email" value="{{ order.customer_email or '' }}" required></label>
-                            <label><span class="field-label">Phone number</span><input class="admin-field" name="customer_phone" value="{{ order.customer_phone or '' }}" required></label>
-                            <label><span class="field-label">Address line 1</span><input class="admin-field" name="address_line1" value="{{ order.address_line1 or '' }}" required></label>
-                            <label><span class="field-label">Address line 2</span><input class="admin-field" name="address_line2" value="{{ order.address_line2 or '' }}"></label>
-                            <div class="form-grid">
-                                <label><span class="field-label">City</span><input class="admin-field" name="city" value="{{ order.city or '' }}" required></label>
-                                <label><span class="field-label">State</span><input class="admin-field" name="state" value="{{ order.state or '' }}" required></label>
-                                <label><span class="field-label">PIN code</span><input class="admin-field" name="pincode" value="{{ order.pincode or '' }}" inputmode="numeric" maxlength="6" required></label>
-                                <label><span class="field-label">Country</span><input class="admin-field" name="country" value="{{ order.country or 'India' }}" required></label>
-                            </div>
-                            <button class="secondary-action" type="submit"><i class="fa-solid fa-location-dot"></i> Save delivery details</button>
-                        </form>
                     </div>
 
                     <div class="management-panel">

@@ -1,4 +1,4 @@
-from flask import Blueprint, current_app, jsonify, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, current_app, jsonify, make_response, render_template, request, redirect, url_for, flash, session
 from models import db, Product, Category, ProductVariant, Review, User, Order, OrderItem, Setting, Coupon, OfferBanner, AboutPage, ContactMessage
 from flask_login import current_user, login_user, logout_user, login_required
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -115,11 +115,43 @@ FULFILLMENT_STEPS = (
 )
 
 
+def _status_label(value: str | None, fallback: str) -> str:
+    """Turn a stored status into a readable label without inventing a state."""
+    normalized = str(value or '').strip()
+    if not normalized:
+        return fallback
+    return normalized.replace('_', ' ').title()
+
+
+def _payment_method_label(order: Order) -> str:
+    payment_method = str(order.payment_method or '').strip().lower()
+    if payment_method == 'cod':
+        return 'Cash on Delivery'
+    if payment_method == 'razorpay':
+        return 'Prepaid / Razorpay'
+    if payment_method == 'gokwik_prepaid':
+        return 'Prepaid / GoKwik'
+    if payment_method == 'legacy_prepaid':
+        return 'Prepaid'
+    return _status_label(payment_method, 'Payment method not recorded')
+
+
+def _carrier_status_label(value: str | None) -> str | None:
+    normalized = str(value or '').strip()
+    if not normalized:
+        return None
+    if 'RTO' in normalized.upper():
+        return 'Returned to sender'
+    return _status_label(normalized, 'Carrier update')
+
+
 def _fulfillment_stage(order: Order) -> int:
     """Return the furthest customer-facing fulfillment stage reached by an order."""
     local_status = str(order.status or '').strip().upper()
     carrier_status = str(order.shipping_status or '').strip().upper()
 
+    if local_status == 'CANCELLED':
+        return 0
     if (
         local_status == 'DELIVERED'
         or ('DELIVERED' in carrier_status and 'RTO' not in carrier_status)
@@ -156,6 +188,10 @@ def _fulfillment_view(order: Order) -> dict[str, object]:
     """Build accurate presentation data for the authenticated customer's order card."""
     active_stage = _fulfillment_stage(order)
     latest_update = order.shipping_tracking_updated_at
+    local_status = str(order.status or '').strip().lower()
+    cancelled = local_status == 'cancelled'
+    carrier_status = _carrier_status_label(order.shipping_status)
+    returned_to_sender = 'RTO' in str(order.shipping_status or '').upper()
     steps: list[dict[str, object]] = []
     for index, label in enumerate(FULFILLMENT_STEPS):
         if index == 0:
@@ -177,18 +213,81 @@ def _fulfillment_view(order: Order) -> dict[str, object]:
             'current': index == active_stage,
         })
 
-    raw_status = str(order.shipping_status or order.status or 'Order placed').strip()
-    display_status = raw_status.replace('_', ' ').title()
-    if raw_status.upper() in {'AWB ASSIGNED', 'RTO'}:
-        display_status = raw_status.upper()
+    if cancelled:
+        display_status = 'Cancelled'
+    elif returned_to_sender:
+        display_status = 'Returned to sender'
+    else:
+        display_status = _status_label(order.status, 'Order placed')
+
+    payment_status = str(order.payment_status or '').strip().lower()
+    payment_status_label = {
+        'paid': 'Paid',
+        'unpaid': 'Awaiting payment',
+        'failed': 'Payment failed',
+        'refunded': 'Refunded',
+    }.get(payment_status, _status_label(order.payment_status, 'Payment status not recorded'))
+    payment_reference = order.razorpay_payment_id or order.gokwik_transaction_id
+    shipment_failed = any(
+        marker in str(order.shipping_status or '').strip().lower()
+        for marker in ('fail', 'error', 'reject')
+    )
+    shipment_created = bool(
+        (order.shipping_order_reference or order.awb_number)
+        and not shipment_failed
+    )
+    if cancelled:
+        shipment_badge = 'Cancelled'
+    elif shipment_failed:
+        shipment_badge = 'Creation failed'
+    elif returned_to_sender:
+        shipment_badge = 'Returned to sender'
+    elif order.awb_number and not cancelled:
+        shipment_badge = 'Tracking active'
+    elif shipment_created:
+        shipment_badge = 'Shipment created'
+    else:
+        shipment_badge = 'Not created'
 
     return {
         'steps': steps,
         'status': display_status,
-        'cancelled': str(order.status or '').lower() == 'cancelled',
-        'live': bool(order.shipping_order_reference or order.awb_number),
+        'status_class': 'cancelled' if cancelled else ('exception' if returned_to_sender else local_status),
+        'cancelled': cancelled,
+        'live': bool(order.awb_number and not cancelled and not shipment_failed),
+        'shipment_created': shipment_created,
+        'shipment_failed': shipment_failed,
+        'shipment_badge': shipment_badge,
+        'tracking_status': carrier_status,
+        'tracking_status_code': order.shipping_status_code,
+        'payment_method_label': _payment_method_label(order),
+        'payment_status_label': payment_status_label,
+        'payment_reference': payment_reference,
         'latest_update': latest_update,
     }
+
+
+def _order_sync_token(order: Order) -> str:
+    """Return the customer-visible state used by the lightweight live refresh."""
+    values = (
+        order.id,
+        order.status,
+        order.payment_status,
+        order.payment_method,
+        order.shipping_provider,
+        order.awb_number,
+        order.shipping_order_reference,
+        order.shipping_status,
+        order.shipping_status_code,
+        order.shipping_tracking_url,
+        order.shipping_tracking_updated_at.isoformat() if order.shipping_tracking_updated_at else '',
+    )
+    return '|'.join(str(value or '') for value in values)
+
+
+def _orders_sync_signature(orders: list[Order]) -> str:
+    state = '\n'.join(_order_sync_token(order) for order in orders)
+    return hashlib.sha256(state.encode('utf-8')).hexdigest()
 
 
 def safe_internal_redirect(value):
@@ -241,9 +340,21 @@ def _get_non_negative_setting_amount(value):
     return amount.quantize(Decimal('0.01'))
 
 
-def calculate_shipping(subtotal, settings):
-    shipping_charge = _get_non_negative_setting_amount(settings.get('shipping_charge'))
-    free_shipping_threshold = _get_non_negative_setting_amount(settings.get('free_shipping_threshold'))
+def calculate_shipping(subtotal, settings, payment_method='prepaid'):
+    """Calculate shipping for a payment method using the configured rate."""
+    is_cod = str(payment_method or '').strip().lower() == 'cod'
+    charge_key = 'shipping_charge_cod' if is_cod else 'shipping_charge_prepaid'
+    threshold_key = (
+        'free_shipping_threshold_cod'
+        if is_cod
+        else 'free_shipping_threshold_prepaid'
+    )
+    shipping_charge = _get_non_negative_setting_amount(
+        settings.get(charge_key, settings.get('shipping_charge'))
+    )
+    free_shipping_threshold = _get_non_negative_setting_amount(
+        settings.get(threshold_key, settings.get('free_shipping_threshold'))
+    )
     order_subtotal = _get_non_negative_setting_amount(subtotal)
 
     if free_shipping_threshold > 0 and order_subtotal >= free_shipping_threshold:
@@ -876,11 +987,28 @@ def account():
     _link_guest_orders_to_user(current_user)
     orders = Order.query.filter_by(user_id=current_user.id).order_by(Order.created_at.desc()).all()
     fulfillment_by_order = {order.id: _fulfillment_view(order) for order in orders}
-    return render_template(
+    response = make_response(render_template(
         'main/account.html',
         orders=orders,
         fulfillment_by_order=fulfillment_by_order,
-    )
+        order_sync_signature=_orders_sync_signature(orders),
+    ))
+    response.headers['Cache-Control'] = 'no-store, max-age=0'
+    return response
+
+
+@main_bp.get('/account/orders/updates')
+@login_required
+def account_order_updates():
+    """Expose customer-owned order state for fast, cache-free UI refreshes."""
+    _link_guest_orders_to_user(current_user)
+    orders = Order.query.filter_by(user_id=current_user.id).order_by(Order.created_at.desc()).all()
+    response = jsonify({
+        'signature': _orders_sync_signature(orders),
+        'checked_at': datetime.utcnow().isoformat(timespec='seconds') + 'Z',
+    })
+    response.headers['Cache-Control'] = 'no-store, max-age=0'
+    return response
 
 # --- CHECKOUT ---
 def reserve_order_inventory(lines):
@@ -976,10 +1104,12 @@ def _razorpay_cart_lines():
     return lines
 
 
-def _razorpay_totals(lines, coupon_code=''):
+def _razorpay_totals(lines, coupon_code='', payment_method='razorpay'):
     subtotal = sum((line['line_total'] for line in lines), Decimal('0.00'))
     settings = {setting.key: setting.value for setting in Setting.query.all()}
-    shipping = Decimal(str(calculate_shipping(float(subtotal), settings))).quantize(Decimal('0.01'))
+    shipping = Decimal(str(calculate_shipping(
+        float(subtotal), settings, payment_method,
+    ))).quantize(Decimal('0.01'))
     discount = Decimal('0.00')
     coupon_id = None
     if coupon_code:
@@ -1018,14 +1148,25 @@ def _razorpay_provider_amount(value, field_name):
     return int(amount)
 
 
-def _razorpay_checkout_context(lines, coupon_code=''):
-    subtotal, discount, shipping, total, _ = _razorpay_totals(lines, coupon_code)
+def _razorpay_checkout_context(lines, coupon_code='', payment_method='razorpay'):
+    subtotal, discount, shipping, total, _ = _razorpay_totals(
+        lines,
+        coupon_code,
+        payment_method,
+    )
+    settings = {setting.key: setting.value for setting in Setting.query.all()}
+    shipping_options = {
+        'cod': calculate_shipping(float(subtotal), settings, 'cod'),
+        'prepaid': calculate_shipping(float(subtotal), settings, 'razorpay'),
+    }
     return {
         'items': lines,
         'subtotal': subtotal,
         'discount': discount,
         'shipping': shipping,
         'total': total,
+        'shipping_options': shipping_options,
+        'payment_method': payment_method,
         'coupon_code': coupon_code,
         'cod_enabled': is_cod_enabled(),
     }
@@ -1055,6 +1196,8 @@ def mark_order_as_paid(razorpay_order_id, razorpay_payment_id, payment_amount=No
         if order.razorpay_payment_id != razorpay_payment_id:
             raise ValueError('The Razorpay payment does not match the paid order.')
         return order
+    if order.payment_status == 'refunded':
+        raise ValueError('A refunded Razorpay order cannot be marked paid again.')
 
     quantities = {}
     for item in order.items:
@@ -1090,6 +1233,30 @@ def mark_order_as_paid(razorpay_order_id, razorpay_payment_id, payment_amount=No
 
     db.session.commit()
     _auto_create_ithink_shipment(order)
+    return order
+
+
+def mark_order_payment_failed(razorpay_order_id, razorpay_payment_id):
+    """Persist a verified Razorpay failure without overwriting a paid order."""
+    order = Order.query.filter_by(razorpay_order_id=razorpay_order_id).first()
+    if not order:
+        return None
+    if order.payment_status != 'paid':
+        order.payment_status = 'failed'
+        order.payment_method = 'razorpay'
+        if razorpay_payment_id:
+            order.razorpay_payment_id = razorpay_payment_id
+        db.session.commit()
+    return order
+
+
+def mark_order_as_refunded(razorpay_payment_id):
+    """Persist a verified Razorpay refund against its captured payment."""
+    order = Order.query.filter_by(razorpay_payment_id=razorpay_payment_id).first()
+    if not order:
+        return None
+    order.payment_status = 'refunded'
+    db.session.commit()
     return order
 
 
@@ -1276,7 +1443,7 @@ def razorpay_checkout():
 
     if request.method == 'GET':
         try:
-            context = _razorpay_checkout_context(lines)
+            context = _razorpay_checkout_context(lines, payment_method=form_values['payment_method'])
         except ValueError as error:
             flash(str(error), 'error')
             return redirect(url_for('main.cart'))
@@ -1294,9 +1461,13 @@ def razorpay_checkout():
         flash('Please choose a valid payment method.', 'error')
         form_values['payment_method'] = 'razorpay' if online_payment_enabled else 'cod'
         try:
-            context = _razorpay_checkout_context(lines, form_values['coupon_code'].upper())
+            context = _razorpay_checkout_context(
+                lines,
+                form_values['coupon_code'].upper(),
+                form_values['payment_method'],
+            )
         except ValueError:
-            context = _razorpay_checkout_context(lines)
+            context = _razorpay_checkout_context(lines, payment_method=form_values['payment_method'])
         return render_template(
             'main/razorpay_checkout.html',
             **context,
@@ -1306,9 +1477,13 @@ def razorpay_checkout():
         flash('Cash on Delivery is currently unavailable.', 'error')
         form_values['payment_method'] = 'razorpay' if online_payment_enabled else 'cod'
         try:
-            context = _razorpay_checkout_context(lines, form_values['coupon_code'].upper())
+            context = _razorpay_checkout_context(
+                lines,
+                form_values['coupon_code'].upper(),
+                form_values['payment_method'],
+            )
         except ValueError:
-            context = _razorpay_checkout_context(lines)
+            context = _razorpay_checkout_context(lines, payment_method=form_values['payment_method'])
         return render_template(
             'main/razorpay_checkout.html',
             **context,
@@ -1318,9 +1493,13 @@ def razorpay_checkout():
         flash('Online payment is temporarily unavailable. Please choose Cash on Delivery.', 'error')
         form_values['payment_method'] = 'cod'
         try:
-            context = _razorpay_checkout_context(lines, form_values['coupon_code'].upper())
+            context = _razorpay_checkout_context(
+                lines,
+                form_values['coupon_code'].upper(),
+                form_values['payment_method'],
+            )
         except ValueError:
-            context = _razorpay_checkout_context(lines)
+            context = _razorpay_checkout_context(lines, payment_method=form_values['payment_method'])
         return render_template(
             'main/razorpay_checkout.html',
             **context,
@@ -1331,9 +1510,13 @@ def razorpay_checkout():
     if validation_error:
         flash(validation_error, 'error')
         try:
-            context = _razorpay_checkout_context(lines, form_values['coupon_code'].upper())
+            context = _razorpay_checkout_context(
+                lines,
+                form_values['coupon_code'].upper(),
+                form_values['payment_method'],
+            )
         except ValueError:
-            context = _razorpay_checkout_context(lines)
+            context = _razorpay_checkout_context(lines, payment_method=form_values['payment_method'])
         return render_template(
             'main/razorpay_checkout.html',
             **context,
@@ -1342,11 +1525,18 @@ def razorpay_checkout():
 
     coupon_code = form_values['coupon_code'].upper()
     try:
-        _, _, shipping, total, coupon_id = _razorpay_totals(lines, coupon_code)
+        _, _, shipping, total, coupon_id = _razorpay_totals(
+            lines,
+            coupon_code,
+            payment_method,
+        )
     except ValueError as error:
         flash(str(error), 'error')
         try:
-            context = _razorpay_checkout_context(lines)
+            context = _razorpay_checkout_context(
+                lines,
+                payment_method=form_values['payment_method'],
+            )
         except ValueError:
             return redirect(url_for('main.cart'))
         return render_template(
@@ -1535,6 +1725,49 @@ def payment_webhook():
     event = payload.get('event')
     payment = payload.get('payload', {}).get('payment', {}).get('entity', {})
     razorpay_order = payload.get('payload', {}).get('order', {}).get('entity', {})
+    refund = payload.get('payload', {}).get('refund', {}).get('entity', {})
+    if event == 'payment.failed':
+        razorpay_order_id = payment.get('order_id')
+        razorpay_payment_id = payment.get('id')
+        if not razorpay_order_id or not razorpay_payment_id:
+            return jsonify({'status': 'invalid payload'}), 400
+        try:
+            order = mark_order_payment_failed(
+                str(razorpay_order_id),
+                str(razorpay_payment_id),
+            )
+            if not order:
+                current_app.logger.warning(
+                    'Razorpay failure webhook referenced an unknown order.',
+                    extra={'razorpay_order_id': razorpay_order_id},
+                )
+        except SQLAlchemyError:
+            db.session.rollback()
+            current_app.logger.exception(
+                'Unable to persist Razorpay payment failure.',
+                extra={'razorpay_order_id': razorpay_order_id},
+            )
+            return jsonify({'status': 'temporary error'}), 500
+        return jsonify({'status': 'ok'}), 200
+    if event == 'refund.created':
+        razorpay_payment_id = refund.get('payment_id')
+        if not razorpay_payment_id:
+            return jsonify({'status': 'invalid payload'}), 400
+        try:
+            order = mark_order_as_refunded(str(razorpay_payment_id))
+            if not order:
+                current_app.logger.warning(
+                    'Razorpay refund webhook referenced an unknown payment.',
+                    extra={'razorpay_payment_id': razorpay_payment_id},
+                )
+        except SQLAlchemyError:
+            db.session.rollback()
+            current_app.logger.exception(
+                'Unable to persist Razorpay refund.',
+                extra={'razorpay_payment_id': razorpay_payment_id},
+            )
+            return jsonify({'status': 'temporary error'}), 500
+        return jsonify({'status': 'ok'}), 200
     if event == 'payment.captured':
         razorpay_order_id = payment.get('order_id')
     elif event == 'order.paid':

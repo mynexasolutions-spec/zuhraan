@@ -20,7 +20,12 @@ from routes.main import main_bp
 from routes.admin import admin_bp
 from routes.gokwik import gokwik_api_bp, gokwik_storefront_bp
 from routes.ithink import apply_ithink_tracking
-from gokwik_client import GoKwikRequestError, verify_gokwik_merchant
+from gokwik_client import (
+    GoKwikRequestError,
+    is_gokwik_payment_method,
+    sync_gokwik_order,
+    verify_gokwik_merchant,
+)
 from flask_login import LoginManager
 from werkzeug.security import generate_password_hash
 import cloudinary
@@ -433,16 +438,43 @@ def ithink_sync_tracking():
         batch = orders[start:start + 10]
         try:
             tracking_payload = client.track_awbs([order.awb_number for order in batch])
+            gokwik_sync_orders = []
             for order in batch:
                 try:
                     tracking = extract_tracking_data(tracking_payload, order.awb_number)
                 except IThinkRequestError:
                     failed += 1
                     continue
-                apply_ithink_tracking(order, tracking)
+                shipment_before = (
+                    order.shipping_provider,
+                    order.awb_number,
+                    order.shipping_tracking_url,
+                )
+                status_changed = apply_ithink_tracking(order, tracking)
+                shipment_changed = shipment_before != (
+                    order.shipping_provider,
+                    order.awb_number,
+                    order.shipping_tracking_url,
+                )
+                if (status_changed or shipment_changed) and is_gokwik_payment_method(order.payment_method):
+                    gokwik_sync_orders.append(order)
                 updated += 1
             db.session.commit()
-        except (IThinkRequestError, ValueError):
+            for order in gokwik_sync_orders:
+                try:
+                    sync_gokwik_order(
+                        order.id,
+                        order.status,
+                        order.shipping_provider,
+                        order.awb_number,
+                    )
+                except GoKwikRequestError:
+                    failed += 1
+                    app.logger.exception(
+                        'iThink tracking was saved but GoKwik synchronization failed.',
+                        extra={'order_id': order.id},
+                    )
+        except (IThinkRequestError, ValueError, GoKwikRequestError):
             db.session.rollback()
             failed += len(batch)
             app.logger.exception('iThink tracking batch failed.')
@@ -522,6 +554,10 @@ def seed_db():
     settings = {
         'shipping_charge': '0',
         'free_shipping_threshold': '0',
+        'shipping_charge_prepaid': '0',
+        'free_shipping_threshold_prepaid': '0',
+        'shipping_charge_cod': '0',
+        'free_shipping_threshold_cod': '0',
         'cod_enabled': '1',
     }
     for k, v in settings.items():

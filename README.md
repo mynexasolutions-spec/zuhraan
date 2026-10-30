@@ -31,6 +31,11 @@ The administrative interface gives complete control over the store's operations.
 - Generate dynamic cart percentage triggers. 
 - You can establish limited `amount` cuts or `%` percentage discounts, minimum cart values to activate the coupon, and total usage limits. Coupons can be toggled on/off instantly.
 
+### 7. Payment-specific shipping
+- Configure separate shipping charges and free-shipping thresholds for **Prepaid / Pay Online** and **Cash on Delivery** under **Settings**.
+- The selected payment method controls the shipping amount shown at checkout and the server rechecks the same amount when the order is created.
+- On an existing Supabase database, run `migrations/20261030_payment_shipping_settings.sql` once before using the new settings.
+
 ---
 
 ## 💻 Tech Stack & Deployment Security
@@ -75,15 +80,16 @@ behind Nginx.
 Direct Razorpay checkout is available from the cart when `RAZORPAY_ENABLED=1`
 and the three Razorpay environment variables are configured. The server creates
 the Razorpay order, verifies the browser signature and payment amount, and
-reconciles `payment.captured` and `order.paid` webhooks before marking the local
-order paid. Configure Razorpay's webhook URL as:
+reconciles `payment.captured`, `order.paid`, `payment.failed`, and `refund.created`
+webhooks before updating the local payment state. Configure Razorpay's webhook URL as:
 
 ```text
 https://<store-domain>/payment/webhook
 ```
 
 In the Razorpay Dashboard, use the same value as `RAZORPAY_WEBHOOK_SECRET`
-and enable the `payment.captured` and `order.paid` events. The browser callback
+and enable the `payment.captured`, `order.paid`, `payment.failed`, and
+`refund.created` events. The browser callback
 verifies a payment immediately; the webhook covers customers who close the
 payment page before the browser callback completes. If a provider callback is
 missed, an administrator can use **Reconcile Razorpay payment** on an unpaid

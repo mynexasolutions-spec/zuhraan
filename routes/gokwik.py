@@ -207,10 +207,11 @@ def _cart_lines(
 def _cart_amounts(
     checkout: GoKwikCheckoutSession,
     lines: list[tuple[ProductVariant, int, Decimal]],
+    payment_method: str = 'gokwik_prepaid',
 ) -> tuple[Decimal, Decimal, Decimal, Decimal, int | None]:
     subtotal = sum((line_total for _, _, line_total in lines), Decimal('0.00'))
     settings = {setting.key: setting.value for setting in Setting.query.all()}
-    shipping = _money(calculate_shipping(float(subtotal), settings))
+    shipping = _money(calculate_shipping(float(subtotal), settings, payment_method))
     discount = Decimal('0.00')
     coupon_id = None
 
@@ -246,7 +247,13 @@ def _product_image_url(variant: ProductVariant) -> str:
 
 def _cart_payload(checkout: GoKwikCheckoutSession) -> dict[str, Any]:
     lines = _cart_lines(checkout, False)
-    subtotal, discount, shipping, total, _ = _cart_amounts(checkout, lines)
+    subtotal, discount, shipping, total, _ = _cart_amounts(
+        checkout,
+        lines,
+        'gokwik_prepaid',
+    )
+    settings = {setting.key: setting.value for setting in Setting.query.all()}
+    cod_shipping = _money(calculate_shipping(float(subtotal), settings, 'cod'))
     customer = _decoded_json_object(checkout.customer_data, 'customer data')
     items: list[dict[str, Any]] = []
 
@@ -299,6 +306,10 @@ def _cart_payload(checkout: GoKwikCheckoutSession) -> dict[str, Any]:
             'tax_cost': 0.0,
             'taxes': [],
         }],
+        'payment_shipping_rates': {
+            'prepaid': float(shipping),
+            'cod': float(cod_shipping),
+        },
         'totals': {
             'subtotal': float(subtotal),
             'subtotal_tax': 0.0,
@@ -712,7 +723,11 @@ def place_order():
         _validate_order_address(shipping)
 
         lines = _cart_lines(checkout, True)
-        subtotal, _, shipping_charge, total, coupon_id = _cart_amounts(checkout, lines)
+        subtotal, _, shipping_charge, total, coupon_id = _cart_amounts(
+            checkout,
+            lines,
+            payment_method,
+        )
         provided_total = payload.get('order_total')
         if provided_total is not None and abs(_money(provided_total) - total) > MONEY_QUANTUM:
             raise GoKwikAPIError(
@@ -894,6 +909,9 @@ def update_order_status():
                 409,
             ) from error
     order.status = order_status
+    if order_status == 'cancelled':
+        order.shipping_status = 'Cancelled'
+        order.shipping_tracking_updated_at = _utcnow().replace(tzinfo=None)
     db.session.commit()
     return jsonify({
         'message': 'Order status updated successfully.',

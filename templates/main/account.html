@@ -414,6 +414,247 @@
         line-height: 1.5;
     }
 
+    /* Premium order history and detail presentation */
+    .orders-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 24px;
+        margin-bottom: 30px;
+        padding-bottom: 24px;
+        border-bottom: 1px solid #eee8dc;
+    }
+    .orders-heading .section-title {
+        margin: 0;
+        padding: 0;
+        border: 0;
+    }
+    .orders-eyebrow {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--amber);
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+    }
+    .orders-heading-copy p {
+        max-width: 520px;
+        margin: 8px 0 0;
+        color: #777;
+        font-size: 0.92rem;
+        line-height: 1.5;
+    }
+    .order-sync-indicator {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 3px;
+        color: #6c746f;
+        font-size: 0.75rem;
+        white-space: nowrap;
+    }
+    .order-sync-indicator span {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        color: #26734d;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+    .order-sync-indicator span::before {
+        content: '';
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #2f9e68;
+        box-shadow: 0 0 0 4px rgba(47, 158, 104, 0.12);
+    }
+    .customer-order-card {
+        border-color: #e8decc;
+        border-radius: 20px;
+        box-shadow: 0 16px 40px rgba(59, 44, 25, 0.07);
+        background: linear-gradient(145deg, #fffefc, #fbf8f1);
+    }
+    .customer-order-header {
+        align-items: flex-start;
+        padding: 28px 30px;
+        background: rgba(255, 255, 255, 0.68);
+    }
+    .customer-order-heading {
+        min-width: 0;
+    }
+    .customer-order-status-row {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .customer-order-status {
+        margin: 7px 0 0;
+        font-size: 2.1rem;
+        letter-spacing: -0.02em;
+    }
+    .order-status-pill {
+        display: inline-flex;
+        align-items: center;
+        min-height: 26px;
+        margin-top: 7px;
+        padding: 5px 10px;
+        border-radius: 999px;
+        background: #e8f5ed;
+        color: #26734d;
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+    .order-status-pill.cancelled {
+        background: #fee5e5;
+        color: #b42318;
+    }
+    .order-status-pill.exception {
+        background: #fff0db;
+        color: #9b5d0b;
+    }
+    .customer-order-header-side {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 5px;
+    }
+    .customer-order-total {
+        color: #151515;
+        font-size: 1.45rem;
+    }
+    .customer-order-total-label {
+        color: #8a8175;
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+    .customer-order-items {
+        padding: 22px 30px 0;
+    }
+    .customer-order-item {
+        min-height: 70px;
+        padding: 8px 0;
+    }
+    .customer-order-item + .customer-order-item {
+        border-top: 1px solid #eee7da;
+    }
+    .customer-order-item img,
+    .customer-order-item-placeholder {
+        width: 66px;
+        height: 66px;
+        border-radius: 14px;
+        box-shadow: 0 5px 12px rgba(59, 44, 25, 0.08);
+    }
+    .order-meta-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+        margin: 22px 30px 0;
+    }
+    .order-meta-card {
+        min-width: 0;
+        padding: 14px 15px;
+        border: 1px solid #eee5d7;
+        border-radius: 13px;
+        background: rgba(255, 255, 255, 0.7);
+    }
+    .order-meta-card span,
+    .order-meta-card small {
+        display: block;
+        color: #8a8175;
+        font-size: 0.69rem;
+        line-height: 1.35;
+    }
+    .order-meta-card span {
+        margin-bottom: 6px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+    .order-meta-card strong {
+        display: block;
+        overflow-wrap: anywhere;
+        color: #232323;
+        font-size: 0.86rem;
+        line-height: 1.35;
+    }
+    .order-meta-card small {
+        margin-top: 3px;
+    }
+    .order-meta-card small.paid {
+        color: #26734d;
+        font-weight: 700;
+    }
+    .order-meta-card small.failed,
+    .order-meta-card small.refunded {
+        color: #b42318;
+        font-weight: 700;
+    }
+    .fulfillment-panel,
+    .shipment-panel {
+        margin: 22px 30px 26px;
+        padding: 24px;
+        border-color: #e8decc;
+        border-radius: 16px;
+        box-shadow: 0 8px 24px rgba(59, 44, 25, 0.04);
+    }
+    .shipment-panel {
+        margin-top: 0;
+    }
+    .fulfillment-heading,
+    .shipment-heading {
+        margin-bottom: 26px;
+    }
+    .fulfillment-heading h3,
+    .shipment-heading h3 {
+        font-size: 0.7rem;
+        letter-spacing: 0.17em;
+    }
+    .fulfillment-badge,
+    .live-badge {
+        padding: 7px 12px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+    .fulfillment-progress {
+        padding-top: 6px;
+    }
+    .fulfillment-step strong {
+        font-size: 0.8rem;
+    }
+    .fulfillment-step small {
+        font-size: 0.7rem;
+    }
+    .shipment-brand {
+        font-size: 1.65rem;
+    }
+    .shipment-status-row {
+        border: 1px solid #eee5d7;
+        background: #fbf8f1;
+    }
+    .shipment-status-row strong {
+        color: #2d2923;
+    }
+    .shipment-status-row small {
+        max-width: 62%;
+    }
+    .shipment-detail {
+        min-height: 72px;
+        border-color: #eee5d7;
+        background: rgba(255, 255, 255, 0.65);
+    }
+    .tracking-pending-note {
+        margin: 0 30px 26px;
+        border-color: #e8decc;
+        background: rgba(255, 255, 255, 0.65);
+    }
+
     @media (max-width: 900px) {
         .account-wrapper {
             grid-template-columns: 1fr;
@@ -424,6 +665,9 @@
         }
         .shipment-details {
             grid-template-columns: 1fr;
+        }
+        .order-meta-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
         }
     }
     @media (max-width: 600px) {
@@ -443,6 +687,19 @@
             background: transparent;
             box-shadow: none;
             color: var(--text-color);
+        }
+        .orders-mobile-view .orders-heading {
+            align-items: center;
+            margin-bottom: 26px;
+            padding-bottom: 0;
+            border-bottom: 0;
+            text-align: center;
+        }
+        .orders-mobile-view .orders-heading-copy p {
+            margin: 8px auto 0;
+        }
+        .orders-mobile-view .order-sync-indicator {
+            display: none;
         }
         .orders-mobile-view #orders .section-title {
             display: none;
@@ -516,6 +773,13 @@
             color: var(--amber);
             font-size: 1.25rem;
         }
+        .orders-mobile-view .customer-order-header-side {
+            align-items: flex-end;
+        }
+        .orders-mobile-view .order-status-pill {
+            margin-top: 5px;
+            font-size: 0.62rem;
+        }
         .orders-mobile-view .customer-order-items {
             margin-top: 14px;
             padding: 12px 20px;
@@ -540,6 +804,17 @@
         .orders-mobile-view .customer-order-item span {
             margin-top: 3px;
             color: #666;
+        }
+        .orders-mobile-view .order-meta-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin: 14px 0 0;
+        }
+        .orders-mobile-view .order-meta-card {
+            padding: 12px;
+        }
+        .orders-mobile-view .order-meta-card strong {
+            font-size: 0.78rem;
         }
         .orders-mobile-view .fulfillment-panel,
         .orders-mobile-view .shipment-panel {
@@ -737,13 +1012,23 @@
         </div>
 
         <!-- MY ORDERS -->
-        <div id="orders" class="content-section">
+        <div id="orders" class="content-section" data-order-sync-url="{{ url_for('main.account_order_updates') }}" data-order-sync-signature="{{ order_sync_signature }}">
             <div class="mobile-orders-intro">
                 <span>Your purchases</span>
                 <h1>My Orders</h1>
                 <p>Track your purchases and view delivery updates from iThink Logistics.</p>
             </div>
-            <h1 class="section-title">Order History</h1>
+            <div class="orders-heading">
+                <div class="orders-heading-copy">
+                    <span class="orders-eyebrow">Your fragrance journey</span>
+                    <h1 class="section-title">Order History</h1>
+                    <p>Review every purchase, payment confirmation, fulfillment milestone, and live shipment update in one place.</p>
+                </div>
+                <div class="order-sync-indicator" aria-live="polite">
+                    <span>Live order sync</span>
+                    <small>Updates refresh automatically</small>
+                </div>
+            </div>
             {% if not orders %}
                 <p style="color: var(--muted); padding: 40px 0; text-align: center; border: 1px dashed #eee; border-radius: 12px;">Your fragrance journey is just beginning. No orders yet.</p>
             {% else %}
@@ -752,13 +1037,18 @@
                     {% set fulfillment = fulfillment_by_order[order.id] %}
                     <article class="customer-order-card">
                         <header class="customer-order-header">
-                            <div>
+                            <div class="customer-order-heading">
                                 <div class="customer-order-id">Order #{{ order.id }}</div>
-                                <h2 class="customer-order-status">{{ fulfillment.status }}</h2>
+                                <div class="customer-order-status-row">
+                                    <h2 class="customer-order-status">{{ fulfillment.status }}</h2>
+                                    <span class="order-status-pill {{ fulfillment.status_class }}">{{ fulfillment.status }}</span>
+                                </div>
                                 <div class="customer-order-date">Placed {{ order.created_at.strftime('%d %b %Y') }}</div>
-                                <div class="customer-order-payment">Payment: <strong>{{ order.payment_status or 'unpaid' }}</strong>{% if order.payment_status == 'paid' %} · Confirmed{% endif %}</div>
                             </div>
-                            <div class="customer-order-total">&#8377;{{ "{:,.2f}".format(order.total_amount) }}</div>
+                            <div class="customer-order-header-side">
+                                <div class="customer-order-total">&#8377;{{ "{:,.2f}".format(order.total_amount) }}</div>
+                                <span class="customer-order-total-label">Order total</span>
+                            </div>
                         </header>
 
                         <div class="customer-order-items">
@@ -779,6 +1069,29 @@
                                 </div>
                             </div>
                             {% endfor %}
+                        </div>
+
+                        <div class="order-meta-grid" aria-label="Order summary">
+                            <div class="order-meta-card">
+                                <span>Payment</span>
+                                <strong>{{ fulfillment.payment_method_label }}</strong>
+                                <small class="{{ order.payment_status or 'unknown' }}">{{ fulfillment.payment_status_label }}</small>
+                            </div>
+                            <div class="order-meta-card">
+                                <span>Delivery status</span>
+                                <strong>{{ fulfillment.status }}</strong>
+                                <small>{{ fulfillment.tracking_status or 'Awaiting fulfillment update' }}</small>
+                            </div>
+                            <div class="order-meta-card">
+                                <span>Shipping</span>
+                                <strong>{% if order.shipping_charges %}&#8377;{{ "{:,.2f}".format(order.shipping_charges) }}{% else %}Free{% endif %}</strong>
+                                <small>{{ order.items|length }} item line{{ '' if order.items|length == 1 else 's' }}</small>
+                            </div>
+                            <div class="order-meta-card">
+                                <span>Reference</span>
+                                <strong>{{ fulfillment.payment_reference or ('Order #' ~ order.id) }}</strong>
+                                <small>{% if fulfillment.payment_reference %}Payment reference{% else %}Store reference{% endif %}</small>
+                            </div>
                         </div>
 
                         <section class="fulfillment-panel" aria-label="Fulfillment progress for order {{ order.id }}">
@@ -803,22 +1116,22 @@
                             <div class="shipment-heading">
                                 <div>
                                     <h3>Shipment tracking</h3>
-                                    <div class="shipment-brand">{{ order.shipping_provider or 'iThink Logistics' }}</div>
+                                    <div class="shipment-brand">{{ order.shipping_provider or ('iThink Logistics' if fulfillment.shipment_created else 'Courier assignment pending') }}</div>
                                 </div>
                                 <span class="live-badge{% if not fulfillment.live %} pending{% endif %}">
-                                    {{ 'Live' if fulfillment.live else 'Pending' }}
+                                    {{ fulfillment.shipment_badge }}
                                 </span>
                             </div>
 
                             <div class="shipment-status-row">
-                                <strong>{{ fulfillment.status }}</strong>
+                                <strong>{{ fulfillment.tracking_status or ('Shipment cancelled' if fulfillment.cancelled else 'Awaiting carrier update') }}</strong>
                                 <small>
                                     {% if fulfillment.latest_update %}
                                         Updated {{ fulfillment.latest_update.strftime('%d %b %Y, %I:%M %p') }}
                                     {% elif fulfillment.live %}
                                         Awaiting carrier scan
                                     {% else %}
-                                        Shipment has not been created yet
+                                        {{ 'Shipment has not been created yet' if not fulfillment.shipment_created else 'AWB has not been assigned yet' }}
                                     {% endif %}
                                 </small>
                             </div>
@@ -826,16 +1139,22 @@
                             <div class="shipment-details">
                                 <div class="shipment-detail">
                                     <span>iThink order reference</span>
-                                    <strong>{{ order.shipping_order_reference or 'Pending assignment' }}</strong>
+                                    <strong>{{ order.shipping_order_reference or 'Not assigned' }}</strong>
                                 </div>
                                 <div class="shipment-detail">
                                     <span>Courier</span>
-                                    <strong>{{ order.shipping_provider or 'Pending assignment' }}</strong>
+                                    <strong>{{ order.shipping_provider or 'Not assigned' }}</strong>
                                 </div>
                                 <div class="shipment-detail">
                                     <span>AWB number</span>
-                                    <strong>{{ order.awb_number or 'Pending assignment' }}</strong>
+                                    <strong>{{ order.awb_number or 'Not assigned' }}</strong>
                                 </div>
+                                {% if fulfillment.tracking_status_code %}
+                                <div class="shipment-detail">
+                                    <span>Carrier code</span>
+                                    <strong>{{ fulfillment.tracking_status_code }}</strong>
+                                </div>
+                                {% endif %}
                             </div>
 
                             {% if order.awb_number %}
@@ -959,6 +1278,30 @@
                 'orders-mobile-view',
                 activeSection?.id === 'orders',
             );
+        }
+
+        const orderSync = document.getElementById('orders');
+        if (orderSync?.dataset.orderSyncUrl) {
+            let currentSignature = orderSync.dataset.orderSyncSignature;
+            const checkForOrderUpdates = async () => {
+                try {
+                    const response = await fetch(orderSync.dataset.orderSyncUrl, {
+                        credentials: 'same-origin',
+                        headers: { 'Accept': 'application/json' },
+                        cache: 'no-store',
+                    });
+                    if (!response.ok) return;
+                    const payload = await response.json();
+                    if (currentSignature && payload.signature !== currentSignature) {
+                        window.location.reload();
+                        return;
+                    }
+                    currentSignature = payload.signature;
+                } catch (error) {
+                    // A temporary refresh failure should not interrupt order viewing.
+                }
+            };
+            window.setInterval(checkForOrderUpdates, 15000);
         }
     });
 </script>

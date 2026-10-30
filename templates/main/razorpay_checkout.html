@@ -29,6 +29,7 @@
     .rzp-submit:hover { color: #fff; background: #c4640c; }
     .rzp-back { display: inline-block; margin-top: 16px; color: #777; font-size: .9rem; text-decoration: none; }
     .rzp-note { color: #777; font-size: .85rem; line-height: 1.5; }
+    .rzp-shipping-note { margin: 12px 0 0; color: #777; font-size: .8rem; line-height: 1.45; }
     @media (max-width: 800px) { .rzp-grid { grid-template-columns: 1fr; } .rzp-summary { position: static; } }
     @media (max-width: 560px) { .rzp-fields { grid-template-columns: 1fr; } .rzp-field.full { grid-column: auto; } .rzp-card, .rzp-summary { padding: 20px; } }
 </style>
@@ -70,6 +71,7 @@
                     </label>
                     {% endif %}
                 </div>
+                <p class="rzp-shipping-note">Shipping is calculated separately for the selected payment method.</p>
             </div>
             <button class="rzp-submit" type="submit">Place Order</button>
             <a class="rzp-back" href="{{ url_for('main.cart') }}">← Back to cart</a>
@@ -91,4 +93,39 @@
         </aside>
     </div>
 </div>
+<script>
+    (() => {
+        const form = document.querySelector('.rzp-card');
+        const summary = document.querySelector('.rzp-summary');
+        if (!form || !summary) return;
+
+        const shippingLine = [...summary.querySelectorAll('.rzp-line')]
+            .find((line) => line.textContent.trim().startsWith('Shipping'));
+        const shippingAmount = shippingLine?.querySelector('strong');
+        const totalAmount = summary.querySelector('.rzp-total span:last-child');
+        if (!shippingAmount || !totalAmount) return;
+
+        const subtotal = Number('{{ subtotal }}');
+        const discount = Number('{{ discount }}');
+        const shippingOptions = {{ shipping_options | tojson }};
+        const formatMoney = (amount) => `₹${amount.toLocaleString('en-IN', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        })}`;
+
+        const refreshTotals = () => {
+            const selectedMethod = form.querySelector('input[name="payment_method"]:checked');
+            const shipping = selectedMethod?.value === 'cod'
+                ? Number(shippingOptions.cod || 0)
+                : Number(shippingOptions.prepaid || 0);
+            shippingAmount.textContent = formatMoney(shipping);
+            totalAmount.textContent = formatMoney(subtotal - discount + shipping);
+        };
+
+        form.querySelectorAll('input[name="payment_method"]').forEach((input) => {
+            input.addEventListener('change', refreshTotals);
+        });
+        refreshTotals();
+    })();
+</script>
 {% endblock %}
