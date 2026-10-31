@@ -1,0 +1,324 @@
+{% extends 'base.html' %}
+
+{% block title %}Order Confirmed - Zuhraan{% endblock %}
+
+{% block content %}
+<style>
+    .order-confirmation {
+        min-height: calc(100vh - 190px);
+        padding: 72px 20px 110px;
+        background:
+            radial-gradient(circle at 50% 0%, rgba(218, 245, 229, .8), transparent 34%),
+            #fbfaf8;
+    }
+    .confirmation-shell {
+        width: min(100%, 760px);
+        margin: 0 auto;
+        text-align: center;
+    }
+    .success-mark {
+        display: grid;
+        place-items: center;
+        width: 84px;
+        height: 84px;
+        margin: 0 auto 24px;
+        border: 9px solid #dcfce7;
+        border-radius: 50%;
+        color: #fff;
+        background: #22a565;
+        box-shadow: 0 12px 30px rgba(34, 165, 101, .2);
+        font-size: 2.6rem;
+        font-weight: 500;
+        line-height: 1;
+    }
+    .confirmation-eyebrow {
+        margin: 0 0 12px;
+        color: #17834e;
+        font-size: .75rem;
+        font-weight: 700;
+        letter-spacing: .18em;
+        text-transform: uppercase;
+    }
+    .confirmation-shell h1 {
+        margin: 0;
+        color: #171717;
+        font-family: 'Cormorant Garamond', serif;
+        font-size: clamp(2.4rem, 6vw, 4.2rem);
+        font-weight: 700;
+        line-height: .98;
+    }
+    .confirmation-message {
+        margin: 16px 0 28px;
+        color: #6f716f;
+        font-size: 1.05rem;
+    }
+    .confirmation-meta {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        max-width: 560px;
+        margin: 0 auto 36px;
+    }
+    .confirmation-meta-item {
+        padding: 16px 18px;
+        border: 1px solid #e6e7e3;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, .8);
+    }
+    .confirmation-meta-item span,
+    .confirmation-meta-item strong {
+        display: block;
+    }
+    .confirmation-meta-item span {
+        margin-bottom: 5px;
+        color: #858984;
+        font-size: .72rem;
+        font-weight: 700;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+    }
+    .confirmation-meta-item strong {
+        color: #232523;
+        font-size: .98rem;
+    }
+    .summary-card {
+        overflow: hidden;
+        text-align: left;
+        border: 1px solid #e8e5df;
+        border-radius: 20px;
+        background: #fff;
+        box-shadow: 0 18px 50px rgba(35, 42, 36, .08);
+    }
+    .summary-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 28px 30px 22px;
+        border-bottom: 1px solid #efeee9;
+    }
+    .summary-header h2 {
+        margin: 0;
+        color: #1d211e;
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 2rem;
+    }
+    .summary-header .confirmation-eyebrow {
+        margin-bottom: 5px;
+        font-size: .68rem;
+    }
+    .order-status {
+        padding: 7px 12px;
+        border-radius: 999px;
+        color: #177447;
+        background: #ecfdf3;
+        font-size: .72rem;
+        font-weight: 700;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+    .summary-items {
+        padding: 4px 30px;
+    }
+    .summary-item {
+        display: grid;
+        grid-template-columns: 68px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 16px;
+        padding: 18px 0;
+        border-bottom: 1px solid #f0efeb;
+    }
+    .summary-item:last-child {
+        border-bottom: 0;
+    }
+    .summary-item-image,
+    .summary-item-placeholder {
+        display: grid;
+        place-items: center;
+        width: 68px;
+        height: 68px;
+        overflow: hidden;
+        border-radius: 12px;
+        color: #aa7b39;
+        background: #f6f1e8;
+        font-size: 1.25rem;
+    }
+    .summary-item-image {
+        object-fit: cover;
+    }
+    .summary-item-details strong,
+    .summary-item-details span,
+    .summary-item-price strong,
+    .summary-item-price span {
+        display: block;
+    }
+    .summary-item-details strong {
+        color: #252825;
+        font-size: 1rem;
+    }
+    .summary-item-details span,
+    .summary-item-price span {
+        margin-top: 5px;
+        color: #858984;
+        font-size: .84rem;
+    }
+    .summary-item-price {
+        text-align: right;
+        white-space: nowrap;
+    }
+    .summary-item-price strong {
+        color: #252825;
+        font-size: 1rem;
+    }
+    .summary-footer {
+        padding: 22px 30px 26px;
+        background: #fcfcfa;
+    }
+    .summary-row,
+    .summary-total {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+    }
+    .summary-row {
+        color: #858984;
+        font-size: .9rem;
+    }
+    .summary-total {
+        margin-top: 12px;
+        padding-top: 16px;
+        border-top: 1px solid #e7e7e1;
+        color: #1d211e;
+        font-size: 1.1rem;
+        font-weight: 700;
+    }
+    .summary-total strong {
+        color: #17834e;
+        font-size: 1.35rem;
+    }
+    .confirmation-actions {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 30px;
+    }
+    .confirmation-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 180px;
+        padding: 14px 24px;
+        border: 1px solid #181b19;
+        border-radius: 999px;
+        color: #fff;
+        background: #181b19;
+        font-size: .9rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: transform .2s ease, background .2s ease, color .2s ease;
+    }
+    .confirmation-action:hover {
+        color: #fff;
+        background: #17834e;
+        transform: translateY(-2px);
+    }
+    .confirmation-action.secondary {
+        color: #252825;
+        background: transparent;
+    }
+    .confirmation-action.secondary:hover {
+        color: #17834e;
+        background: #fff;
+    }
+    .confirmation-note {
+        margin: 20px 0 0;
+        color: #858984;
+        font-size: .82rem;
+    }
+    @media (max-width: 560px) {
+        .order-confirmation { padding: 48px 14px 80px; }
+        .confirmation-meta { grid-template-columns: 1fr; }
+        .summary-header, .summary-items, .summary-footer { padding-left: 20px; padding-right: 20px; }
+        .summary-item { grid-template-columns: 56px minmax(0, 1fr); gap: 12px; }
+        .summary-item-image, .summary-item-placeholder { width: 56px; height: 56px; }
+        .summary-item-price { grid-column: 2; text-align: left; }
+        .summary-item-price span { display: inline-block; margin: 3px 0 0 8px; }
+        .summary-header h2 { font-size: 1.7rem; }
+    }
+</style>
+
+<section class="order-confirmation" aria-labelledby="confirmation-title">
+    <div class="confirmation-shell">
+        <div class="success-mark" aria-hidden="true">&#10003;</div>
+        <p class="confirmation-eyebrow">Order confirmed</p>
+        <h1 id="confirmation-title">Thank You for Your Purchase!</h1>
+        <p class="confirmation-message">Your order has been placed successfully.</p>
+
+        <div class="confirmation-meta">
+            <div class="confirmation-meta-item">
+                <span>Order number</span>
+                <strong>#{{ order.id }}</strong>
+            </div>
+            <div class="confirmation-meta-item">
+                <span>Estimated delivery</span>
+                <strong>{{ estimated_delivery }}</strong>
+            </div>
+        </div>
+
+        <div class="summary-card">
+            <div class="summary-header">
+                <div>
+                    <p class="confirmation-eyebrow">Your fragrance selection</p>
+                    <h2>Order Summary</h2>
+                </div>
+                <span class="order-status">Confirmed</span>
+            </div>
+
+            <div class="summary-items">
+                {% for item in order.items %}
+                    {% set product = item.variant.product if item.variant and item.variant.product else none %}
+                    {% set product_image = product.images.split(',')[0].strip() if product and product.images else '' %}
+                    <article class="summary-item">
+                        {% if product_image %}
+                            <img class="summary-item-image" src="{{ get_image_url(product_image) }}" alt="{{ product.name }}">
+                        {% else %}
+                            <div class="summary-item-placeholder" aria-hidden="true"><i class="fa-solid fa-box-open"></i></div>
+                        {% endif %}
+                        <div class="summary-item-details">
+                            <strong>{{ product.name if product else 'Product' }}</strong>
+                            <span>
+                                Qty {{ item.quantity }}{% if item.variant and item.variant.size %} &middot; {{ item.variant.size }}{% endif %}
+                            </span>
+                        </div>
+                        <div class="summary-item-price">
+                            <strong>&#8377;{{ "{:,.2f}".format(item.price_at_time * item.quantity) }}</strong>
+                            <span>&#8377;{{ "{:,.2f}".format(item.price_at_time) }} each</span>
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+
+            <div class="summary-footer">
+                <div class="summary-row">
+                    <span>Shipping</span>
+                    <span>{% if order.shipping_charges %}&#8377;{{ "{:,.2f}".format(order.shipping_charges) }}{% else %}Free{% endif %}</span>
+                </div>
+                <div class="summary-total">
+                    <span>Total amount</span>
+                    <strong>&#8377;{{ "{:,.2f}".format(order.total_amount) }}</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="confirmation-actions">
+            <a class="confirmation-action" href="{{ url_for('main.index') }}">Back to Home</a>
+            {% if current_user.is_authenticated %}
+                <a class="confirmation-action secondary" href="{{ url_for('main.account', _anchor='orders') }}">View My Orders</a>
+            {% endif %}
+        </div>
+        <p class="confirmation-note">We&rsquo;ll keep you updated as your order moves toward delivery.</p>
+    </div>
+</section>
+{% endblock %}

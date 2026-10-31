@@ -91,21 +91,6 @@
 
     <!-- CHECKOUT -->
     <div class="card">
-        <h3><i class="fa-solid fa-wallet"></i> GoKwik Checkout</h3>
-        <p style="font-size: 1.0rem; color:var(--text-muted); margin-bottom:20px;">
-            GoKwik is the store's checkout and payment gateway. Configure COD, prepaid methods, and payment rules in the GoKwik merchant dashboard.
-        </p>
-
-        <div class="toggle-row">
-            <div class="toggle-info">
-                <h4><i class="fa-solid fa-shield-halved" style="color:#16a34a; margin-right:6px;"></i> Integration Status</h4>
-                <p>{{ 'Active' if config.GOKWIK_ENABLED else 'Disabled' }} · {{ config.GOKWIK_ENV | capitalize }} environment</p>
-            </div>
-            <span style="font-weight:700; color:{{ '#16a34a' if config.GOKWIK_ENABLED else '#dc2626' }};">
-                {{ 'Connected' if config.GOKWIK_ENABLED else 'Unavailable' }}
-            </span>
-        </div>
-
         <div class="toggle-row">
             <div class="toggle-info">
                 <h4><i class="fa-solid fa-money-bill-wave" style="color:#16a34a; margin-right:6px;"></i> Cash on Delivery</h4>

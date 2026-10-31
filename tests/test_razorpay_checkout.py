@@ -267,7 +267,13 @@ def test_verify_payment_marks_order_paid_and_updates_stock(client, razorpay_clie
     })
 
     assert response.status_code == 302
-    assert response.headers['Location'] == '/'
+    assert response.headers['Location'] == f'/order/confirmation/{local_order_id}'
+    confirmation = client.get(response.headers['Location'])
+    confirmation_body = confirmation.get_data(as_text=True)
+    assert confirmation.status_code == 200
+    assert 'Thank You for Your Purchase!' in confirmation_body
+    assert f'<strong>#{local_order_id}</strong>' in confirmation_body
+    assert 'Test Perfume' in confirmation_body
 
     with app.app_context():
         order = db.session.get(Order, local_order_id)

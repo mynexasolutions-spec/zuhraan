@@ -103,6 +103,7 @@ class Order(db.Model):
     
     payment_status = db.Column(db.String(50), default='unpaid') # unpaid, paid
     payment_method = db.Column(db.String(50))
+    checkout_token = db.Column(db.String(128), unique=True, nullable=True)
     razorpay_order_id = db.Column(db.String(100), unique=True)
     razorpay_payment_id = db.Column(db.String(100), unique=True)
     gokwik_transaction_id = db.Column(db.String(150), unique=True)

@@ -1,4 +1,4 @@
-from flask import Blueprint, current_app, jsonify, make_response, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, abort, current_app, jsonify, make_response, render_template, request, redirect, url_for, flash, session
 from models import db, Product, Category, ProductVariant, Review, User, Order, OrderItem, Setting, Coupon, OfferBanner, AboutPage, ContactMessage
 from flask_login import current_user, login_user, logout_user, login_required
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -10,10 +10,10 @@ import time
 import requests
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from sqlalchemy import and_, func, or_
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from urllib.parse import urlsplit
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from about_cms import get_assets, get_content
 from homepage_reels import get_homepage_reels
 from routes.ithink import apply_ithink_shipment, create_or_recover_ithink_shipment
@@ -21,6 +21,36 @@ from ithink_client import normalize_indian_phone, normalize_indian_pincode
 
 main_bp = Blueprint('main', __name__)
 GUEST_ORDER_SESSION_KEY = 'guest_order_ids'
+CHECKOUT_SUBMISSION_SESSION_KEY = 'checkout_submission_token'
+
+
+def _checkout_submission_token() -> str:
+    """Return the one-time browser token used to make checkout idempotent."""
+    token = session.get(CHECKOUT_SUBMISSION_SESSION_KEY)
+    if isinstance(token, str) and token:
+        return token
+    token = secrets.token_urlsafe(32)
+    session[CHECKOUT_SUBMISSION_SESSION_KEY] = token
+    return token
+
+
+def _add_business_days(start: datetime, business_days: int) -> datetime:
+    """Return a date after the requested number of weekdays."""
+    result = start
+    remaining = business_days
+    while remaining > 0:
+        result += timedelta(days=1)
+        if result.weekday() < 5:
+            remaining -= 1
+    return result
+
+
+def _estimated_delivery_window(order: Order) -> str:
+    """Build a customer-facing delivery window from the order timestamp."""
+    placed_at = order.created_at or datetime.utcnow()
+    start = _add_business_days(placed_at, 5)
+    end = _add_business_days(placed_at, 7)
+    return f'{start:%d %b %Y} – {end:%d %b %Y}'
 
 def _auto_create_ithink_shipment(order: Order) -> bool:
     """Automatically create or recover an iThink shipment for an eligible order."""
@@ -1169,6 +1199,7 @@ def _razorpay_checkout_context(lines, coupon_code='', payment_method='razorpay')
         'payment_method': payment_method,
         'coupon_code': coupon_code,
         'cod_enabled': is_cod_enabled(),
+        'submission_token': _checkout_submission_token(),
     }
 
 
@@ -1402,6 +1433,36 @@ def _finish_razorpay_browser_payment(order):
         'num_items': sum(item['quantity'] for item in purchase_contents),
     }
     session['cart'] = {}
+    session.pop(CHECKOUT_SUBMISSION_SESSION_KEY, None)
+    session['order_confirmation_id'] = order.id
+
+
+@main_bp.get('/order/confirmation/<int:order_id>')
+def order_confirmation(order_id: int):
+    """Render the confirmation for the order just completed in this browser."""
+    order = db.session.get(Order, order_id)
+    if not order or session.get('order_confirmation_id') != order.id:
+        abort(404)
+
+    if current_user.is_authenticated:
+        _link_guest_orders_to_user(current_user)
+        if order.user_id != current_user.id:
+            abort(404)
+    else:
+        remembered_ids = session.get(GUEST_ORDER_SESSION_KEY, [])
+        if order.user_id is not None or order.id not in remembered_ids:
+            abort(404)
+
+    if order.payment_method != 'cod' and order.payment_status != 'paid':
+        abort(404)
+
+    response = make_response(render_template(
+        'main/order_confirmation.html',
+        order=order,
+        estimated_delivery=_estimated_delivery_window(order),
+    ))
+    response.headers['Cache-Control'] = 'no-store, max-age=0'
+    return response
 
 
 @main_bp.route('/api/validate-coupon', methods=['POST'])
@@ -1420,6 +1481,29 @@ def razorpay_checkout():
     if not online_payment_enabled and not cod_enabled:
         flash('Checkout is temporarily unavailable. Please try again shortly.', 'error')
         return redirect(url_for('main.cart'))
+
+    if request.method == 'POST':
+        submitted_token = request.form.get('checkout_token', '').strip()
+        if submitted_token:
+            existing_order = Order.query.filter_by(checkout_token=submitted_token).first()
+            if existing_order:
+                if (
+                    existing_order.payment_method == 'cod'
+                    or existing_order.payment_status == 'paid'
+                ):
+                    _finish_razorpay_browser_payment(existing_order)
+                    return redirect(url_for(
+                        'main.order_confirmation',
+                        order_id=existing_order.id,
+                    ))
+                if existing_order.razorpay_order_id:
+                    return render_template(
+                        'main/razorpay_payment.html',
+                        order=existing_order,
+                        razorpay_order_id=existing_order.razorpay_order_id,
+                        key_id=current_app.config['RAZORPAY_KEY_ID'],
+                        amount=_razorpay_amount_in_paise(existing_order.total_amount),
+                    )
 
     try:
         lines = _razorpay_cart_lines()
@@ -1452,6 +1536,17 @@ def razorpay_checkout():
     for field in form_values:
         form_values[field] = request.form.get(field, '').strip()
     form_values['country'] = form_values['country'] or 'India'
+    submission_token = request.form.get('checkout_token', '').strip()
+    if not submission_token:
+        submission_token = _checkout_submission_token()
+    stored_submission_token = session.get(CHECKOUT_SUBMISSION_SESSION_KEY)
+    if (
+        stored_submission_token
+        and submission_token != stored_submission_token
+    ):
+        flash('This checkout session has expired. Please start checkout again.', 'error')
+        return redirect(url_for('main.razorpay_checkout'))
+    session[CHECKOUT_SUBMISSION_SESSION_KEY] = submission_token
     payment_method = form_values['payment_method'].lower() or (
         'razorpay' if online_payment_enabled else 'cod'
     )
@@ -1566,6 +1661,7 @@ def razorpay_checkout():
             status='pending',
             payment_status='unpaid',
             payment_method=payment_method,
+            checkout_token=submission_token,
             coupon_id=coupon_id,
         )
         db.session.add(order)
@@ -1614,6 +1710,30 @@ def razorpay_checkout():
         current_app.logger.exception('Unable to create Razorpay order.')
         flash('Online payment is currently unavailable. Please try again shortly.', 'error')
         return redirect(url_for('main.cart'))
+    except IntegrityError:
+        db.session.rollback()
+        existing_order = Order.query.filter_by(checkout_token=submission_token).first()
+        if existing_order:
+            if (
+                existing_order.payment_method == 'cod'
+                or existing_order.payment_status == 'paid'
+            ):
+                _finish_razorpay_browser_payment(existing_order)
+                return redirect(url_for(
+                    'main.order_confirmation',
+                    order_id=existing_order.id,
+                ))
+            if existing_order.razorpay_order_id:
+                return render_template(
+                    'main/razorpay_payment.html',
+                    order=existing_order,
+                    razorpay_order_id=existing_order.razorpay_order_id,
+                    key_id=current_app.config['RAZORPAY_KEY_ID'],
+                    amount=_razorpay_amount_in_paise(existing_order.total_amount),
+                )
+        current_app.logger.exception('Checkout submission conflicted with an existing order.')
+        flash('Unable to prepare your order. Please try again.', 'error')
+        return redirect(url_for('main.cart'))
     except (RuntimeError, SQLAlchemyError, ValueError):
         db.session.rollback()
         current_app.logger.exception('Unable to prepare Razorpay order.')
@@ -1623,8 +1743,7 @@ def razorpay_checkout():
     if payment_method == 'cod':
         _auto_create_ithink_shipment(order)
         _finish_razorpay_browser_payment(order)
-        flash('Order placed successfully. We will collect payment on delivery.', 'success')
-        return redirect(url_for('main.account', _anchor='orders') if current_user.is_authenticated else url_for('main.index'))
+        return redirect(url_for('main.order_confirmation', order_id=order.id))
 
     return render_template(
         'main/razorpay_payment.html',
@@ -1683,8 +1802,7 @@ def verify_payment():
             flash('Order not found. Please contact support with your payment ID.', 'error')
             return redirect(payment_url)
         _finish_razorpay_browser_payment(order)
-        flash('Payment successful! Your order is being processed.', 'success')
-        return redirect(url_for('main.account', _anchor='orders') if current_user.is_authenticated else url_for('main.index'))
+        return redirect(url_for('main.order_confirmation', order_id=order.id))
     except razorpay.errors.SignatureVerificationError:
         current_app.logger.warning(
             'Rejected Razorpay payment signature.',

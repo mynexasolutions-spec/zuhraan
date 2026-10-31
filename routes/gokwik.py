@@ -7,7 +7,7 @@ from functools import wraps
 from time import monotonic
 from typing import Any, Callable
 
-from flask import Blueprint, current_app, flash, g, jsonify, request, session, url_for
+from flask import Blueprint, current_app, g, jsonify, request, session, url_for
 from flask_login import current_user
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
@@ -453,12 +453,8 @@ def complete_checkout():
         'num_items': sum(item['quantity'] for item in purchase_contents),
     }
     session['cart'] = {}
-    flash('Order placed successfully through GoKwik.', 'success')
-    redirect_url = (
-        url_for('main.account', _anchor='orders')
-        if current_user.is_authenticated
-        else url_for('main.index')
-    )
+    session['order_confirmation_id'] = order.id
+    redirect_url = url_for('main.order_confirmation', order_id=order.id)
     return jsonify({'status': 'success', 'redirect_url': redirect_url})
 
 

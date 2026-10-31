@@ -35,6 +35,7 @@ The administrative interface gives complete control over the store's operations.
 - Configure separate shipping charges and free-shipping thresholds for **Prepaid / Pay Online** and **Cash on Delivery** under **Settings**.
 - The selected payment method controls the shipping amount shown at checkout and the server rechecks the same amount when the order is created.
 - On an existing Supabase database, run `migrations/20261030_payment_shipping_settings.sql` once before using the new settings.
+- Run `migrations/20261031_order_confirmation.sql` to add the checkout idempotency key used to prevent duplicate orders.
 
 ---
 

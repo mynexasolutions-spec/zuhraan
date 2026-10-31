@@ -25,22 +25,98 @@
     .rzp-payment-option input { width: auto; accent-color: #111; }
     .rzp-payment-option strong { font-size: .95rem; }
     .rzp-payment-option span { color: #777; font-size: .85rem; }
+    .rzp-payment-shipping { display: inline-block; margin-top: 4px; color: #111; font-size: .8rem; font-weight: 600; }
     .rzp-submit { width: 100%; margin-top: 24px; padding: 14px 18px; border: 0; border-radius: 999px; color: #fff; background: #111; font: inherit; font-weight: 800; cursor: pointer; }
     .rzp-submit:hover { color: #fff; background: #c4640c; }
     .rzp-back { display: inline-block; margin-top: 16px; color: #777; font-size: .9rem; text-decoration: none; }
     .rzp-note { color: #777; font-size: .85rem; line-height: 1.5; }
     .rzp-shipping-note { margin: 12px 0 0; color: #777; font-size: .8rem; line-height: 1.45; }
+    .rzp-checkout { max-width: 1240px; margin: 0 auto; padding: 58px 24px 110px; }
+    .rzp-checkout-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 34px; }
+    .rzp-eyebrow, .rzp-section-kicker, .rzp-summary-kicker { margin: 0 0 8px; color: #a16a2d; font-size: .7rem; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; }
+    .rzp-checkout h1 { margin: 0; color: #171717; font-family: 'Cormorant Garamond', serif; font-size: clamp(2.8rem, 5vw, 4.5rem); font-weight: 700; letter-spacing: -.03em; line-height: .92; }
+    .rzp-checkout-lead { margin: 15px 0 0; color: #737373; font-size: 1rem; }
+    .rzp-checkout-badge, .rzp-summary-lock { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border: 1px solid #e5e0d8; border-radius: 999px; color: #515151; background: rgba(255,255,255,.72); font-size: .75rem; font-weight: 700; white-space: nowrap; }
+    .rzp-grid { grid-template-columns: minmax(0, 1fr) 360px; gap: 32px; }
+    .rzp-card { padding: clamp(26px, 4vw, 42px); border: 1px solid #e7e1d8; border-radius: 24px; box-shadow: 0 22px 60px rgba(31, 25, 18, .08); }
+    .rzp-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 28px; }
+    .rzp-card h2 { margin: 0; font-family: 'Cormorant Garamond', serif; font-size: 2rem; letter-spacing: -.02em; }
+    .rzp-card-header .rzp-note { margin: 8px 0 0; }
+    .rzp-step { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; color: #fff; background: #171717; font-size: .75rem; font-weight: 800; }
+    .rzp-fields { gap: 20px 16px; }
+    .rzp-field { gap: 8px; }
+    .rzp-field label { color: #565656; font-size: .7rem; letter-spacing: .13em; }
+    .rzp-field input { min-height: 52px; padding: 13px 15px; border-color: #e1dbd2; border-radius: 12px; background: #fdfcf9; transition: border-color .2s ease, box-shadow .2s ease, background .2s ease; }
+    .rzp-field input::placeholder { color: #aaa49c; }
+    .rzp-field input:hover { background: #fff; border-color: #cfc6bb; }
+    .rzp-field input:focus { border-color: #171717; background: #fff; box-shadow: 0 0 0 4px rgba(23,23,23,.07); }
+    .rzp-field-coupon { padding: 16px 16px 18px; border: 1px solid #e5dfd5; border-radius: 16px; background: #faf8f4; }
+    .rzp-field-coupon input { background: #fff; }
+    .rzp-payment-methods { margin-top: 34px; padding-top: 30px; border-top-color: #ebe6de; }
+    .rzp-payment-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+    .rzp-payment-heading h3 { margin: 0; font-family: 'Cormorant Garamond', serif; font-size: 1.7rem; }
+    .rzp-payment-security { display: inline-flex; align-items: center; gap: 6px; color: #85817b; font-size: .72rem; font-weight: 700; }
+    .rzp-payment-options { gap: 14px; }
+    .rzp-payment-option { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 20px; align-items: center; gap: 14px; padding: 17px; overflow: hidden; border: 1px solid #e0d9cf; border-radius: 18px; color: #222; background: linear-gradient(135deg, #fff 0%, #fbfaf7 100%); box-shadow: 0 6px 18px rgba(30, 24, 18, .03); transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease, background .2s ease; }
+    .rzp-payment-option:hover { border-color: #bfb3a5; box-shadow: 0 12px 24px rgba(30, 24, 18, .08); transform: translateY(-1px); }
+    .rzp-payment-option.is-selected { border-color: #171717; background: #fff; box-shadow: 0 14px 28px rgba(30, 24, 18, .1); }
+    .rzp-payment-option input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+    .rzp-payment-option:focus-within { outline: 3px solid rgba(161,106,45,.2); outline-offset: 2px; }
+    .rzp-payment-copy { min-width: 0; color: #777; font-size: .86rem; line-height: 1.45; }
+    .rzp-payment-copy strong { display: block; margin-bottom: 2px; color: #171717; font-family: 'Cormorant Garamond', serif; font-size: 1.24rem; line-height: 1.1; }
+    .rzp-payment-copy > span { display: block; color: #85817b; font-size: .8rem; }
+    .rzp-payment-shipping { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px; color: #5e5a54; font-size: .75rem; font-weight: 700; }
+    .rzp-payment-shipping strong { margin: 0; color: #171717; font-family: 'Jost', sans-serif; font-size: .78rem; }
+    .rzp-payment-indicator { position: relative; width: 18px; height: 18px; border: 1px solid #c9c1b7; border-radius: 50%; background: #fff; }
+    .rzp-payment-option.is-selected .rzp-payment-indicator { border-color: #171717; background: #171717; }
+    .rzp-payment-option.is-selected .rzp-payment-indicator::after { content: ''; position: absolute; inset: 5px; border-radius: 50%; background: #fff; }
+    .rzp-shipping-note { display: flex; align-items: center; gap: 7px; margin: 14px 0 0; color: #8b867e; font-size: .76rem; }
+    .rzp-submit { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 58px; margin-top: 30px; border: 1px solid #171717; box-shadow: 0 12px 22px rgba(23,23,23,.14); font-size: .92rem; letter-spacing: .04em; transition: background .2s ease, box-shadow .2s ease, transform .2s ease; }
+    .rzp-submit:hover { background: #a16a2d; box-shadow: 0 16px 28px rgba(161,106,45,.22); transform: translateY(-2px); }
+    .rzp-submit:disabled { cursor: wait; opacity: .65; transform: none; }
+    .rzp-back { margin-top: 18px; color: #777; font-size: .82rem; transition: color .2s ease; }
+    .rzp-back:hover { color: #a16a2d; }
+    .rzp-summary { top: 32px; padding: 30px; overflow: hidden; border: 1px solid #292929; border-radius: 24px; background: radial-gradient(circle at 90% 0%, rgba(161,106,45,.25), transparent 33%), #141414; box-shadow: 0 22px 60px rgba(23,23,23,.18); }
+    .rzp-summary-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 20px; }
+    .rzp-summary-kicker { color: #c5965b; font-size: .64rem; }
+    .rzp-summary h2 { margin: 0; font-family: 'Cormorant Garamond', serif; font-size: 2rem; letter-spacing: -.02em; }
+    .rzp-summary-lock { padding: 7px 9px; border-color: rgba(255,255,255,.14); color: rgba(255,255,255,.7); background: rgba(255,255,255,.06); font-size: .65rem; }
+    .rzp-line { margin: 0; padding: 12px 0; color: rgba(255,255,255,.68); }
+    .rzp-item-line { align-items: flex-start; gap: 14px; }
+    .rzp-item-line > span:first-child { display: flex; flex-direction: column; gap: 4px; }
+    .rzp-item-name { color: #fff; font-size: .86rem; font-weight: 600; }
+    .rzp-item-meta { color: rgba(255,255,255,.48); font-size: .72rem; }
+    .rzp-line strong { color: #fff; font-size: .86rem; }
+    .rzp-summary .rzp-total { margin-top: 14px; padding-top: 20px; font-size: 1.18rem; }
+    .rzp-summary .rzp-total span:last-child { color: #f1c27d; font-size: 1.35rem; }
+    .rzp-summary > .rzp-note { margin: 20px 0 0; color: rgba(255,255,255,.54); font-size: .77rem; }
+    @media (max-width: 800px) { .rzp-checkout { padding-top: 42px; } .rzp-checkout-heading { align-items: flex-start; flex-direction: column; gap: 18px; } .rzp-summary { position: static; } }
+    @media (max-width: 560px) { .rzp-checkout { padding: 34px 14px 74px; } .rzp-card, .rzp-summary { padding: 22px 18px; border-radius: 20px; } .rzp-card-header, .rzp-payment-heading, .rzp-summary-header { gap: 12px; } .rzp-card h2, .rzp-payment-heading h3 { font-size: 1.65rem; } .rzp-payment-option { grid-template-columns: minmax(0, 1fr) 18px; gap: 11px; padding: 14px; } .rzp-payment-copy strong { font-size: 1.12rem; } .rzp-payment-security { display: none; } }
     @media (max-width: 800px) { .rzp-grid { grid-template-columns: 1fr; } .rzp-summary { position: static; } }
     @media (max-width: 560px) { .rzp-fields { grid-template-columns: 1fr; } .rzp-field.full { grid-column: auto; } .rzp-card, .rzp-summary { padding: 20px; } }
 </style>
 
 <div class="rzp-checkout">
-    <h1>Secure Checkout</h1>
+    <div class="rzp-checkout-heading">
+        <div>
+            <p class="rzp-eyebrow">Zuhraan / Secure checkout</p>
+            <h1>Secure Checkout</h1>
+            <p class="rzp-checkout-lead">A considered final step for your next signature scent.</p>
+        </div>
+        <div class="rzp-checkout-badge"><i class="fa-solid fa-lock"></i> Encrypted checkout</div>
+    </div>
     <div class="rzp-grid">
         <form class="rzp-card" method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <h2>Contact and delivery details</h2>
-            <p class="rzp-note">Your details are used only to process and deliver this order.</p>
+            <input type="hidden" name="checkout_token" value="{{ submission_token }}">
+            <div class="rzp-card-header">
+                <div>
+                    <p class="rzp-section-kicker">Delivery details</p>
+                    <h2>Contact and delivery details</h2>
+                    <p class="rzp-note">Your details are used only to process and deliver this order.</p>
+                </div>
+                <span class="rzp-step">01</span>
+            </div>
             <div class="rzp-fields">
                 {% for field, label, required in [
                     ('name', 'Full name', true), ('email', 'Email address', true),
@@ -49,38 +125,58 @@
                     ('state', 'State', true), ('pincode', 'PIN code', true), ('country', 'Country', true),
                     ('coupon_code', 'Coupon code', false)
                 ] %}
-                <div class="rzp-field{% if field == 'address_line1' or field == 'address_line2' %} full{% endif %}">
+                <div class="rzp-field{% if field == 'address_line1' or field == 'address_line2' %} full{% endif %}{% if field == 'coupon_code' %} rzp-field-coupon{% endif %}">
                     <label for="{{ field }}">{{ label }}{% if required %} *{% endif %}</label>
-                    <input id="{{ field }}" name="{{ field }}" value="{{ form_values[field] }}"{% if field == 'phone' %} inputmode="tel" autocomplete="tel"{% elif field == 'pincode' %} inputmode="numeric" autocomplete="postal-code" maxlength="6"{% elif field == 'email' %} type="email" autocomplete="email"{% endif %}{% if required %} required{% endif %}>
+                    <input id="{{ field }}" name="{{ field }}" value="{{ form_values[field] }}"{% if field == 'coupon_code' %} placeholder="Enter promo code (optional)"{% endif %}{% if field == 'phone' %} inputmode="tel" autocomplete="tel"{% elif field == 'pincode' %} inputmode="numeric" autocomplete="postal-code" maxlength="6"{% elif field == 'email' %} type="email" autocomplete="email"{% endif %}{% if required %} required{% endif %}>
                 </div>
                 {% endfor %}
             </div>
             <div class="rzp-payment-methods">
-                <h3>Payment method</h3>
+                <div class="rzp-payment-heading">
+                    <div>
+                        <p class="rzp-section-kicker">Payment</p>
+                        <h3>Choose your payment method</h3>
+                    </div>
+                    <span class="rzp-payment-security"><i class="fa-solid fa-shield-halved"></i> Protected</span>
+                </div>
                 <div class="rzp-payment-options">
                     {% if cod_enabled %}
-                    <label class="rzp-payment-option">
+                    <label class="rzp-payment-option{% if form_values['payment_method'] == 'cod' %} is-selected{% endif %}">
                         <input type="radio" name="payment_method" value="cod"{% if form_values['payment_method'] == 'cod' %} checked{% endif %}>
-                        <span><strong>Cash on Delivery</strong><br>Pay when your order arrives.</span>
+                        <span class="rzp-payment-copy">
+                            <strong>Cash on Delivery</strong><br>Pay when your order arrives.
+                            <small class="rzp-payment-shipping"><span>Shipping</span><strong>&#8377;{{ "{:,.2f}".format(shipping_options['cod']) }}</strong></small>
+                        </span>
+                        <span class="rzp-payment-indicator" aria-hidden="true"></span>
                     </label>
                     {% endif %}
                     {% if config.RAZORPAY_ENABLED %}
-                    <label class="rzp-payment-option">
+                    <label class="rzp-payment-option{% if form_values['payment_method'] == 'razorpay' %} is-selected{% endif %}">
                         <input type="radio" name="payment_method" value="razorpay"{% if form_values['payment_method'] == 'razorpay' %} checked{% endif %}>
-                        <span><strong>Pay Online</strong><br>Pay securely using Razorpay.</span>
+                        <span class="rzp-payment-copy">
+                            <strong>Pay Online</strong><br>Pay securely using Razorpay.
+                            <small class="rzp-payment-shipping"><span>Shipping</span><strong>&#8377;{{ "{:,.2f}".format(shipping_options['prepaid']) }}</strong></small>
+                        </span>
+                        <span class="rzp-payment-indicator" aria-hidden="true"></span>
                     </label>
                     {% endif %}
                 </div>
-                <p class="rzp-shipping-note">Shipping is calculated separately for the selected payment method.</p>
+                <p class="rzp-shipping-note"><i class="fa-solid fa-truck-fast"></i> Shipping is calculated separately for the selected payment method.</p>
             </div>
-            <button class="rzp-submit" type="submit">Place Order</button>
+            <button class="rzp-submit" type="submit"><span>Place Order</span><i class="fa-solid fa-arrow-right"></i></button>
             <a class="rzp-back" href="{{ url_for('main.cart') }}">← Back to cart</a>
         </form>
 
         <aside class="rzp-summary">
-            <h2>Order summary</h2>
+            <div class="rzp-summary-header">
+                <div>
+                    <p class="rzp-summary-kicker">Your selection</p>
+                    <h2>Order summary</h2>
+                </div>
+                <span class="rzp-summary-lock"><i class="fa-solid fa-lock"></i> Secure</span>
+            </div>
             {% for item in items %}
-            <div class="rzp-line">
+            <div class="rzp-line rzp-item-line">
                 <span>{{ item.variant.product.name }} · {{ item.variant.size }} × {{ item.quantity }}</span>
                 <strong>₹{{ "{:,.2f}".format(item.line_total) }}</strong>
             </div>
@@ -105,6 +201,28 @@
         const totalAmount = summary.querySelector('.rzp-total span:last-child');
         if (!shippingAmount || !totalAmount) return;
 
+        const paymentOptions = [...form.querySelectorAll('.rzp-payment-option')];
+        const refreshPaymentOptionState = () => {
+            paymentOptions.forEach((option) => {
+                const input = option.querySelector('input[name="payment_method"]');
+                option.classList.toggle('is-selected', Boolean(input?.checked));
+            });
+        };
+
+        let submissionStarted = false;
+        form.addEventListener('submit', (event) => {
+            if (submissionStarted) {
+                event.preventDefault();
+                return;
+            }
+            submissionStarted = true;
+            const submitButton = form.querySelector('.rzp-submit');
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.textContent = 'Processing order...';
+            }
+        });
+
         const subtotal = Number('{{ subtotal }}');
         const discount = Number('{{ discount }}');
         const shippingOptions = {{ shipping_options | tojson }};
@@ -123,8 +241,12 @@
         };
 
         form.querySelectorAll('input[name="payment_method"]').forEach((input) => {
-            input.addEventListener('change', refreshTotals);
+            input.addEventListener('change', () => {
+                refreshPaymentOptionState();
+                refreshTotals();
+            });
         });
+        refreshPaymentOptionState();
         refreshTotals();
     })();
 </script>
